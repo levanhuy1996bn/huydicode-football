@@ -197,7 +197,7 @@ function SelectedPlayerIndicator({ matchState, playerRefs, selectedId }) {
         group.position.set(object.position.x, 0, object.position.z)
 
         if (arrowRef.current) {
-            arrowRef.current.position.y = 2.75 + Math.sin(clock.current * 5) * 0.1
+            arrowRef.current.position.y = 3.3 + Math.sin(clock.current * 5) * 0.1
         }
 
         const charge = matchState.charge
@@ -224,7 +224,7 @@ function SelectedPlayerIndicator({ matchState, playerRefs, selectedId }) {
                 <meshBasicMaterial color="#ffe45c" toneMapped={false} />
             </mesh>
 
-            <Billboard ref={barRef} position={[0, 3.95, 0]} visible={false}>
+            <Billboard ref={barRef} position={[0, 4.35, 0]} visible={false}>
                 <mesh>
                     <planeGeometry args={[CHARGE_BAR_WIDTH + 0.24, 0.85]} />
                     <meshBasicMaterial color="#0b1410" transparent opacity={0.8} />
@@ -283,6 +283,106 @@ function useChargeHud(chargeHudRef, matchState) {
     })
 }
 
+// ---- Bản đồ mini (radar) kiểu FO4 ----
+// Vẽ bằng canvas 2D mỗi frame. Hướng trùng với camera: camera đứng ở cạnh
+// sân phía +X nhìn về -X, nên trên radar: trái = +Z, phải = -Z,
+// trên = cạnh xa (-X), dưới = cạnh gần camera (+X).
+const PITCH_LENGTH = 105
+const PITCH_WIDTH = 68
+
+function useRadar(radarRef, ctx) {
+    useFrame(() => {
+        const canvas = radarRef?.current
+        const ball = ctx.ballRef.current
+
+        if (!canvas || !ball) return
+
+        const g = canvas.getContext('2d')
+        const W = canvas.width
+        const H = canvas.height
+        const pad = 6 * (W / 240)
+        const w = W - pad * 2
+        const h = H - pad * 2
+
+        const toScreen = (x, z) => ({
+            sx: pad + ((PITCH_LENGTH / 2 - z) / PITCH_LENGTH) * w,
+            sy: pad + ((x + PITCH_WIDTH / 2) / PITCH_WIDTH) * h,
+        })
+
+        const unit = w / PITCH_LENGTH
+
+        // Mặt sân + vạch
+        g.clearRect(0, 0, W, H)
+        g.fillStyle = 'rgba(14, 58, 34, 0.92)'
+        g.fillRect(0, 0, W, H)
+        g.strokeStyle = 'rgba(220, 245, 225, 0.55)'
+        g.lineWidth = Math.max(1, unit * 0.35)
+        g.strokeRect(pad, pad, w, h)
+
+        g.beginPath()
+        g.moveTo(pad + w / 2, pad)
+        g.lineTo(pad + w / 2, pad + h)
+        g.stroke()
+
+        g.beginPath()
+        g.arc(pad + w / 2, pad + h / 2, 9.15 * unit, 0, Math.PI * 2)
+        g.stroke()
+
+        // Vòng cấm + khung thành hai đầu
+        const boxDepth = 16.5 * unit
+        const boxWidth = 40.3 * unit
+        const goalWidth = 7.32 * unit
+
+        g.strokeRect(pad, pad + h / 2 - boxWidth / 2, boxDepth, boxWidth)
+        g.strokeRect(pad + w - boxDepth, pad + h / 2 - boxWidth / 2, boxDepth, boxWidth)
+
+        g.fillStyle = 'rgba(255, 255, 255, 0.85)'
+        g.fillRect(pad - unit * 1.5, pad + h / 2 - goalWidth / 2, unit * 1.5, goalWidth)
+        g.fillRect(pad + w, pad + h / 2 - goalWidth / 2, unit * 1.5, goalWidth)
+
+        // Cầu thủ
+        const radius = Math.max(2.5, unit * 1.35)
+
+        ctx.players.forEach((item) => {
+            const object = ctx.objects[item.id]
+            if (!object) return
+
+            const { sx, sy } = toScreen(object.position.x, object.position.z)
+
+            g.beginPath()
+            g.arc(sx, sy, radius, 0, Math.PI * 2)
+            g.fillStyle =
+                item.role === 'GK'
+                    ? '#f0c928'
+                    : ctx.teamColors?.[item.teamId] || '#ffffff'
+            g.fill()
+            g.lineWidth = Math.max(1, unit * 0.3)
+            g.strokeStyle = 'rgba(0, 0, 0, 0.6)'
+            g.stroke()
+
+            if (item.id === ctx.selectedId) {
+                g.beginPath()
+                g.arc(sx, sy, radius + unit * 1.2, 0, Math.PI * 2)
+                g.strokeStyle = '#ffe45c'
+                g.lineWidth = Math.max(1.5, unit * 0.55)
+                g.stroke()
+            }
+        })
+
+        // Bóng
+        const ballPosition = ball.translation()
+        const { sx, sy } = toScreen(ballPosition.x, ballPosition.z)
+
+        g.beginPath()
+        g.arc(sx, sy, radius * 0.85, 0, Math.PI * 2)
+        g.fillStyle = '#ffffff'
+        g.fill()
+        g.lineWidth = Math.max(1, unit * 0.35)
+        g.strokeStyle = '#111111'
+        g.stroke()
+    })
+}
+
 // Cầu nối giữa React và engine trận đấu (src/systems).
 // Component này chỉ: giữ refs, dựng `ctx`, xử lý sự kiện React
 // (thay người, đổi sơ đồ, reset, sang hiệp 2) và gọi engine mỗi frame.
@@ -297,6 +397,8 @@ export default function MatchWorld({
     onGoal,
     half = 1,
     chargeHudRef,
+    radarRef,
+    labelMode = 'smart',
 }) {
     const keys = useKeyboard()
 
@@ -315,6 +417,7 @@ export default function MatchWorld({
     const tactic = TACTICS[tacticKey] || TACTICS.balanced
 
     useChargeHud(chargeHudRef, state)
+    useRadar(radarRef, ctxRef.current)
 
     const players = useMemo(
         () =>
@@ -362,6 +465,9 @@ export default function MatchWorld({
         selectedId,
         isPlaying,
         opponentName,
+        teamColors: Object.fromEntries(
+            roster.map((team) => [team.id, team.color]),
+        ),
         onSelect,
         onActionMessage,
         onGoal,
@@ -542,6 +648,7 @@ export default function MatchWorld({
                         player={player}
                         teamColor={team.color}
                         matchState={state}
+                        labelMode={labelMode}
                         isSelected={selectedId === player.id}
                         onSelect={player.teamId === 'blue' ? onSelect : undefined}
                         onReady={registerPlayer}

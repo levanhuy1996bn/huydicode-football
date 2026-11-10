@@ -1,6 +1,7 @@
 import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
 import TeamManagementPanel from './TeamManagementPanel'
+import SubstitutionBoard from './SubstitutionBoard'
 import MatchWorld from './MatchWorld'
 import {
     FullTimeOverlay,
@@ -79,6 +80,13 @@ export default function GameScene() {
     const [forfeit, setForfeit] = useState(null) // null | 'league' | 'friendly'
     const [isQuitOpen, setIsQuitOpen] = useState(false)
 
+    // HUD: bảng thay người, cầu thủ đã rời sân, chế độ hiện tên, radar.
+    const [isSubsOpen, setIsSubsOpen] = useState(false)
+    const [subbedOffIds, setSubbedOffIds] = useState([])
+    const [labelMode, setLabelMode] = useState('smart') // smart | all | off
+    const resumeAfterSubsRef = useRef(false)
+    const radarRef = useRef(null)
+
     const matchTimeRef = useRef(0)
     matchTimeRef.current = matchTime
 
@@ -87,6 +95,9 @@ export default function GameScene() {
         setGoalEvents([])
         setForfeit(null)
         setIsQuitOpen(false)
+        setIsSubsOpen(false)
+        setSubbedOffIds([])
+        resumeAfterSubsRef.current = false
     }, [])
 
     // LEAGUE STATE
@@ -466,15 +477,27 @@ export default function GameScene() {
         setActionMessage(`FORMATION: ${formationKey}`)
     }
 
+    // Thay người. Trả về { ok, message } để bảng thay người hiển thị kết quả.
+    // Luật: tối đa MAX_SUBSTITUTIONS lượt; thủ môn chỉ thay bằng thủ môn;
+    // cầu thủ đã rời sân không được vào lại. Cầu thủ vào sân nhận đúng vị trí
+    // của người ra (đá trái sở trường vẫn được, như FO4).
     const substitutePlayer = (playerOutId, playerInId) => {
+        const fail = (message) => {
+            setActionMessage(message.toUpperCase())
+            return { ok: false, message }
+        }
+
         if (substitutionCount >= MAX_SUBSTITUTIONS) {
-            setActionMessage('NO SUBSTITUTIONS REMAINING')
-            return
+            return fail('No substitutions remaining.')
+        }
+
+        if (subbedOffIds.includes(playerInId)) {
+            return fail('A player who has been substituted off cannot come back on.')
         }
 
         const blueTeam = roster.find((team) => team.id === 'blue')
 
-        if (!blueTeam) return
+        if (!blueTeam) return fail('Team not found.')
 
         const outgoing = blueTeam.players.find(
             (player) => player.id === playerOutId,
@@ -484,14 +507,13 @@ export default function GameScene() {
             (player) => player.id === playerInId,
         )
 
-        if (!outgoing || !incoming) return
+        if (!outgoing || !incoming) return fail('Pick one starter and one bench player.')
 
-        if (
-            getPositionGroup(outgoing.position) !==
-            getPositionGroup(incoming.position)
-        ) {
-            setActionMessage('INCOMPATIBLE PLAYER POSITION')
-            return
+        const outIsKeeper = getPositionGroup(outgoing.position) === 'GK'
+        const inIsKeeper = getPositionGroup(incoming.position) === 'GK'
+
+        if (outIsKeeper !== inIsKeeper) {
+            return fail('A goalkeeper can only be replaced by a goalkeeper.')
         }
 
         const benchIndex = blueTeam.substitutes.findIndex(
@@ -538,9 +560,93 @@ export default function GameScene() {
         }
 
         setSubstitutionCount((count) => count + 1)
-        setActionMessage(
-            `SUBSTITUTION: ${incoming.name.toUpperCase()} ON`,
+        setSubbedOffIds((ids) => [...ids, playerOutId])
+
+        const outOfPosition =
+            getPositionGroup(incoming.position) !== getPositionGroup(outgoing.position)
+
+        const message = `${incoming.name} on, ${outgoing.name} off${
+            outOfPosition ? ` (playing out of position as ${outgoing.position})` : ''
+        }.`
+
+        setActionMessage(`SUBSTITUTION: ${incoming.name.toUpperCase()} ON`)
+
+        return { ok: true, message }
+    }
+
+    // Đổi vị trí hai cầu thủ đang trên sân (không tính lượt thay người).
+    const swapStarters = (firstId, secondId) => {
+        const blueTeam = roster.find((team) => team.id === 'blue')
+        const first = blueTeam?.players.find((player) => player.id === firstId)
+        const second = blueTeam?.players.find((player) => player.id === secondId)
+
+        if (!first || !second) {
+            return { ok: false, message: 'Pick two players on the pitch.' }
+        }
+
+        const firstKeeper = getPositionGroup(first.position) === 'GK'
+        const secondKeeper = getPositionGroup(second.position) === 'GK'
+
+        if (firstKeeper !== secondKeeper) {
+            return { ok: false, message: 'The goalkeeper cannot swap with an outfield player.' }
+        }
+
+        setRoster((current) =>
+            current.map((team) => {
+                if (team.id !== 'blue') return team
+
+                return {
+                    ...team,
+                    players: team.players.map((player) => {
+                        if (player.id === firstId) {
+                            return { ...player, position: second.position, x: second.x, z: second.z }
+                        }
+
+                        if (player.id === secondId) {
+                            return { ...player, position: first.position, x: first.x, z: first.z }
+                        }
+
+                        return player
+                    }),
+                }
+            }),
         )
+
+        setActionMessage(`SWAP: ${first.name.toUpperCase()} ⇄ ${second.name.toUpperCase()}`)
+
+        return {
+            ok: true,
+            message: `${first.name} now plays ${second.position}, ${second.name} now plays ${first.position}.`,
+        }
+    }
+
+    // Mở bảng thay người: đang đá thì tạm dừng, đóng lại thì đá tiếp.
+    const openSubstitutions = () => {
+        if (matchStatus === 'playing') {
+            resumeAfterSubsRef.current = true
+            setMatchStatus('paused')
+        } else {
+            resumeAfterSubsRef.current = false
+        }
+
+        setIsSubsOpen(true)
+    }
+
+    const closeSubstitutions = () => {
+        setIsSubsOpen(false)
+
+        if (resumeAfterSubsRef.current) {
+            resumeAfterSubsRef.current = false
+            setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
+        }
+    }
+
+    const cycleLabelMode = () => {
+        setLabelMode((mode) => {
+            const next = mode === 'smart' ? 'all' : mode === 'all' ? 'off' : 'smart'
+            setActionMessage(`PLAYER NAMES: ${next.toUpperCase()}`)
+            return next
+        })
     }
 
     const openLeague = () => {
@@ -558,6 +664,8 @@ export default function GameScene() {
                     >
                         <MatchWorld
                             chargeHudRef={chargeHudRef}
+                            radarRef={radarRef}
+                            labelMode={labelMode}
                             roster={matchRoster}
                             half={half}
                             selectedId={selectedId}
@@ -775,6 +883,23 @@ export default function GameScene() {
 
                 {matchStatus !== 'fulltime' && (
                     <button
+                        onClick={openSubstitutions}
+                        style={matchButtonStyle}
+                    >
+                        SUBS {substitutionCount}/{MAX_SUBSTITUTIONS}
+                    </button>
+                )}
+
+                <button
+                    onClick={cycleLabelMode}
+                    style={matchButtonStyle}
+                    title="Player names above heads"
+                >
+                    NAMES: {labelMode.toUpperCase()}
+                </button>
+
+                {matchStatus !== 'fulltime' && (
+                    <button
                         onClick={() => setIsQuitOpen(true)}
                         style={matchButtonStyle}
                     >
@@ -803,6 +928,9 @@ export default function GameScene() {
                     <button type="button" className="btn btn--primary" onClick={togglePause}>
                         RESUME
                     </button>
+                    <button type="button" className="btn" onClick={openSubstitutions}>
+                        SUBSTITUTIONS
+                    </button>
                     <button type="button" className="btn btn--ghost" onClick={restartMatch}>
                         RESTART MATCH
                     </button>
@@ -824,6 +952,7 @@ export default function GameScene() {
                     substitutionCount={substitutionCount}
                     maxSubstitutions={MAX_SUBSTITUTIONS}
                     onContinue={continueSecondHalf}
+                    onOpenSubs={openSubstitutions}
                     onQuit={() => setIsQuitOpen(true)}
                 />
             )}
@@ -849,6 +978,18 @@ export default function GameScene() {
                 />
             )}
 
+            {isSubsOpen && (
+                <SubstitutionBoard
+                    team={roster.find((team) => team.id === 'blue')}
+                    substitutionCount={substitutionCount}
+                    maxSubstitutions={MAX_SUBSTITUTIONS}
+                    subbedOffIds={subbedOffIds}
+                    onSubstitute={substitutePlayer}
+                    onSwap={swapStarters}
+                    onClose={closeSubstitutions}
+                />
+            )}
+
             {isQuitOpen && (
                 <QuitConfirm
                     isLeagueMatch={Boolean(activeFixture && !activeFixture.played)}
@@ -856,6 +997,15 @@ export default function GameScene() {
                     onCancel={() => setIsQuitOpen(false)}
                 />
             )}
+
+            {/* Bản đồ mini kiểu FO4 — MatchWorld vẽ mỗi frame */}
+            <canvas
+                ref={radarRef}
+                className="radar"
+                width={480}
+                height={312}
+                aria-label="Mini map"
+            />
 
             {/* Thanh lực kiểu FO4 — MatchWorld cập nhật trực tiếp DOM mỗi frame */}
             <div

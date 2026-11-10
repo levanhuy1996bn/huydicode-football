@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Phase 10 — Passing and Receiving System, plus Steps 1–4 (bug fixes, engine refactor, FIFA Online-style controls, match flow) (2026-11-09).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
+> **Current delivery: Phase 10 — Passing and Receiving System, plus Steps 1–5 (bug fixes, engine refactor, FIFA Online-style controls, match flow, in-match HUD) (2026-11-10).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
 
 ## Install and run
 
@@ -139,6 +139,8 @@ npm run preview
 | S / A at a throw-in | Short / long throw (arrows choose the direction) |
 | Space | Standing tackle |
 | Ctrl | Sliding tackle |
+| SUBS button | Open the drag-and-drop substitution board (pauses the match) |
+| NAMES button | Player names above heads: SMART → ALL → OFF |
 | QUIT button | Leave the match (a league match is recorded as a 0–3 loss) |
 | Click a BLUE FC player | Select that player |
 | Mouse / trackpad | Camera interaction where enabled |
@@ -307,11 +309,20 @@ A code review showed that Phases 11–14 were never delivered as separate featur
   - A: teammate press.
 - **Fix:** the AI ball carrier was moved twice per step, so it dribbled about twice as fast as intended.
 
-### Step 5 — In-match HUD (FIFA Online style)
+### Step 5 — In-match HUD (FIFA Online style) ✅ (2026-11-10)
 
-- Player name above the head and shirt numbers on the kit.
-- Minimap/radar at the bottom centre of the screen.
-- Drag-and-drop substitution HUD.
+- **Shirt numbers:** each kit has a large number on the back and a small one on the chest. They are drawn on a canvas texture, so no fonts or images need to load, and the text is automatically light or dark to contrast with the shirt.
+- **Names above heads:** a tag in the team colour with number and name (surname for real players, position for default names). The NAMES button cycles through three modes:
+  - SMART: the controlled player, the ball carrier and the intended receiver. This is the default.
+  - ALL: all 22 players.
+  - OFF: no names.
+- **Mini map (radar):** at the bottom centre, in the same orientation as the camera. It shows both teams in their colours (keepers in yellow), the ball, and a yellow ring around the controlled player. The power gauge sits just above it.
+- **Drag-and-drop substitution board:** opened with the SUBS button, the SUBSTITUTIONS button on the pause screen, or OPEN SUBSTITUTIONS at half time. Opening it pauses the match and DONE resumes it.
+  - Drag a bench player onto a starter (or the reverse) to substitute.
+  - Drag a starter onto another starter to swap positions; this does not use a substitution.
+  - Click one card, then another, as a fallback for touch screens.
+  - Rules: 5 substitutions; a goalkeeper can only be replaced by a goalkeeper; a player who has been substituted off cannot come back on. Outfield players may now play out of position (the board warns about it).
+  - The incoming player takes the outgoing player's position on the pitch.
 
 ### Step 6 — Out-of-match UI
 
@@ -336,10 +347,10 @@ A code review showed that Phases 11–14 were never delivered as separate featur
 | Ý tưởng | Bước |
 | --- | --- |
 | Hỗ trợ chuyền; chuyền và sút phải có lực | Step 3 ✅ |
-| Tên trên đầu cầu thủ, áo có số | Step 5 |
-| Kéo thả để thay người, HUD như FIFA Online | Step 5 |
+| Tên trên đầu cầu thủ, áo có số | Step 5 ✅ |
+| Kéo thả để thay người, HUD như FIFA Online | Step 5 ✅ |
 | Hết giờ thông báo tỉ số thật to | Step 4 ✅ |
-| Bản đồ mini ở giữa giao diện | Step 5 |
+| Bản đồ mini ở giữa giao diện | Step 5 ✅ |
 | Không có bóng thì S đổi cầu thủ, có mũi tên trên đầu | Step 3 ✅ |
 | Ném biên | Step 4 ✅ |
 | Nghỉ giữa hiệp: mở cài đặt rồi bấm Tiếp tục sang hiệp 2 | Step 4 ✅ |
@@ -349,7 +360,7 @@ A code review showed that Phases 11–14 were never delivered as separate featur
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Phase 10 + Steps 1–4 (see roadmap)  
+**Current delivery:** Phase 10 + Steps 1–5 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

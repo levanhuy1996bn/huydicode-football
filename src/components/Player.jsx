@@ -1,6 +1,8 @@
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
+import * as THREE from 'three'
 
 const SKIN = '#d9a783'
 const HAIR = '#30251f'
@@ -9,10 +11,66 @@ const SHOE = '#171c20'
 const clamp = (value, min, max) =>
     Math.max(min, Math.min(max, value))
 
+// Chữ trắng trên áo tối, chữ tối trên áo sáng.
+function contrastColor(hex) {
+    const color = new THREE.Color(hex)
+    const luminance = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b
+
+    return luminance > 0.55 ? '#14181c' : '#ffffff'
+}
+
+// Texture số áo vẽ bằng canvas (không cần tải font/ảnh).
+function useNumberTexture(number, shirtColor) {
+    const texture = useMemo(() => {
+        if (typeof document === 'undefined') return null
+
+        const canvas = document.createElement('canvas')
+        canvas.width = 128
+        canvas.height = 128
+
+        const context = canvas.getContext('2d')
+        const ink = contrastColor(shirtColor)
+
+        context.clearRect(0, 0, 128, 128)
+        context.font = '900 92px Inter, Arial, sans-serif'
+        context.textAlign = 'center'
+        context.textBaseline = 'middle'
+        context.lineWidth = 8
+        context.strokeStyle = ink === '#ffffff' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.6)'
+        context.strokeText(String(number ?? ''), 64, 70)
+        context.fillStyle = ink
+        context.fillText(String(number ?? ''), 64, 70)
+
+        const result = new THREE.CanvasTexture(canvas)
+        result.colorSpace = THREE.SRGBColorSpace
+        result.anisotropy = 4
+
+        return result
+    }, [number, shirtColor])
+
+    useEffect(() => () => texture?.dispose(), [texture])
+
+    return texture
+}
+
+// Tên ngắn để hiện trên đầu: tên thật thì lấy họ (từ cuối),
+// tên mặc định kiểu "Blue ST 9" thì giữ vị trí.
+function shortLabel(player) {
+    const name = String(player.name || '')
+    const generic = /^(Blue|Red|[A-Z]{3}) [A-Z]{2,3} \d+$/.test(name)
+
+    if (generic) return name.split(' ')[1]
+
+    const parts = name.split(' ')
+
+    return parts[parts.length - 1] || name
+}
+
 export default function Player({
                                    player,
                                    teamColor,
                                    matchState,
+                                   labelMode = 'smart',
                                    isSelected,
                                    onSelect,
                                    onReady,
@@ -38,6 +96,10 @@ export default function Player({
     const shorts = goalkeeper ? '#242b32' : teamColor
     const trim = goalkeeper ? '#fff1a6' : '#eaf4ff'
 
+    const numberTexture = useNumberTexture(player.number, shirt)
+    const labelRef = useRef(null)
+    const labelVisible = useRef(null)
+
     useEffect(() => {
         onReady?.(player.id, root.current)
 
@@ -46,6 +108,22 @@ export default function Player({
 
     useFrame((_, delta) => {
         if (!root.current || !visual.current) return
+
+        // Tên trên đầu: 'all' = mọi cầu thủ, 'smart' = người đang điều khiển,
+        // người cầm bóng và người sắp nhận bóng, 'off' = ẩn.
+        if (labelRef.current) {
+            const show =
+                labelMode === 'all' ||
+                (labelMode === 'smart' &&
+                    (isSelected ||
+                        matchState?.possession === player.id ||
+                        matchState?.pendingPass?.receiverId === player.id))
+
+            if (labelVisible.current !== show) {
+                labelVisible.current = show
+                labelRef.current.style.display = show ? 'flex' : 'none'
+            }
+        }
 
         const dt = Math.min(delta, 0.05)
         const p = root.current.position
@@ -260,6 +338,22 @@ export default function Player({
                 onSelect?.(player.id)
             }}
         >
+            <Html
+                position={[0, 2.25, 0]}
+                center
+                zIndexRange={[6, 0]}
+                style={{ pointerEvents: 'none' }}
+            >
+                <div
+                    ref={labelRef}
+                    className={`player-tag${isSelected ? ' player-tag--selected' : ''}`}
+                    style={{ '--tag-color': teamColor, display: 'none' }}
+                >
+                    <b>{player.number}</b>
+                    <span>{shortLabel(player)}</span>
+                </div>
+            </Html>
+
             {isSelected && (
                 <mesh
                     rotation={[-Math.PI / 2, 0, 0]}
@@ -298,6 +392,30 @@ export default function Player({
                         <circleGeometry args={[0.055, 16]} />
                         <meshBasicMaterial color={trim} />
                     </mesh>
+
+                    {/* Số áo: lớn sau lưng, nhỏ trước ngực */}
+                    {numberTexture && (
+                        <>
+                            <mesh position={[0, 0.06, -0.33]} rotation={[0, Math.PI, 0]}>
+                                <planeGeometry args={[0.42, 0.42]} />
+                                <meshBasicMaterial
+                                    map={numberTexture}
+                                    transparent
+                                    depthWrite={false}
+                                    toneMapped={false}
+                                />
+                            </mesh>
+                            <mesh position={[0.15, 0.13, 0.325]}>
+                                <planeGeometry args={[0.17, 0.17]} />
+                                <meshBasicMaterial
+                                    map={numberTexture}
+                                    transparent
+                                    depthWrite={false}
+                                    toneMapped={false}
+                                />
+                            </mesh>
+                        </>
+                    )}
 
                     {/* Tay trái */}
                     <group ref={leftArm} position={[-0.34, 0.2, 0]}>
