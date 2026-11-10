@@ -12,6 +12,7 @@ const clamp = (value, min, max) =>
 export default function Player({
                                    player,
                                    teamColor,
+                                   matchState,
                                    isSelected,
                                    onSelect,
                                    onReady,
@@ -169,6 +170,84 @@ export default function Player({
                 rightArm.current.rotation.x *= 1.08
             }
         }
+
+        // ---- Tư thế hành động, đọc từ state machine của engine ----
+        // Quy ước trục X: dương = ngả về trước (thân) / đưa ra sau (chân).
+        const entry = matchState?.playerStates?.[player.id]
+        const action = entry && entry.time > 0 ? entry.state : null
+        const progress =
+            entry && entry.duration > 0
+                ? clamp(entry.elapsed / entry.duration, 0, 1)
+                : 0
+
+        let bodyPitch = 0
+
+        if (action === 'shoot' || action === 'pass') {
+            const strength = action === 'shoot' ? 1 : 0.65
+
+            // Kéo chân phải ra sau rồi vung mạnh về trước.
+            const kick = progress < 0.35
+                ? (progress / 0.35) * 0.7
+                : 0.7 - ((progress - 0.35) / 0.65) * 2.3
+
+            if (rightLeg.current) rightLeg.current.rotation.x = kick * strength
+            if (leftLeg.current) leftLeg.current.rotation.x = 0.15
+            if (leftArm.current) leftArm.current.rotation.x = -0.6 * strength
+            if (rightArm.current) rightArm.current.rotation.x = 0.5 * strength
+
+            bodyPitch = 0.08 * strength
+        } else if (action === 'tackle') {
+            const reach = Math.sin(progress * Math.PI)
+
+            if (rightLeg.current) rightLeg.current.rotation.x = -1.1 * reach
+
+            bodyPitch = 0.25 * reach
+        } else if (action === 'slide') {
+            // Ngả người ra sau, hai chân duỗi về trước.
+            if (leftLeg.current) leftLeg.current.rotation.x = -0.75
+            if (rightLeg.current) rightLeg.current.rotation.x = -0.45
+            if (leftArm.current) leftArm.current.rotation.x = 0.7
+            if (rightArm.current) rightArm.current.rotation.x = 0.7
+
+            bodyPitch = -1.15
+        } else if (action === 'throw') {
+            // Ném biên: vung hai tay từ sau đầu ra trước.
+            const swing = -2.9 + progress * 1.9
+
+            if (leftArm.current) leftArm.current.rotation.x = swing
+            if (rightArm.current) rightArm.current.rotation.x = swing
+
+            bodyPitch = -0.15 + progress * 0.4
+        } else if (matchState?.restart?.playerId === player.id) {
+            // Chờ ném biên: giơ bóng qua đầu bằng hai tay.
+            if (leftArm.current) leftArm.current.rotation.x = -2.9
+            if (rightArm.current) rightArm.current.rotation.x = -2.9
+            if (leftArm.current) leftArm.current.rotation.z = -0.15
+            if (rightArm.current) rightArm.current.rotation.z = 0.15
+
+            bodyPitch = -0.1
+        } else if (action === 'stumble') {
+            // Tắc trượt: chúi người về trước, mất đà.
+            if (leftLeg.current) leftLeg.current.rotation.x = -0.5
+            if (rightLeg.current) rightLeg.current.rotation.x = 0.4
+            if (leftArm.current) leftArm.current.rotation.x = -0.8
+            if (rightArm.current) rightArm.current.rotation.x = -0.8
+
+            bodyPitch = 0.42 * Math.sin(progress * Math.PI)
+        } else if (action === 'fallen') {
+            // Nằm ngửa, 25% cuối thời gian thì đứng dậy.
+            const getUp = progress > 0.75 ? (1 - progress) / 0.25 : 1
+
+            if (leftLeg.current) leftLeg.current.rotation.x = 0
+            if (rightLeg.current) rightLeg.current.rotation.x = 0.2
+            if (leftArm.current) leftArm.current.rotation.x = 0.4
+            if (rightArm.current) rightArm.current.rotation.x = 0.4
+
+            bodyPitch = -1.45 * getUp
+        }
+
+        visual.current.rotation.x +=
+            (bodyPitch - visual.current.rotation.x) * Math.min(1, dt * 14)
     })
 
     return (

@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Phase 10 — Passing and Receiving System, plus Step 1 bug fixes (2026-11-09).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
+> **Current delivery: Phase 10 — Passing and Receiving System, plus Steps 1–4 (bug fixes, engine refactor, FIFA Online-style controls, match flow) (2026-11-09).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
 
 ## Install and run
 
@@ -125,15 +125,21 @@ npm run preview
 
 | **Key** | **Action** |
 | --- | --- |
-| Arrow keys | Move selected BLUE FC player |
+| Arrow keys | Move the selected BLUE FC player; also aims passes and shots |
 | E / Shift | Sprint (hold) |
-| Q | Switch selected BLUE FC player |
-| S | Short pass |
-| W | Through ball |
-| A | Lofted pass / cross |
-| D | Shoot |
+| S (with the ball) | Pass: hold to charge, release to pass |
+| S (without the ball) | Switch to the player nearest the ball |
+| Q | Cycle through the 4 players nearest the ball |
+| W | Through ball (hold to charge) |
+| A | Lofted pass / cross (hold to charge) |
+| D | Shoot (hold to charge, arrows to aim the corner) |
+| D (hold, defending) | Contain: stay goal-side of the ball carrier about 1.5 m away, facing the ball |
+| D + E (hold, defending) | Aggressive press: sprint straight at the ball |
+| A (hold, defending) | Call the nearest teammate to press the ball carrier |
+| S / A at a throw-in | Short / long throw (arrows choose the direction) |
 | Space | Standing tackle |
 | Ctrl | Sliding tackle |
+| QUIT button | Leave the match (a league match is recorded as a 0–3 loss) |
 | Click a BLUE FC player | Select that player |
 | Mouse / trackpad | Camera interaction where enabled |
 
@@ -195,10 +201,21 @@ ultimate-football-manager-3d/
     │   ├── clubService.js
     │   ├── leagueService.js
     │   └── ...
-    ├── systems/          # planned (Step 2), not created yet
-    │   └── ...
+    ├── systems/              # match engine (no React)
+    │   ├── constants.js      # field, tactics, timestep, helpers
+    │   ├── roster.js         # roster load/save, roles, league opponent mapping
+    │   ├── matchState.js     # single match-state object, sides per half
+    │   ├── playerState.js    # player state machine
+    │   ├── ball.js           # possession, kicks, pass targeting, dribble, pickup
+    │   ├── control.js        # user input: movement, pass/switch, kicks, tackles
+    │   ├── teamAI.js         # positioning, receiver runs, carrier AI, AI steals
+    │   ├── goalkeeper.js     # keeper positioning and saves
+    │   ├── movement.js       # AI movement, collisions, velocity tracking
+    │   ├── rules.js          # goals, out of play, kick-off and restarts
+    │   └── matchEngine.js    # fixed-step loop calling the systems in order
     └── components/
         ├── GameScene.jsx
+        ├── MatchWorld.jsx
         ├── Player.jsx
         ├── Pitch.jsx
         ├── ClubManagementPanel.jsx
@@ -208,7 +225,8 @@ ultimate-football-manager-3d/
 
 ### Main components
 
-- `GameScene.jsx`: Main 3D match scene, player control, ball physics, AI and match logic.
+- `GameScene.jsx`: Match screen UI (scoreboard, panels, league, club) and match flow (timer, score, fixtures).
+- `MatchWorld.jsx`: 3D scene and the bridge between React and the engine (refs, roster changes, restarts, half-time switch).
 - `Player.jsx`: Player models and procedural movement animations.
 - `Pitch.jsx`: Football pitch, markings and goals.
 - `ClubManagementPanel.jsx`: Club and squad management interface.
@@ -216,7 +234,7 @@ ultimate-football-manager-3d/
 - `data/`: Team, player and game configuration.
 - `hooks/`: Reusable React hooks.
 - `services/`: Club, league and persistence logic.
-- `systems/`: Separated gameplay systems and supporting logic.
+- `systems/`: The match engine as plain JavaScript modules. Each system takes a shared `ctx` (state, ball, player objects, rosters, callbacks).
 
 ## Data persistence
 
@@ -236,7 +254,7 @@ A code review showed that Phases 11–14 were never delivered as separate featur
 
 - Phases 11–13 (passing, receiving, dribbling): no real change since Phase 10. Dribbling glues the ball to the player's feet, pass and shot ignore the arrow direction, and there is no power control.
 - Phase 14 (procedural animations): only a basic run cycle exists. There are no action animations (shoot, pass, tackle, slide).
-- The whole match engine lives in a single ~1,100-line `useFrame` inside `GameScene.jsx`. The `systems/` folder described above does not exist yet.
+- The whole match engine lived in a single ~1,100-line `useFrame` inside `GameScene.jsx` (fixed in Step 2).
 
 ### Step 1 — Bug fixes ✅ (2026-11-09)
 
@@ -250,25 +268,44 @@ A code review showed that Phases 11–14 were never delivered as separate featur
 - League opponents use their own name, kit colour and stats scaled by team strength (previously always the RED UNITED squad).
 - Frame delta is clamped to 0.05 s so players do not teleport after a lag spike.
 
-### Step 2 — Phase 14.5: engine refactor (next)
+### Step 2 — Phase 14.5: engine refactor ✅ (2026-11-09)
 
-- Split the match engine into `src/systems/` (ball, possession, player control, team AI, goalkeeper, rules, restarts) with a single match-state object.
-- Add a fixed timestep for game logic.
-- Add a player state machine (idle / run / dribble / pass / shoot / tackle / slide / receive / fallen) that the animations read from.
-- Use an attack-direction-per-half abstraction so teams can switch ends at half-time.
+- `GameScene.jsx` went from about 3,300 lines to about 790 (UI only). The engine now lives in `src/systems/` and the 3D scene in `MatchWorld.jsx`.
+- All live match data is in one state object (`createMatchState`) instead of about 20 separate refs.
+- Game logic runs at a fixed 1/60 s step (up to 5 steps per frame), so gameplay no longer depends on FPS. Physics still uses Rapier's variable step.
+- Player state machine: `idle / run / sprint / dribble / receive / pass / shoot / tackle / slide / fallen`. `Player.jsx` reads it to show basic poses: kicking leg swing, tackle lunge, slide, and falling and getting up.
+- A successful slide tackle knocks the ball carrier down for about 1 s. Players turn to face the direction of a kick or tackle.
+- Attack direction is per half: in the second half the teams switch ends (positions mirrored) and the opponent kicks off. A half-time break screen comes in Step 4.
 
-### Step 3 — Control feel (the real Phases 11–13, FIFA Online 4 style)
+### Step 2.1 — Goalkeeper fix ✅ (2026-11-09)
 
-- Directional pass and shot that follow the arrow keys, plus a power bar (hold to charge) for passes, through balls, crosses and shots.
-- Without the ball, S switches to the most suitable player, with an arrow above the selected player's head.
-- Dribbling with real ball touches (the ball can be pushed too far ahead), and tackles based on angle and timing.
+- Keepers no longer hold the ball forever: a keeper used to catch his own distribution straight away. The kicker now cannot touch the ball for 0.4 s, and keepers only catch or save balls last touched by the opponent.
+- Game logic runs inside Rapier's fixed step (`useBeforePhysicsStep`, 1/60 s), so logic and physics stay in lockstep even at low FPS.
+- A keeper who has been beaten can no longer brake the ball with the first-touch logic. The save chance uses the keeper's lateral distance to the ball's path. In a test of 14 unopposed shots from 18 m: 6 goals, 7 parried, 1 caught.
 
-### Step 4 — Match flow and rules
+### Step 3 — Control feel (FIFA Online 4 style) ✅ (2026-11-09)
 
-- Proper throw-in (pick up the ball, aim, throw).
-- Half-time break: open settings (tactics, formation, substitutions), then press Continue to start the second half. Teams switch ends.
-- Allow quitting a match midway (with confirmation).
-- Large full-time scoreline screen.
+- **Hold to charge:** hold S / W / A / D to fill the power bar above your player, then release to pass, play a through ball, lob or shoot.
+- **Directional passing:** the pass goes to the teammate closest to the arrow direction, and power chooses the distance. If nobody is in that direction (within about 70°), the ball goes into space and the nearest teammate runs onto it. With no arrow pressed, the pass follows the way the player is facing.
+- **Aimed shots:** Up/Down choose the far or near corner. Power sets speed (about 17–30 m/s) and height. Over 80% power the shot loses accuracy, and over 90% it can fly over the bar.
+- **Player switching:** S without the ball switches to the player nearest the ball, and Q cycles through the 4 nearest. A yellow arrow marks the controlled player. A blue player who receives the ball is selected automatically (except the keeper).
+- **Dribbling with touches:** the ball is no longer glued to the feet. Jogging keeps it about 0.8 m ahead with about 2 touches per second. Sprinting pushes it 1–1.6 m ahead, so a defender near the ball can intercept. Sharp turns can lose the ball (heavy touch).
+- **Tackles target the ball:** the chance depends on how far the ball is from the dribbler's feet, the angle (front or side is easier than behind), stats and distance. A missed standing tackle makes the player stumble for 0.45 s, and a missed slide leaves him on the ground. AI tackles use the same idea.
+- **Pressing:** the closest AI player now closes down the ball carrier (previously defenders only moved about a third of the way, so the opponent never pressed).
+
+### Step 4 — Match flow and rules ✅ (2026-11-09)
+
+- **FO4-style power gauge:** a large gauge at the bottom of the pitch (PASS / THROUGH BALL / LOB / SHOT POWER, 10 segments, 0–100%) plus a bar above the player's head. Shots show the 80% (accuracy loss) and 90% (can go over the bar) marks and turn red past 80%. The gauge stays visible for 0.5 s after release.
+- **Half time:** the match stops at 45'. A half-time card shows the score and scorers, with tactic and formation controls, and substitutions stay available in the team panel. CONTINUE TO 2ND HALF switches ends and the opponent kicks off.
+- **Throw-ins:** the player holds the ball above his head on the touchline and cannot walk. S throws short, A throws long, and arrows aim (never out of the pitch). Throws are slower and shorter than kicks, and the thrower cannot touch the ball again straight away. The AI takes its throw after about 1 s.
+- **Quit match:** a QUIT button with confirmation. A league match is recorded as a 0–3 loss, and a friendly or replay just ends.
+- **Full time:** a large scoreline with scorers and minutes, and a WIN / DRAW / LOSS badge. Buttons: NEXT MATCH (next league opponent), LEAGUE TABLE and REPLAY (friendly). At the end of the season the first button becomes NEW SEASON.
+- **Goal credit:** the last player to touch the ball gets the goal, or an own goal (OG) if he plays for the defending team. Goals show on the goal banner, the half-time card and the full-time card.
+- **Defending controls:**
+  - D: contain (the defender cannot be pushed back by the dribbler).
+  - D + E: aggressive press.
+  - A: teammate press.
+- **Fix:** the AI ball carrier was moved twice per step, so it dribbled about twice as fast as intended.
 
 ### Step 5 — In-match HUD (FIFA Online style)
 
@@ -298,21 +335,21 @@ A code review showed that Phases 11–14 were never delivered as separate featur
 
 | Ý tưởng | Bước |
 | --- | --- |
-| Hỗ trợ chuyền; chuyền và sút phải có lực | Step 3 |
+| Hỗ trợ chuyền; chuyền và sút phải có lực | Step 3 ✅ |
 | Tên trên đầu cầu thủ, áo có số | Step 5 |
 | Kéo thả để thay người, HUD như FIFA Online | Step 5 |
-| Hết giờ thông báo tỉ số thật to | Step 4 |
+| Hết giờ thông báo tỉ số thật to | Step 4 ✅ |
 | Bản đồ mini ở giữa giao diện | Step 5 |
-| Không có bóng thì S đổi cầu thủ, có mũi tên trên đầu | Step 3 |
-| Ném biên | Step 4 |
-| Nghỉ giữa hiệp: mở cài đặt rồi bấm Tiếp tục sang hiệp 2 | Step 4 |
-| Cho phép bỏ trận giữa chừng | Step 4 |
+| Không có bóng thì S đổi cầu thủ, có mũi tên trên đầu | Step 3 ✅ |
+| Ném biên | Step 4 ✅ |
+| Nghỉ giữa hiệp: mở cài đặt rồi bấm Tiếp tục sang hiệp 2 | Step 4 ✅ |
+| Cho phép bỏ trận giữa chừng | Step 4 ✅ |
 | Giao diện ngoài trận đấu (menu, trước/sau trận) | Step 6 |
 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Phase 10 + Step 1 bug fixes (see roadmap)  
+**Current delivery:** Phase 10 + Steps 1–4 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

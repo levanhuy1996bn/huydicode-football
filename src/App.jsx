@@ -128,27 +128,37 @@ export default function App() {
 
             <div className="control-row">
               <kbd>S</kbd>
-              <span>Short pass</span>
+              <span>Pass (hold for power) · switch player without the ball</span>
             </div>
 
             <div className="control-row">
               <kbd>W</kbd>
-              <span>Through ball</span>
+              <span>Through ball (hold for power)</span>
             </div>
 
             <div className="control-row">
               <kbd>A</kbd>
-              <span>Lob pass / cross</span>
+              <span>Lob pass / cross (hold for power)</span>
             </div>
 
             <div className="control-row">
               <kbd>D</kbd>
-              <span>Shoot</span>
+              <span>Shoot (hold for power, arrows to aim)</span>
             </div>
 
             <div className="control-row">
               <kbd>Q</kbd>
-              <span>Switch player</span>
+              <span>Cycle player (nearest to the ball)</span>
+            </div>
+
+            <div className="control-row">
+              <kbd>D</kbd>
+              <span>Hold when defending: contain (D + E: aggressive press)</span>
+            </div>
+
+            <div className="control-row">
+              <kbd>A</kbd>
+              <span>Hold when defending: call a teammate to press</span>
             </div>
 
             <div className="control-row">
@@ -162,10 +172,11 @@ export default function App() {
             </div>
 
             <p className="note">
-              Move close to an opponent before tackling. Standing tackles
-              have a shorter recovery time. Sliding tackles have a longer
-              range but take longer to recover. The camera is locked to a
-              fixed sideline view.
+              Passes and shots follow the arrow keys; the bar above your
+              player shows the power. Tackle when the ball is away from the
+              dribbler's feet — a missed standing tackle costs you balance,
+              a missed slide leaves you on the ground. Sprinting pushes the
+              ball further ahead and makes it easier to lose.
             </p>
 
             <div className="phase-status">

@@ -408,3 +408,212 @@ footer span { color: #789184; }
 .team-management-collapsed {
   padding-bottom: 0;
 }
+
+/* ---- Thanh lực kiểu FO4 (giữ S/W/A/D) ---- */
+.power-gauge {
+  --gauge-color: #39ff88;
+  position: absolute;
+  left: 50%;
+  bottom: 54px;
+  transform: translateX(-50%);
+  width: min(380px, 72%);
+  padding: 8px 12px 10px;
+  background: #07130fe6;
+  border: 1px solid #48604e;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 13; /* trên bảng quản lý đội (12) */
+}
+.power-gauge[data-visible="true"] { opacity: 1; }
+.power-gauge__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  color: #dfeee4;
+  font: 800 12px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 1.3px;
+}
+.power-gauge__label b { color: var(--gauge-color); font-size: 14px; }
+.power-gauge__track {
+  position: relative;
+  height: 14px;
+  background: #1c3127;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.power-gauge__track i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--gauge-color);
+  box-shadow: 0 0 10px var(--gauge-color);
+}
+/* Vạch chia 10 nấc */
+.power-gauge__track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(10% - 2px),
+    #07130f calc(10% - 2px) 10%
+  );
+}
+/* Mốc 80% (bắt đầu lệch) và 90% (có thể vọt xà) — chỉ hiện khi sút */
+.power-gauge__mark {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffd84f;
+  z-index: 1;
+}
+.power-gauge__mark--danger { background: #ff4d4d; }
+.power-gauge[data-action="shoot"] .power-gauge__mark { display: block; }
+
+/* ---- Overlay trận đấu: ghi bàn, tạm dừng, nghỉ giữa hiệp, hết giờ ---- */
+.match-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: none;
+}
+.match-overlay--dim { background: rgba(0, 0, 0, 0.42); }
+.match-overlay--front { z-index: 20; } /* trên bảng quản lý đội */
+/* Nghỉ giữa hiệp: thẻ nằm bên phải để bảng quản lý đội (bên trái) vẫn dùng được */
+.match-overlay--right { justify-content: flex-end; padding-right: 24px; }
+@media (max-width: 900px) { .match-overlay--right { justify-content: center; padding-right: 16px; } }
+.match-overlay--top { z-index: 40; }
+.match-card {
+  pointer-events: auto;
+  width: min(560px, 100%);
+  padding: 24px 28px;
+  border-radius: 12px;
+  background: rgba(8, 18, 14, 0.96);
+  border: 1px solid rgba(130, 170, 145, 0.3);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+.match-card--small { width: min(380px, 100%); }
+.match-card--wide { width: min(720px, 100%); padding: 30px 34px; }
+.match-card__eyebrow {
+  color: #b9ed70;
+  font: 800 13px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 3px;
+}
+.match-card__title {
+  font: 900 34px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 2px;
+}
+.match-card__subtitle { margin-top: 8px; color: #b9cdbf; font-size: 13px; }
+.match-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.btn {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1px solid #547565;
+  background: #1c3529;
+  color: #fff;
+  font: 800 12px Inter, sans-serif;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.btn:hover { filter: brightness(1.15); }
+.btn--primary { background: #b9ed70; border-color: #b9ed70; color: #0b1a12; }
+.btn--ghost { background: transparent; }
+.btn--danger { background: #c0392b; border-color: #c0392b; }
+
+.scoreline {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 18px;
+  margin-top: 14px;
+}
+.scoreline__team span {
+  display: block;
+  font: 800 18px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 1.5px;
+}
+.scoreline__team { text-align: right; }
+.scoreline__team--away { text-align: left; }
+.scoreline__score {
+  font: 900 64px/1 'Barlow Condensed', Inter, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+}
+.scoreline__score i { font-style: normal; color: #6f8a7b; margin: 0 10px; font-size: 0.5em; vertical-align: middle; }
+.scoreline--large .scoreline__score { font-size: 96px; }
+.scoreline--large .scoreline__team span { font-size: 24px; }
+.goal-list { list-style: none; margin: 8px 0 0; padding: 0; color: #c4d5ca; font-size: 12px; line-height: 1.6; }
+.goal-list b { color: #b9ed70; }
+
+.result-badge {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: 800 13px Inter, sans-serif;
+  letter-spacing: 2px;
+  background: #33473d;
+}
+.result-badge--win { background: #2f7d3f; }
+.result-badge--loss { background: #8e2b22; }
+.result-badge--draw { background: #5b5b2a; }
+
+.halftime-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+}
+.halftime-settings__row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.halftime-settings__row > span { color: #9fb8a9; font-weight: 700; }
+.halftime-settings__row em { color: #c4d5ca; font-style: normal; }
+.halftime-settings select {
+  background: #203b30;
+  color: #fff;
+  border: 1px solid #547565;
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+.segmented { display: flex; gap: 6px; flex-wrap: wrap; }
+.segmented button {
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: 1px solid #547565;
+  background: #1c3529;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.segmented button.is-active { background: #b9ed70; color: #0b1a12; border-color: #b9ed70; }
+
+@media (max-width: 640px) {
+  .scoreline__score { font-size: 44px; }
+  .scoreline--large .scoreline__score { font-size: 56px; }
+  .halftime-settings__row { grid-template-columns: 1fr; }
+}
