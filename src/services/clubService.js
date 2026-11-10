@@ -1,7 +1,9 @@
+import { USER_TEAM } from '../data/leagueData'
+
 const STORAGE_KEY = 'ultimate-football-club-save'
 
 export const INITIAL_CLUB = {
-    name: 'BLUE FC',
+    name: USER_TEAM.name,
     budget: 100000000,
     reputation: 4,
     transferWindowOpen: true,
@@ -24,6 +26,7 @@ export function loadClub() {
         return {
             ...INITIAL_CLUB,
             ...parsed,
+            name: INITIAL_CLUB.name,
             contracts: parsed.contracts || {},
         }
     } catch {

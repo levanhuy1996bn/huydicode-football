@@ -25,6 +25,7 @@ import { resetPositions } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { handleKeyDown, handleKeyUp } from '../systems/control'
 import { stepMatch } from '../systems/matchEngine'
+import { USER_TEAM } from '../data/leagueData'
 
 function FixedCamera({ ballRef }) {
     const { camera, size } = useThree()
@@ -449,7 +450,10 @@ export default function MatchWorld({
     )
 
     const opponentName =
-        roster.find((team) => team.id === 'red')?.name || 'RED UNITED'
+        roster.find((team) => team.id === 'red')?.name || 'OPPONENT'
+
+    const userTeamName =
+        roster.find((team) => team.id === 'blue')?.name || USER_TEAM.name
 
     // ctx là object ổn định, được cập nhật giá trị mới nhất mỗi lần render.
     const ctx = ctxRef.current
@@ -464,9 +468,9 @@ export default function MatchWorld({
         redPlayers,
         byId,
         tactic,
-        selectedId,
         isPlaying,
         opponentName,
+        userTeamName,
         teamColors: Object.fromEntries(
             roster.map((team) => [team.id, team.color]),
         ),
@@ -474,6 +478,14 @@ export default function MatchWorld({
         onActionMessage,
         onGoal,
     })
+    // Người đang điều khiển: engine có thể tự đổi (nhận bóng, giao bóng, S/Q)
+    // trước khi React kịp render lại. Chỉ đồng bộ từ prop khi prop THAY ĐỔI,
+    // để một lần render cũ không ghi đè lựa chọn mới của engine.
+    if (ctx.lastSelectedProp !== selectedId) {
+        ctx.lastSelectedProp = selectedId
+        ctx.selectedId = selectedId
+    }
+
 
     // GameScene đọc thống kê qua ref này khi hết trận.
     if (statsRef) statsRef.current = state

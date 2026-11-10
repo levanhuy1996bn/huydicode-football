@@ -1,7 +1,8 @@
+import { USER_TEAM } from '../../data/leagueData'
 import { Scoreline } from '../MatchOverlays'
 import { shortPlayerName } from '../../utils/names'
 
-// Màn sau trận: tỉ số, thống kê hai đội, điểm cầu thủ BLUE FC + cầu thủ
+// Màn sau trận: tỉ số, thống kê hai đội, điểm cầu thủ đội người chơi + cầu thủ
 // xuất sắc nhất trận, rồi về sảnh / trận tiếp theo / bảng xếp hạng.
 
 const STAT_ROWS = [
@@ -61,7 +62,7 @@ export default function PostMatchScreen({
                 </div>
 
                 <Scoreline
-                    homeName="BLUE FC"
+                    homeName={USER_TEAM.name}
                     awayName={opponentName}
                     homeScore={summary.blueScore}
                     awayScore={summary.redScore}
@@ -96,7 +97,7 @@ export default function PostMatchScreen({
                 <div className="home-card">
                     <div className="home-card__head">
                         <span>MATCH STATS</span>
-                        <span className="stat-legend">BLUE FC · {opponentName}</span>
+                        <span className="stat-legend">{USER_TEAM.shortName} · {opponentName}</span>
                     </div>
 
                     {summary.forfeit ? (
@@ -127,7 +128,7 @@ export default function PostMatchScreen({
                 </div>
 
                 <div className="home-card">
-                    <div className="home-card__head"><span>PLAYER RATINGS · BLUE FC</span></div>
+                    <div className="home-card__head"><span>PLAYER RATINGS · {USER_TEAM.name}</span></div>
 
                     {motm && (
                         <div className="motm">

@@ -7,6 +7,7 @@ import {
     getSeasonProgress,
     getTeamById,
 } from '../services/leagueService'
+import { USER_TEAM } from '../data/leagueData'
 
 const TABS = [
     { id: 'overview', label: 'OVERVIEW' },
@@ -155,7 +156,7 @@ export default function LeagueManagementPanel({
                                 <div className="league-section-title">
                                     {progress.completed
                                         ? 'SEASON COMPLETED'
-                                        : 'NEXT BLUE FC FIXTURE'}
+                                        : `NEXT ${USER_TEAM.name} FIXTURE`}
                                 </div>
 
                                 {nextFixture ? (
@@ -186,7 +187,7 @@ export default function LeagueManagementPanel({
                                     <div className="league-champion">
                                         <span>LEAGUE CHAMPION</span>
                                         <strong>
-                                            {champion?.name || 'BLUE FC'}
+                                            {champion?.name || USER_TEAM.name}
                                         </strong>
                                         <button
                                             type="button"
@@ -204,7 +205,7 @@ export default function LeagueManagementPanel({
                                     {progress.played} / {progress.total} matches completed
                                 </span>
                                 <span>
-                                    {progress.userPlayed} / {progress.userTotal} BLUE FC matches
+                                    {progress.userPlayed} / {progress.userTotal} {USER_TEAM.name} matches
                                 </span>
                             </div>
                         </section>

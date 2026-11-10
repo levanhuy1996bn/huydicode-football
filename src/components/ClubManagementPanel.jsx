@@ -10,6 +10,7 @@ import {
     getContract,
     formatMoney,
 } from '../services/clubService'
+import { USER_TEAM } from '../data/leagueData'
 
 const POSITION_FILTERS = ['ALL', 'GK', 'DF', 'MF', 'FW']
 
@@ -963,7 +964,7 @@ export default function ClubManagementPanel({
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                {message || 'BLUE FC · CLUB MANAGEMENT'}
+                                {message || `${USER_TEAM.name} · CLUB MANAGEMENT`}
                             </span>
 
                             <strong style={{ flexShrink: 0 }}>

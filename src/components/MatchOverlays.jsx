@@ -1,5 +1,6 @@
 import { FORMATIONS } from '../data/teams'
 import { TACTICS } from '../systems/constants'
+import { USER_TEAM } from '../data/leagueData'
 
 // Danh sách bàn thắng của một đội: "Tên 23'" (OG = phản lưới).
 export function GoalList({ events, teamId, align }) {
@@ -79,7 +80,7 @@ export function HalfTimeOverlay({
                 <div className="match-card__eyebrow">HALF TIME</div>
 
                 <Scoreline
-                    homeName="BLUE FC"
+                    homeName={USER_TEAM.name}
                     awayName={opponentName}
                     homeScore={blueScore}
                     awayScore={redScore}
@@ -171,7 +172,7 @@ export function FullTimeOverlay({
                 </div>
 
                 <Scoreline
-                    homeName="BLUE FC"
+                    homeName={USER_TEAM.name}
                     awayName={opponentName}
                     homeScore={blueScore}
                     awayScore={redScore}

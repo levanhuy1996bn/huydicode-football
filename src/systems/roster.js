@@ -1,5 +1,6 @@
 import { clamp } from './constants'
 import { TEAMS } from '../data/teams'
+import { LEAGUE_TEAMS } from '../data/leagueData'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
 const GENERIC_NAME = /^(Blue|Red) [A-Z]{2,3} \d+$/
@@ -50,19 +51,21 @@ function migrateNames(players, defaults) {
     )
 }
 
-export const ROSTER_STORAGE_KEY = 'ultimate-football-roster-save-v1'
+// v2: đổi đội người chơi sang Manchester United (đội hình khác) → bản lưu cũ bỏ qua.
+export const ROSTER_STORAGE_KEY = 'ultimate-football-roster-save-v2'
 
 export const RED_BASE_STRENGTH = 79
 
 export const OPPONENT_COLORS = [
-    // Tránh xanh lá (trùng màu cỏ) và xanh dương (trùng BLUE FC).
-    '#ed4545', '#f28c28', '#8e44ad', '#f1c40f', '#e84393',
-    '#f5f5f5', '#c0392b', '#d35400', '#7f8c8d', '#b33771',
-    '#1e1e1e', '#ff6f61',
+    // Tránh xanh lá (trùng màu cỏ) và đỏ (trùng áo Manchester United).
+    '#2387ff', '#0d47a1', '#8e44ad', '#f1c40f', '#f5f5f5',
+    '#1e1e1e', '#7f8c8d', '#00acc1', '#3949ab', '#5d4037',
+    '#ff9800', '#ffeb3b',
 ]
 
 export function getOpponentColor(teamId) {
-    if (teamId === 'red') return '#ed4545'
+    const leagueColor = LEAGUE_TEAMS.find((team) => team.id === teamId)?.color
+    if (leagueColor) return leagueColor
     let hash = 0
     for (const char of String(teamId)) {
         hash = (hash * 31 + char.charCodeAt(0)) >>> 0
@@ -90,7 +93,7 @@ export function buildMatchRoster(roster, opponent) {
             }
         })
 
-        // Đối thủ khác RED UNITED: mỗi đội một bộ tên riêng.
+        // Đối thủ khác Manchester City: mỗi đội một bộ tên riêng.
         next.name = generatePlayerName(opponent.id, next.number)
 
         return next
@@ -154,6 +157,10 @@ export function loadSavedRoster() {
             return {
                 ...defaultTeam,
                 ...savedTeam,
+                // Tên / màu áo luôn lấy theo dữ liệu đội hiện tại.
+                name: defaultTeam.name,
+                shortName: defaultTeam.shortName,
+                color: defaultTeam.color,
                 players: Array.isArray(savedTeam.players)
                     ? migrateNames(savedTeam.players, defaults)
                     : [...defaultTeam.players],

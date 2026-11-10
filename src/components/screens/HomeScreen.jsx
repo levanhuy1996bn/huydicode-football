@@ -1,3 +1,4 @@
+import { USER_TEAM } from '../../data/leagueData'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
 // trận tiếp theo, bảng xếp hạng thu gọn, kết quả gần nhất, đội hình,
 // CLB, tiến độ mùa giải và cài đặt.
@@ -71,9 +72,9 @@ export default function HomeScreen({
                         <div className="home-hero__teams">
                             <TeamBadge
                                 side="home"
-                                name="BLUE FC"
-                                shortName="BLU"
-                                color="#2387ff"
+                                name={USER_TEAM.name}
+                                shortName={USER_TEAM.shortName}
+                                color={USER_TEAM.color}
                                 strength={nextMatch.blueStrength}
                                 position={bluePosition}
                             />
@@ -163,7 +164,7 @@ export default function HomeScreen({
                                 {lastResult.outcome.toUpperCase()}
                             </span>
                             <div className="last-result__score">
-                                BLUE FC <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
+                                {USER_TEAM.name} <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
                                 {lastResult.opponentName}
                             </div>
                             <small>ROUND {lastResult.round}</small>

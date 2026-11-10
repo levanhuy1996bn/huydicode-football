@@ -45,6 +45,12 @@ export function createMatchState() {
         // Cầu thủ đang áp sát (giữ D) — va chạm không đẩy lùi được.
         containingId: null,
 
+        // Cú đá đang vung chân (xem ball.js → updateWindup).
+        windup: null,
+
+        // Vị trí bóng mỗi bước logic (animation dùng để quay đầu nhìn bóng).
+        ballPosition: { x: 0, y: 0.39, z: 0 },
+
         // Vận tốc / vị trí trước đó của từng cầu thủ
         velocities: {},
         lastPositions: {},

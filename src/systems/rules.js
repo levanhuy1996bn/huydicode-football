@@ -50,6 +50,7 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
     state.lastTouchTeam = kickoffTeam
     state.pendingPass = null
     state.charge = null
+    state.windup = null
     state.restart = null
 
     // BLUE giao bóng: người chơi điều khiển luôn cầu thủ giao bóng.
@@ -127,6 +128,7 @@ export function restartAtSpot(ctx, teamId, restartType, x, z) {
     state.lastToucherId = kicker.id
     state.pendingPass = null
     state.charge = null
+    state.windup = null
     state.restart =
         restartType === 'throw-in'
             ? { type: 'throw-in', teamId, playerId: kicker.id }
@@ -144,7 +146,7 @@ export function restartAtSpot(ctx, teamId, restartType, x, z) {
 
     clearPlayerStates(state)
 
-    const teamName = teamId === 'blue' ? 'BLUE FC' : ctx.opponentName
+    const teamName = teamId === 'blue' ? ctx.userTeamName : ctx.opponentName
 
     if (restartType === 'throw-in') {
         ctx.onActionMessage(`${teamName} THROW-IN`)
@@ -213,7 +215,7 @@ export function checkGoalAndOut(ctx) {
         resetPositions(ctx, defendingTeam)
         ctx.onGoal(scoringTeam, goalInfo)
 
-        const teamName = scoringTeam === 'blue' ? 'BLUE FC' : ctx.opponentName
+        const teamName = scoringTeam === 'blue' ? ctx.userTeamName : ctx.opponentName
         const credit = goalInfo.scorerName
             ? ` - ${goalInfo.scorerName.toUpperCase()}${goalInfo.ownGoal ? ' (OG)' : ''}`
             : ''

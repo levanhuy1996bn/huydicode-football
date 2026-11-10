@@ -21,14 +21,16 @@ export const PLAYER_STATES = {
     THROW: 'throw',
 }
 
+// Thời lượng khớp với các clip trong src/animation/clips.js.
 const ACTION_DURATIONS = {
-    pass: 0.32,
-    shoot: 0.42,
+    pass: 0.4,
+    cross: 0.48,
+    shoot: 0.55,
     tackle: 0.38,
     slide: 0.7,
     fallen: 1.1,
     stumble: 0.45,
-    throw: 0.45,
+    throw: 0.5,
 }
 
 // Các trạng thái khóa di chuyển (cầu thủ không tự chạy được).
@@ -64,6 +66,9 @@ export function setPlayerAction(state, playerId, action, duration) {
 }
 
 export function isPlayerLocked(state, playerId) {
+    // Đang vung chân sút/chuyền: đứng yên cho tới khi chạm bóng.
+    if (state.windup?.playerId === playerId) return true
+
     const entry = state.playerStates[playerId]
 
     return Boolean(entry && LOCKED_STATES.has(entry.state) && entry.time > 0)

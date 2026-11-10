@@ -87,7 +87,7 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
 
     const keeperRating = keeperItem.overall || 75
     const saveLabel = teamId === 'blue'
-        ? 'BLUE GOALKEEPER'
+        ? `${ctx.userTeamName} GOALKEEPER`
         : `${ctx.opponentName} GOALKEEPER`
 
     if (!insideKeeperArea || ballHeight >= 2.8) return

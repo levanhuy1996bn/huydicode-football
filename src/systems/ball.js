@@ -278,6 +278,9 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         return false
     }
 
+    // Đang vung chân cho một cú đá khác.
+    if (state.windup) return false
+
     // Ném biên: chỉ ném gần (S) hoặc ném xa (A/W→gần), không sút được.
     const isThrowIn =
         state.restart?.type === 'throw-in' && state.restart.playerId === playerId
@@ -459,6 +462,103 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
     // Quay người về hướng đá để animation đúng hướng.
     player.rotation.y = Math.atan2(direction.x, direction.z)
 
+    // ---- Nhịp vung chân (wind-up) ----
+    // Bóng chưa rời chân ngay: cầu thủ vung chân trong WINDUP giây rồi mới
+    // chạm bóng (xem releaseKick). Animation trong Player.jsx chạm bóng đúng
+    // thời điểm này. Trong lúc vung chân, cầu thủ đứng yên và vẫn có thể bị
+    // tắc mất bóng.
+    const animation = isThrowIn
+        ? 'throw'
+        : action === 'shoot'
+            ? 'shoot'
+            : action === 'lob'
+                ? 'cross'
+                : 'pass'
+
+    state.windup = {
+        playerId,
+        teamId: item.teamId,
+        action,
+        animation,
+        isThrowIn,
+        isAI,
+        message,
+        direction: { x: direction.x, z: direction.z },
+        power,
+        lift,
+        passTarget: passTarget
+            ? {
+                receiverId: passTarget.item.id,
+                x: passTarget.targetPosition.x,
+                z: passTarget.targetPosition.z,
+            }
+            : null,
+        spaceReceiver,
+        time: KICK_WINDUP[animation],
+    }
+
+    // Bóng tự do: người đá "giữ" bóng trong nhịp vung chân.
+    state.possession = playerId
+    state.lastToucherId = playerId
+    state.lastTouchTeam = item.teamId
+    state.charge = null
+
+    setPlayerAction(state, playerId, animation)
+
+    return true
+}
+
+// Thời gian từ lúc bắt đầu vung chân đến lúc chạm bóng (giây).
+// Phải khớp với điểm chạm trong các clip ở src/animation/clips.js.
+export const KICK_WINDUP = {
+    pass: 0.12,
+    cross: 0.16,
+    shoot: 0.18,
+    throw: 0.22,
+}
+
+// Gọi mỗi bước logic: giữ bóng trước chân trong lúc vung, rồi sút/chuyền.
+export function updateWindup(ctx, dt) {
+    const { state, objects } = ctx
+    const windup = state.windup
+
+    if (!windup) return
+
+    const player = objects[windup.playerId]
+    const ball = ctx.ballRef.current
+
+    // Bị tắc mất bóng (hoặc bị thay ra) trong lúc vung chân → hủy.
+    if (!player || !ball || state.possession !== windup.playerId) {
+        state.windup = null
+        return
+    }
+
+    windup.time -= dt
+
+    if (windup.time > 0) {
+        const offset = windup.isThrowIn ? 0.12 : 0.7
+
+        placeBall(
+            ctx,
+            player.position.x + windup.direction.x * offset,
+            player.position.z + windup.direction.z * offset,
+            windup.isThrowIn ? 2.15 : 0.39,
+        )
+        return
+    }
+
+    state.windup = null
+    releaseKick(ctx, windup)
+}
+
+function releaseKick(ctx, windup) {
+    const { state, objects } = ctx
+    const player = objects[windup.playerId]
+    const ball = ctx.ballRef.current
+    const { direction, power, lift, isThrowIn, action, teamId, isAI } = windup
+    const playerId = windup.playerId
+    let message = windup.message
+
     ball.setTranslation(
         {
             x: player.position.x + direction.x * (isThrowIn ? 0.4 : 0.95),
@@ -477,20 +577,20 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
     state.kickId += 1
     state.possession = null
-    state.lastTouchTeam = item.teamId
+    state.lastTouchTeam = teamId
     state.lastToucherId = playerId
 
     // Thống kê: sút / chuyền (ném biên không tính).
     if (action === 'shoot') {
-        recordTeam(state, item.teamId, 'shots')
+        recordTeam(state, teamId, 'shots')
         recordPlayer(state, playerId, 'shots')
     } else if (!isThrowIn) {
-        recordTeam(state, item.teamId, 'passes')
+        recordTeam(state, teamId, 'passes')
         recordPlayer(state, playerId, 'passes')
 
         if (state.stats) {
             state.stats.lastPasserId = playerId
-            state.stats.lastPassTeam = item.teamId
+            state.stats.lastPassTeam = teamId
         }
     }
 
@@ -501,25 +601,22 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
     if (isThrowIn) {
         state.restart = null
-        setPlayerAction(state, playerId, 'throw')
-    } else {
-        setPlayerAction(state, playerId, action === 'shoot' ? 'shoot' : 'pass')
     }
 
     // Ghi nhớ đồng đội đang được chuyền bóng tới.
-    if (passTarget) {
+    if (windup.passTarget) {
         state.pendingPass = {
-            receiverId: passTarget.item.id,
-            targetX: passTarget.targetPosition.x,
-            targetZ: passTarget.targetPosition.z,
+            receiverId: windup.passTarget.receiverId,
+            targetX: windup.passTarget.x,
+            targetZ: windup.passTarget.z,
             action,
             elapsed: 0,
         }
-    } else if (spaceReceiver) {
+    } else if (windup.spaceReceiver) {
         state.pendingPass = {
-            receiverId: spaceReceiver.id,
-            targetX: spaceReceiver.spot.x,
-            targetZ: spaceReceiver.spot.z,
+            receiverId: windup.spaceReceiver.id,
+            targetX: windup.spaceReceiver.spot.x,
+            targetZ: windup.spaceReceiver.spot.z,
             action,
             elapsed: 0,
         }
@@ -531,8 +628,6 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
     if (!isAI) {
         ctx.onActionMessage(message)
     }
-
-    return true
 }
 
 // Cầu thủ ở gần có thể đỡ/khống chế bóng tự do.
@@ -617,7 +712,7 @@ export function updateLooseBallPickup(ctx) {
 
     ctx.onActionMessage(
         best.item.teamId === 'blue'
-            ? 'BLUE FC FIRST TOUCH'
+            ? `${ctx.userTeamName} FIRST TOUCH`
             : `${ctx.opponentName} FIRST TOUCH`,
     )
 }
@@ -643,6 +738,9 @@ export function updateDribble(ctx, dt) {
     const item = ownerId ? getPlayer(ctx, ownerId) : null
 
     if (!owner || !ball || !item) return
+
+    // Đang vung chân: updateWindup giữ bóng.
+    if (state.windup?.playerId === ownerId) return
 
     // Đang chờ ném biên: bóng nằm trong hai tay, trên đầu.
     if (state.restart?.type === 'throw-in' && state.restart.playerId === ownerId) {
@@ -722,7 +820,7 @@ export function updateDribble(ctx, dt) {
             recordPlayer(state, thief.id, 'tackles')
             ctx.onActionMessage(
                 thief.teamId === 'blue'
-                    ? 'BLUE FC INTERCEPTS!'
+                    ? `${ctx.userTeamName} INTERCEPTS!`
                     : `${ctx.opponentName} INTERCEPTS!`,
             )
             return

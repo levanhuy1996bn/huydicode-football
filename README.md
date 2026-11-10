@@ -29,7 +29,7 @@ npm run preview
 - 3D football pitch, markings and goals.
 - 22 players across two teams in 4-3-3 formations.
 - Fixed-side match camera foundation.
-- Select and control BLUE FC players.
+- Select and control Manchester United players.
 - Keyboard-based player movement.
 - Camera tracking and match viewing controls.
 
@@ -103,7 +103,7 @@ npm run preview
 - 38 rounds and 380 league fixtures.
 - League standings and points calculation.
 - 3 points for a win, 1 point for a draw and 0 points for a loss.
-- BLUE FC matches played directly in the 3D match scene.
+- Manchester United matches played directly in the 3D match scene.
 - Other league fixtures simulated automatically.
 - Automatic league table updates after match results.
 - Match results and season progress saved locally.
@@ -125,7 +125,7 @@ npm run preview
 
 | **Key** | **Action** |
 | --- | --- |
-| Arrow keys | Move the selected BLUE FC player; also aims passes and shots |
+| Arrow keys | Move the selected Manchester United player; also aims passes and shots |
 | E / Shift | Sprint (hold) |
 | S (with the ball) | Pass: hold to charge, release to pass |
 | S (without the ball) | Switch to the player nearest the ball |
@@ -142,7 +142,7 @@ npm run preview
 | SUBS button | Open the drag-and-drop substitution board (pauses the match) |
 | NAMES button | Player names above heads: SMART → ALL → OFF |
 | QUIT button | Leave the match (a league match is recorded as a 0–3 loss) |
-| Click a BLUE FC player | Select that player |
+| Click a Manchester United player | Select that player |
 | Mouse / trackpad | Camera interaction where enabled |
 
 Some actions depend on ball possession, player selection and the current match situation.
@@ -150,6 +150,16 @@ Some actions depend on ball possession, player selection and the current match s
 ## Club and league management
 
 The game includes management systems alongside the 3D match gameplay.
+
+### Clubs (2026-11-10)
+
+- **You manage Manchester United** (red kit, `MUN`, strength 79). The former "RED UNITED" squad is now Manchester United.
+- **Manchester City** (sky blue kit, `MCI`, strength 81) is the former "BLUE FC" squad and is now an AI team in the league.
+- Club identity (name, short name, colour, strength) lives in `src/data/leagueData.js` (`USER_TEAM`, `LEAGUE_TEAMS`). All UI and in-match messages read the name from there instead of hard-coding "BLUE FC".
+  - Internally your team still uses the id `blue` (and the opponent slot uses `red`) so the engine and league saves keep working.
+  - Club selection is planned for Phase 23.
+- Accent colours in the UI follow your kit through the CSS variable `--user-color`. Opponent kit colours avoid red, so they never clash with United.
+- The roster save key moved to `ultimate-football-roster-save-v2`, so a saved lineup or transfers from the old Blue FC squad are reset once. League progress and club budget are kept.
 
 ### Club management
 
@@ -163,7 +173,7 @@ The game includes management systems alongside the 3D match gameplay.
 
 - Participate in a 20-team league.
 - View fixtures, match results and league standings.
-- Play BLUE FC matches directly.
+- Play Manchester United matches directly.
 - Simulate other teams' matches.
 - Track season progress and league champions.
 - Start a new season after completing the current one.
@@ -216,6 +226,9 @@ ultimate-football-manager-3d/
     │   ├── rules.js          # goals, out of play, kick-off and restarts
     │   ├── matchStats.js     # match statistics, ratings, summary
     │   └── matchEngine.js    # fixed-step loop calling the systems in order
+    ├── animation/
+    │   ├── clips.js          # keyframe clips (pass, shot, tackle, slide...)
+    │   └── rig.js            # run cycle, clip sampling, blending, applyPose
     ├── utils/
     │   └── names.js          # shortPlayerName()
     └── components/
@@ -337,26 +350,90 @@ The app now has four screens, controlled by `GameScene.jsx`:
 
 | Screen | Contents |
 | --- | --- |
-| **HOME** (`screens/HomeScreen.jsx`) | Next match (round, home/away, team crests, league positions, strength) with PLAY MATCH / EDIT LINEUP; compact league table (top 6 + Blue FC); last result; season progress (W/D/L); squad (formation, average XI rating, squad size and value); club; settings (match length 3/6/10 min, player names SMART/ALL/OFF, saved in the browser). If the season is over: champion + NEW SEASON. |
+| **HOME** (`screens/HomeScreen.jsx`) | Next match (round, home/away, team crests, league positions, strength) with PLAY MATCH / EDIT LINEUP; compact league table (top 6 + your team); last result; season progress (W/D/L); squad (formation, average XI rating, squad size and value); club; settings (match length 3/6/10 min, player names SMART/ALL/OFF, saved in the browser). If the season is over: champion + NEW SEASON. |
 | **PLAY / pre-match** (`screens/PreMatchScreen.jsx`) | Both starting XIs with numbers, positions and ratings; team averages; formation and tactic; EDIT LINEUP opens the drag-and-drop board in pre-match mode (unlimited changes, no substitutions used); KICK OFF. |
 | **Match** | The 3D match as before. The top bar shows LIVE MATCH and navigation is locked until the match is finished or quit. The right panel shows the profile of the player you control and updates when you switch. |
-| **Match summary** (`screens/PostMatchScreen.jsx`) | Score with scorers; WIN/DRAW/LOSS; match stats (possession, shots, shots on target, passes, tackles won, saves); Blue FC player ratings (goals, assists, tackles) and player of the match; NEXT MATCH / LEAGUE TABLE / HOME. |
+| **Match summary** (`screens/PostMatchScreen.jsx`) | Score with scorers; WIN/DRAW/LOSS; match stats (possession, shots, shots on target, passes, tackles won, saves); player ratings for your team (goals, assists, tackles) and player of the match; NEXT MATCH / LEAGUE TABLE / HOME. |
 
-- The top bar has HOME, PLAY, LEAGUE and CLUB, plus the season and Blue FC's league position and points. The old static header ("PHASE 3", "RED UNITED 0–0", "FRIENDLY MATCH") has been removed. Club management now opens from the HOME screen or the top bar, not during a match.
+- The top bar has HOME, PLAY, LEAGUE and CLUB, plus the season and your team's league position and points. The old static header ("PHASE 3", "RED UNITED 0–0", "FRIENDLY MATCH") has been removed. Club management now opens from the HOME screen or the top bar, not during a match.
 - The full-time card now has MATCH SUMMARY. NEXT MATCH (and starting a match from the league panel) goes to the pre-match screen first.
 - Statistics are recorded by the engine in `state.stats` (`systems/matchStats.js`): shots, passes, tackles, saves, shots on target, possession time, and per-player goals, assists and tackles. Ratings run from 4.0 to 10.0.
 - **Player names:** the starters now have real (fictional) names instead of "Blue ST 9". Each league opponent gets its own deterministic set of names, and old saves are migrated automatically. Long names are shortened with `utils/names.js` (`shortPlayerName`): "Alexander Montgomery" → "A. Montgomery" above the head, and anything still too long is cut with "…".
 
+### Phase 15 — Specialised animations ✅ (2026-11-10)
+
+- **New player rig with knees and elbows.** The hips are the root; legs (thigh → knee → shin/boot) hang from the hips, and the torso turns at the waist, with the arms (shoulder → elbow → forearm) and head attached to it. Kicking no longer tilts the whole body, and leaning no longer swings the legs.
+- **Keyframe clips** (`src/animation/clips.js`) for pass, cross/lob, shot, throw-in, standing tackle, stumble (missed tackle), slide tackle and falling/getting up. There are static poses for holding a throw-in and for the keeper's ready stance. `src/animation/rig.js` samples the clips (smoothstep between keys), blends in and out (0.05 s / 0.08 s) and smooths joint motion.
+- **Procedural run cycle:** stride, knee bend in the swing phase, counter arm swing with bent elbows, bounce, torso twist and sprint lean. Dribbling uses shorter strides with the head down, and players breathe when idle.
+- **Head tracking:** players turn their head toward the ball, except when sliding or lying down.
+- **Kick wind-up (gameplay change):** the ball no longer leaves the foot when the key is released. The player winds up first (pass 0.12 s, cross 0.16 s, shot 0.18 s, throw-in 0.22 s), and the ball is struck exactly at the contact frame of the animation.
+  - During the wind-up the player stands still and can still be tackled; if he is, the kick is cancelled.
+  - Logic is in `updateWindup` / `releaseKick` (`systems/ball.js`), and the timings are in `KICK_WINDUP`.
+- **Fix:** an older React render could overwrite the player the engine had just selected (on receiving the ball, at kick-off, or with S/Q). `ctx.selectedId` is now only synced from React when the prop actually changes.
+
 ### Later phases
 
-- **Phase 15:** Specialised animations for passing, shooting, tackling and sliding (driven by the state machine from Step 2).
 - **Phase 16:** Goalkeeper diving, catching and distribution.
 - **Phase 17:** Physical duels, shielding and advanced ball recovery.
 - **Phase 18:** Team tactics, pressing, defensive organisation and attacking strategies.
 - **Phase 19:** Stamina, fatigue and more detailed player attributes.
+- **Phase 19B:** Player progression: levels, XP and position-based attribute points (see below).
 - **Phase 20:** Fouls, penalties, offside and full set pieces.
 - **Phase 21:** Match statistics and presentation.
 - **Phase 22:** Visual polish, sound, performance optimisation and release preparation.
+
+### Phase 19B — Player progression: levels and attribute points (planned)
+
+> Ghi chú cho phase mới, chưa triển khai. Xếp sau Phase 19 vì cần bộ chỉ số chi tiết và thể lực của Phase 19. Dùng luôn thống kê và điểm số sau trận đã có từ Step 6.
+
+- **XP after each match:**
+  - Base XP for playing, scaled by minutes on the pitch.
+  - Bonus from the match rating (`ratePlayer` in `systems/matchStats.js`), goals, assists, tackles won, saves and clean sheets.
+  - Extra XP for player of the match.
+  - Unused players get a small amount of training XP.
+- **Levels:** for example level 1–30, with an increasing XP curve (e.g. `100 × level^1.5`). Each level-up gives attribute points (e.g. 3 points).
+- **Position-based upgrades:** points are spent on attributes, and the cost depends on the player's position.
+  - Key attributes for the position cost 1 point.
+  - Secondary attributes cost 2 points.
+  - Attributes unrelated to the position cost 3 points.
+
+  | Position | Key attributes (1 point) | Secondary (2 points) |
+  | --- | --- | --- |
+  | GK | diving, handling, reflexes, positioning (GK attributes come from Phase 16/19) | kicking, physical |
+  | CB | defending, physical, heading | pace, passing |
+  | LB / RB / LWB / RWB | pace, defending, stamina | passing, dribbling |
+  | CDM | defending, passing, physical | stamina, dribbling |
+  | CM / CAM | passing, dribbling, vision | shooting, stamina |
+  | LW / RW / LM / RM | pace, dribbling, crossing | shooting, passing |
+  | ST / CF | shooting, pace, positioning | dribbling, physical |
+
+- **Limits:**
+  - Each player has a hidden or visible potential (maximum OVR), and every attribute is capped at 99.
+  - Overall (OVR) is recalculated with position weights, so a centre-back who adds shooting barely gains OVR.
+- **Interface:**
+  - Level badge and XP bar in the squad list, player profile and substitution board.
+  - The post-match screen shows "LEVEL UP!" for players who level up.
+  - An upgrade screen to spend points, with a "Recommended for position" button that spends them automatically.
+- **Data and save:**
+  - New fields on each player: `level`, `xp`, `unspentPoints`, `potential`.
+  - Saved in the roster (bump the storage key or migrate with defaults `level: 1, xp: 0`).
+  - The new OVR affects transfer value in `clubService.getPlayerValue`.
+- **AI clubs (optional):** opposing players also gain levels during the season so the league stays balanced.
+
+### Phase 23 — Club selection and club crests (planned)
+
+> Ghi chú cho phase mới, chưa triển khai.
+
+- **Club selection:** choose which club to manage (any of the 20 league clubs, e.g. switch between Manchester United and Manchester City) when starting a career or a new season, and possibly from a "Change club" option in Settings.
+  - Make the user team id configurable instead of the fixed `blue` slot.
+  - Keep a separate squad per club, and give every league club its own full squad data instead of generated names only.
+  - Map league fixtures and standings to the chosen club, and migrate existing saves (roster, club budget, league progress).
+  - Ask for confirmation before switching mid-season.
+- **Club crests:**
+  - Data: a crest field per club in `LEAGUE_TEAMS`.
+  - Where they appear: the home screen next-match card, pre-match and post-match screens, scoreboard, league table, team panel and full-time card.
+  - Fallback: the current coloured badge with the short name.
+  - Assets: original crest designs or image files you supply yourself (real club crests are trademarks and are not included in the project).
 
 ### Ideas backlog (từ yêu cầu, tham khảo FIFA Online 4)
 
@@ -376,7 +453,7 @@ The app now has four screens, controlled by `GameScene.jsx`:
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Phase 10 + Steps 1–6 (see roadmap)  
+**Current delivery:** Phase 10 + Steps 1–6 + Phase 15 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

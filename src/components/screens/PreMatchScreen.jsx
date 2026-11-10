@@ -1,3 +1,4 @@
+import { USER_TEAM } from '../../data/leagueData'
 import { FORMATIONS } from '../../data/teams'
 import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
@@ -70,9 +71,9 @@ export default function PreMatchScreen({
                     <div className="home-hero__eyebrow">
                         PRE-MATCH · ROUND {fixture.round} · {isHome ? 'HOME' : 'AWAY'}
                     </div>
-                    <h1>BLUE FC <span>vs</span> {opponentInfo?.name}</h1>
+                    <h1>{USER_TEAM.name} <span>vs</span> {opponentInfo?.name}</h1>
                     <p>
-                        League position: Blue FC {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
+                        League position: {USER_TEAM.shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
                         {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
                     </p>
                 </div>
@@ -80,7 +81,7 @@ export default function PreMatchScreen({
 
             <div className="prematch-body">
                 <Lineup
-                    title="BLUE FC"
+                    title={USER_TEAM.name}
                     color={blueTeam.color}
                     players={blueTeam.players}
                     align="left"

@@ -251,10 +251,11 @@ export function updateCarrierAI(ctx, dt) {
     if (ownerItem.role === 'GK') {
         if (ownerItem.teamId === 'red') {
             // Thủ môn đối thủ ưu tiên phát bóng dài lên phía trước.
-            kickFromPlayer(ctx, ownerId, 'lob', true)
+            const kicked = kickFromPlayer(ctx, ownerId, 'lob', true)
 
             // Không tìm được mục tiêu: cưỡng chế phá bóng lên phía trước.
-            if (state.possession === ownerId && ctx.ballRef.current) {
+            // (Không kiểm tra possession vì trong nhịp vung chân thủ môn vẫn giữ bóng.)
+            if (!kicked && ctx.ballRef.current) {
                 placeBall(
                     ctx,
                     owner.position.x,

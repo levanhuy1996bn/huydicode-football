@@ -52,6 +52,7 @@ import {
     getRole,
     loadSavedRoster,
 } from '../systems/roster'
+import { USER_TEAM } from '../data/leagueData'
 
 // Màn hình trận đấu: giao diện (scoreboard, bảng điều khiển, giải đấu, CLB).
 // Engine trận đấu nằm trong src/systems, scene 3D nằm trong MatchWorld.jsx.
@@ -192,8 +193,8 @@ export default function GameScene() {
         [roster, opponentTeam],
     )
 
-    const opponentNameRef = useRef('RED UNITED')
-    opponentNameRef.current = opponentTeam?.name || 'RED UNITED'
+    const opponentNameRef = useRef('OPPONENT')
+    opponentNameRef.current = opponentTeam?.name || 'OPPONENT'
 
     const isBlueHome = activeFixture
         ? activeFixture.homeTeamId === 'blue'
@@ -233,7 +234,7 @@ export default function GameScene() {
 
         if (teamId === 'blue') {
             setBlueScore((score) => score + 1)
-            setGoalMessage(`BLUE FC · ${credit}`)
+            setGoalMessage(`${USER_TEAM.name} · ${credit}`)
         } else {
             setRedScore((score) => score + 1)
             setGoalMessage(`${opponentNameRef.current} · ${credit}`)
@@ -293,7 +294,7 @@ export default function GameScene() {
         }
     }, [matchTime, matchStatus, half])
 
-    // Ghi nhận kết quả trận BLUE FC vào giải đấu đúng một lần.
+    // Ghi nhận kết quả trận của đội người chơi vào giải đấu đúng một lần.
     useEffect(() => {
         if (
             matchStatus !== 'fulltime' ||
@@ -508,7 +509,7 @@ export default function GameScene() {
 
     const isPlaying = matchStatus === 'playing'
 
-    // Trận tiếp theo của BLUE FC trong lịch (sau khi kết quả đã được ghi).
+    // Trận tiếp theo của đội người chơi trong lịch (sau khi kết quả đã được ghi).
     const nextFixture = useMemo(
         () => getNextUserFixture(league.fixtures),
         [league.fixtures],
@@ -928,7 +929,7 @@ export default function GameScene() {
             {screen === 'postmatch' && (
                 <PostMatchScreen
                     summary={matchSummary}
-                    opponentName={opponentTeam?.name || 'RED UNITED'}
+                    opponentName={opponentTeam?.name || 'OPPONENT'}
                     fixture={activeFixture}
                     nextFixture={nextFixture}
                     nextOpponentName={nextOpponent?.name || 'OPPONENT'}
@@ -997,7 +998,7 @@ export default function GameScene() {
                             letterSpacing: 1,
                         }}
                     >
-                        BLUE FC
+                        {USER_TEAM.shortName}
                     </div>
 
                     <div
@@ -1064,7 +1065,7 @@ export default function GameScene() {
                             letterSpacing: 1,
                         }}
                     >
-                        {opponentTeam?.shortName || 'RED'}
+                        {opponentTeam?.shortName || 'OPP'}
                     </div>
 
                     <div
@@ -1216,7 +1217,7 @@ export default function GameScene() {
 
             {matchStatus === 'halftime' && (
                 <HalfTimeOverlay
-                    opponentName={opponentTeam?.name || 'RED UNITED'}
+                    opponentName={opponentTeam?.name || 'OPPONENT'}
                     blueScore={blueScore}
                     redScore={redScore}
                     events={goalEvents}
@@ -1236,7 +1237,7 @@ export default function GameScene() {
 
             {matchStatus === 'fulltime' && !isLeagueOpen && (
                 <FullTimeOverlay
-                    opponentName={opponentTeam?.name || 'RED UNITED'}
+                    opponentName={opponentTeam?.name || 'OPPONENT'}
                     blueScore={blueScore}
                     redScore={redScore}
                     events={goalEvents}

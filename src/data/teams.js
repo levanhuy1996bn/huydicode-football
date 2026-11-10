@@ -1,3 +1,5 @@
+import { LEAGUE_TEAMS, USER_TEAM } from './leagueData'
+
 const clampStat = (value) => Math.max(1, Math.min(99, value))
 
 const makePlayer = (
@@ -84,8 +86,23 @@ const redBench = [
 ]
 
 // Tên cầu thủ đá chính (hư cấu). Trước đây là tên mặc định kiểu "Blue ST 9".
+// Tên cầu thủ đá chính (hư cấu).
+//   blue = đội người chơi (Manchester United), red = Manchester City.
 export const STARTER_NAMES = {
   blue: {
+    1: 'Diego Navarro',
+    2: 'Iker Mendoza',
+    3: 'Mateo Herrera',
+    4: 'Sergio Castillo',
+    5: 'Alvaro Dominguez',
+    6: 'Rodrigo Valverde',
+    7: 'Joaquin Montenegro',
+    8: 'Hugo Salvatierra',
+    9: 'Huy Le',
+    10: 'Rafael Ibanez',
+    11: 'Bruno Esquivel',
+  },
+  red: {
     1: 'Matthew Harrington',
     2: 'Noah Pembroke',
     3: 'Liam Fitzgerald',
@@ -97,19 +114,6 @@ export const STARTER_NAMES = {
     9: 'Ethan Blackwood',
     10: 'Gabriel Santos',
     11: 'Kai Nakamura',
-  },
-  red: {
-    1: 'Diego Navarro',
-    2: 'Iker Mendoza',
-    3: 'Mateo Herrera',
-    4: 'Sergio Castillo',
-    5: 'Alvaro Dominguez',
-    6: 'Rodrigo Valverde',
-    7: 'Joaquin Montenegro',
-    8: 'Hugo Salvatierra',
-    9: 'Santiago Villalobos',
-    10: 'Rafael Ibanez',
-    11: 'Bruno Esquivel',
   },
 }
 
@@ -203,24 +207,28 @@ export const FORMATIONS = {
   ],
 }
 
+const RIVAL_TEAM = LEAGUE_TEAMS.find((team) => team.id === 'red')
+
 export const TEAMS = [
+  // Đội người chơi: Manchester United (trước đây là đội hình "RED UNITED").
   buildTeam(
       'blue',
-      'BLUE FC',
-      'BLU',
-      '#2387ff',
+      USER_TEAM.name,
+      USER_TEAM.shortName,
+      USER_TEAM.color,
       homeFormation,
-      blueBench,
-      0,
-  ),
-
-  buildTeam(
-      'red',
-      'RED UNITED',
-      'RED',
-      '#ed4545',
-      awayFormation,
       redBench,
       -1,
+  ),
+
+  // Đối thủ mặc định: Manchester City (trước đây là đội hình "BLUE FC").
+  buildTeam(
+      'red',
+      RIVAL_TEAM.name,
+      RIVAL_TEAM.shortName,
+      RIVAL_TEAM.color,
+      awayFormation,
+      blueBench,
+      1,
   ),
 ]

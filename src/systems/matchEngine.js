@@ -1,4 +1,4 @@
-import { getPlayer, updateDribble, updateLooseBallPickup } from './ball'
+import { getPlayer, updateDribble, updateLooseBallPickup, updateWindup } from './ball'
 import { checkGoalAndOut } from './rules'
 import { updateCharge, updateControlledPlayer } from './control'
 import {
@@ -50,6 +50,7 @@ export function stepMatch(ctx, dt) {
     // 2. Cầu thủ người chơi điều khiển + thanh lực.
     updateControlledPlayer(ctx, dt)
     updateCharge(ctx, dt)
+    updateWindup(ctx, dt)
 
     // 3. AI đồng đội và đối thủ.
     updateTeamAI(ctx, 'blue', snapshot, dt)
@@ -74,4 +75,9 @@ export function stepMatch(ctx, dt) {
     // 8. Vận tốc + state machine (animation đọc kết quả này).
     trackVelocities(ctx, dt)
     updatePlayerStates(ctx, dt)
+
+    const finalBall = ball.translation()
+    state.ballPosition.x = finalBall.x
+    state.ballPosition.y = finalBall.y
+    state.ballPosition.z = finalBall.z
 }

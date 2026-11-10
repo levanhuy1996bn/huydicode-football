@@ -1,6 +1,8 @@
+// Đội 'blue' luôn là đội người chơi quản lý (id nội bộ giữ nguyên để không
+// phá dữ liệu lưu và engine). Đội 'red' là đối thủ mặc định / cùng thành phố.
 export const LEAGUE_TEAMS = [
-    { id: 'blue', name: 'BLUE FC', shortName: 'BLU', strength: 81 },
-    { id: 'red', name: 'RED UNITED', shortName: 'RED', strength: 79 },
+    { id: 'blue', name: 'MANCHESTER UNITED', shortName: 'MUN', strength: 79, color: '#da291c' },
+    { id: 'red', name: 'MANCHESTER CITY', shortName: 'MCI', strength: 81, color: '#6cabdd' },
     { id: 'northbridge', name: 'NORTHBRIDGE CITY', shortName: 'NBC', strength: 82 },
     { id: 'royal', name: 'ROYAL ATHLETIC', shortName: 'RAT', strength: 80 },
     { id: 'london', name: 'LONDON ROVERS', shortName: 'LRO', strength: 78 },
@@ -28,3 +30,7 @@ export const LEAGUE_POINTS = {
     draw: 1,
     loss: 0,
 }
+
+// Đội người chơi đang quản lý.
+export const USER_TEAM_ID = 'blue'
+export const USER_TEAM = LEAGUE_TEAMS.find((team) => team.id === USER_TEAM_ID)
