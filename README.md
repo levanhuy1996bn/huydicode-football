@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Phase 10 — Passing and Receiving System, plus Steps 1–5 (bug fixes, engine refactor, FIFA Online-style controls, match flow, in-match HUD) (2026-11-10).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
+> **Current delivery: Phase 10 — Passing and Receiving System, plus Steps 1–6 (bug fixes, engine refactor, FIFA Online-style controls, match flow, in-match HUD, menus and match screens) (2026-11-10).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
 
 ## Install and run
 
@@ -214,10 +214,17 @@ ultimate-football-manager-3d/
     │   ├── goalkeeper.js     # keeper positioning and saves
     │   ├── movement.js       # AI movement, collisions, velocity tracking
     │   ├── rules.js          # goals, out of play, kick-off and restarts
+    │   ├── matchStats.js     # match statistics, ratings, summary
     │   └── matchEngine.js    # fixed-step loop calling the systems in order
+    ├── utils/
+    │   └── names.js          # shortPlayerName()
     └── components/
+        ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen
         ├── GameScene.jsx
         ├── MatchWorld.jsx
+        ├── MatchOverlays.jsx
+        ├── SubstitutionBoard.jsx
+        ├── MatchSidePanel.jsx
         ├── Player.jsx
         ├── Pitch.jsx
         ├── ClubManagementPanel.jsx
@@ -324,12 +331,21 @@ A code review showed that Phases 11–14 were never delivered as separate featur
   - Rules: 5 substitutions; a goalkeeper can only be replaced by a goalkeeper; a player who has been substituted off cannot come back on. Outfield players may now play out of position (the board warns about it).
   - The incoming player takes the outgoing player's position on the pitch.
 
-### Step 6 — Out-of-match UI
+### Step 6 — Out-of-match UI ✅ (2026-11-10)
 
-- Home/main menu: play match, league, squad, tactics, transfers, club, settings.
-- Pre-match screen: lineups, formation and opponent information.
-- Post-match screen: statistics and player ratings, then return to the league or home menu (instead of only a "New match" button).
-- Remove stale header text in `App.jsx` ("PHASE 3", RED UNITED 0–0 not tied to the real match).
+The app now has four screens, controlled by `GameScene.jsx`:
+
+| Screen | Contents |
+| --- | --- |
+| **HOME** (`screens/HomeScreen.jsx`) | Next match (round, home/away, team crests, league positions, strength) with PLAY MATCH / EDIT LINEUP; compact league table (top 6 + Blue FC); last result; season progress (W/D/L); squad (formation, average XI rating, squad size and value); club; settings (match length 3/6/10 min, player names SMART/ALL/OFF, saved in the browser). If the season is over: champion + NEW SEASON. |
+| **PLAY / pre-match** (`screens/PreMatchScreen.jsx`) | Both starting XIs with numbers, positions and ratings; team averages; formation and tactic; EDIT LINEUP opens the drag-and-drop board in pre-match mode (unlimited changes, no substitutions used); KICK OFF. |
+| **Match** | The 3D match as before. The top bar shows LIVE MATCH and navigation is locked until the match is finished or quit. The right panel shows the profile of the player you control and updates when you switch. |
+| **Match summary** (`screens/PostMatchScreen.jsx`) | Score with scorers; WIN/DRAW/LOSS; match stats (possession, shots, shots on target, passes, tackles won, saves); Blue FC player ratings (goals, assists, tackles) and player of the match; NEXT MATCH / LEAGUE TABLE / HOME. |
+
+- The top bar has HOME, PLAY, LEAGUE and CLUB, plus the season and Blue FC's league position and points. The old static header ("PHASE 3", "RED UNITED 0–0", "FRIENDLY MATCH") has been removed. Club management now opens from the HOME screen or the top bar, not during a match.
+- The full-time card now has MATCH SUMMARY. NEXT MATCH (and starting a match from the league panel) goes to the pre-match screen first.
+- Statistics are recorded by the engine in `state.stats` (`systems/matchStats.js`): shots, passes, tackles, saves, shots on target, possession time, and per-player goals, assists and tackles. Ratings run from 4.0 to 10.0.
+- **Player names:** the starters now have real (fictional) names instead of "Blue ST 9". Each league opponent gets its own deterministic set of names, and old saves are migrated automatically. Long names are shortened with `utils/names.js` (`shortPlayerName`): "Alexander Montgomery" → "A. Montgomery" above the head, and anything still too long is cut with "…".
 
 ### Later phases
 
@@ -355,12 +371,12 @@ A code review showed that Phases 11–14 were never delivered as separate featur
 | Ném biên | Step 4 ✅ |
 | Nghỉ giữa hiệp: mở cài đặt rồi bấm Tiếp tục sang hiệp 2 | Step 4 ✅ |
 | Cho phép bỏ trận giữa chừng | Step 4 ✅ |
-| Giao diện ngoài trận đấu (menu, trước/sau trận) | Step 6 |
+| Giao diện ngoài trận đấu (menu, trước/sau trận) | Step 6 ✅ |
 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Phase 10 + Steps 1–5 (see roadmap)  
+**Current delivery:** Phase 10 + Steps 1–6 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

@@ -13,6 +13,7 @@ import {
 } from './playerState'
 import { clampPlayer } from './movement'
 import { ownGoalSign } from './matchState'
+import { recordPlayer, recordTeam } from './matchStats'
 
 const SLIDE_LUNGE_TIME = 0.32
 const SLIDE_LUNGE_SPEED = 10
@@ -297,6 +298,8 @@ export function performTackle(ctx, type) {
         state.lastTouchTeam = 'blue'
         state.lastToucherId = selectedId
 
+        recordTeam(state, 'blue', 'tackles')
+        recordPlayer(state, selectedId, 'tackles')
         ctx.onActionMessage('SLIDING TACKLE SUCCESS!')
         return
     }
@@ -306,6 +309,12 @@ export function performTackle(ctx, type) {
     }
 
     attachBallToPlayer(ctx, player, selectedId)
+
+    if (ownerId) {
+        recordTeam(state, 'blue', 'tackles')
+        recordPlayer(state, selectedId, 'tackles')
+    }
+
     ctx.onActionMessage('TACKLE SUCCESS!')
 }
 

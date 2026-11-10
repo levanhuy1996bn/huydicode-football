@@ -13,6 +13,7 @@ import {
 } from './ball'
 import { moveAIPlayer } from './movement'
 import { isPlayerLocked, setPlayerAction } from './playerState'
+import { recordPlayer, recordTeam } from './matchStats'
 
 // AI di chuyển theo vai trò và chiến thuật (không gồm thủ môn).
 // `snapshot` = { ballPoint, ownerId, ownerItem } chụp ở đầu bước logic.
@@ -378,6 +379,8 @@ export function updateAISteal(ctx) {
     if (Math.random() < chance) {
         state.pickupLocks[ownerId] = 0.4
         attachBallToPlayer(ctx, nearestRed.object, nearestRed.item.id)
+        recordTeam(state, 'red', 'tackles')
+        recordPlayer(state, nearestRed.item.id, 'tackles')
         ctx.onActionMessage(`${ctx.opponentName} WON THE BALL`)
     }
 }

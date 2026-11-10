@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
+import { shortPlayerName } from '../utils/names'
 
 const SKIN = '#d9a783'
 const HAIR = '#30251f'
@@ -51,19 +52,6 @@ function useNumberTexture(number, shirtColor) {
     useEffect(() => () => texture?.dispose(), [texture])
 
     return texture
-}
-
-// Tên ngắn để hiện trên đầu: tên thật thì lấy họ (từ cuối),
-// tên mặc định kiểu "Blue ST 9" thì giữ vị trí.
-function shortLabel(player) {
-    const name = String(player.name || '')
-    const generic = /^(Blue|Red|[A-Z]{3}) [A-Z]{2,3} \d+$/.test(name)
-
-    if (generic) return name.split(' ')[1]
-
-    const parts = name.split(' ')
-
-    return parts[parts.length - 1] || name
 }
 
 export default function Player({
@@ -350,7 +338,7 @@ export default function Player({
                     style={{ '--tag-color': teamColor, display: 'none' }}
                 >
                     <b>{player.number}</b>
-                    <span>{shortLabel(player)}</span>
+                    <span>{shortPlayerName(player.name, 12)}</span>
                 </div>
             </Html>
 

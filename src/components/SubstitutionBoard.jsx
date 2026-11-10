@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { shortPlayerName } from '../utils/names'
 
 // Bảng thay người kiểu FIFA Online:
 // - Kéo cầu thủ dự bị thả lên cầu thủ trên sân  → thay người.
@@ -10,13 +11,7 @@ const PITCH_HALF_LENGTH = 52.5
 const PITCH_HALF_WIDTH = 34
 
 function shortName(player) {
-    const name = String(player.name || '')
-
-    if (/^(Blue|Red) [A-Z]{2,3} \d+$/.test(name)) return name
-
-    const parts = name.split(' ')
-
-    return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : name
+    return shortPlayerName(player.name, 16)
 }
 
 function PlayerCard({
@@ -94,6 +89,7 @@ export default function SubstitutionBoard({
     onSubstitute,
     onSwap,
     onClose,
+    isPrematch = false,
 }) {
     const [picked, setPicked] = useState(null)
     const [dropTarget, setDropTarget] = useState(null)
@@ -157,12 +153,21 @@ export default function SubstitutionBoard({
                 <div className="sub-board__header">
                     <div>
                         <div className="match-card__eyebrow">TEAM MANAGEMENT</div>
-                        <div className="sub-board__title">Substitutions</div>
+                        <div className="sub-board__title">
+                            {isPrematch ? 'Starting lineup' : 'Substitutions'}
+                        </div>
                     </div>
-                    <div className={`sub-board__count${remaining <= 0 ? ' is-empty' : ''}`}>
-                        {substitutionCount}/{maxSubstitutions}
-                        <small>USED</small>
-                    </div>
+                    {isPrematch ? (
+                        <div className="sub-board__count">
+                            PRE-MATCH
+                            <small>NO LIMIT</small>
+                        </div>
+                    ) : (
+                        <div className={`sub-board__count${remaining <= 0 ? ' is-empty' : ''}`}>
+                            {substitutionCount}/{maxSubstitutions}
+                            <small>USED</small>
+                        </div>
+                    )}
                 </div>
 
                 <div className="sub-board__body">

@@ -22,6 +22,7 @@ import {
 } from '../systems/matchState'
 import { attachBallToPlayer } from '../systems/ball'
 import { resetPositions } from '../systems/rules'
+import { createMatchStats } from '../systems/matchStats'
 import { handleKeyDown, handleKeyUp } from '../systems/control'
 import { stepMatch } from '../systems/matchEngine'
 
@@ -398,6 +399,7 @@ export default function MatchWorld({
     half = 1,
     chargeHudRef,
     radarRef,
+    statsRef,
     labelMode = 'smart',
 }) {
     const keys = useKeyboard()
@@ -472,6 +474,17 @@ export default function MatchWorld({
         onActionMessage,
         onGoal,
     })
+
+    // GameScene đọc thống kê qua ref này khi hết trận.
+    if (statsRef) statsRef.current = state
+
+    // Vừa vào sân (Canvas mới được tạo): xếp đội hình giao bóng.
+    // Effect của các Player (con) chạy trước nên mọi cầu thủ đã đăng ký.
+    useEffect(() => {
+        state.stats = createMatchStats()
+        state.timers.goalCooldown = 1
+        resetPositions(ctx, 'blue')
+    }, [ctx, state])
 
     const registerPlayer = useCallback((id, object) => {
         if (object) {
@@ -565,6 +578,7 @@ export default function MatchWorld({
         state.matchEnded = false
         state.sidesSwapped = false
         state.timers.goalCooldown = 1
+        state.stats = createMatchStats()
 
         resetPositions(ctx, 'blue')
         onActionMessage('MATCH RESTARTED')

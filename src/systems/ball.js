@@ -7,6 +7,7 @@ import {
 } from './constants'
 import { attackDir } from './matchState'
 import { isPlayerLocked, setPlayerAction } from './playerState'
+import { recordPlayer, recordTeam } from './matchStats'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
 
@@ -65,6 +66,12 @@ export function attachBallToPlayer(ctx, object, playerId) {
 
     if (item) {
         state.lastTouchTeam = item.teamId
+
+        // Đội khác có bóng: đường chuyền trước đó không còn tính kiến tạo.
+        if (state.stats && state.stats.lastPassTeam !== item.teamId) {
+            state.stats.lastPasserId = null
+            state.stats.lastPassTeam = null
+        }
     }
 }
 
@@ -473,6 +480,20 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
     state.lastTouchTeam = item.teamId
     state.lastToucherId = playerId
 
+    // Thống kê: sút / chuyền (ném biên không tính).
+    if (action === 'shoot') {
+        recordTeam(state, item.teamId, 'shots')
+        recordPlayer(state, playerId, 'shots')
+    } else if (!isThrowIn) {
+        recordTeam(state, item.teamId, 'passes')
+        recordPlayer(state, playerId, 'passes')
+
+        if (state.stats) {
+            state.stats.lastPasserId = playerId
+            state.stats.lastPassTeam = item.teamId
+        }
+    }
+
     // Người vừa đá không được "đỡ" lại chính cú đá của mình. Trước đây
     // bóng vừa rời chân (cách ~1m) bị chính người đá khống chế lại ngay,
     // nên thủ môn cầm bóng mãi và đường chuyền có thể bật về chân người chuyền.
@@ -697,6 +718,8 @@ export function updateDribble(ctx, dt) {
 
         if (thief) {
             attachBallToPlayer(ctx, objects[thief.id], thief.id)
+            recordTeam(state, thief.teamId, 'tackles')
+            recordPlayer(state, thief.id, 'tackles')
             ctx.onActionMessage(
                 thief.teamId === 'blue'
                     ? 'BLUE FC INTERCEPTS!'

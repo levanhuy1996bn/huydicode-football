@@ -2,7 +2,7 @@ import { FORMATIONS } from '../data/teams'
 import { TACTICS } from '../systems/constants'
 
 // Danh sách bàn thắng của một đội: "Tên 23'" (OG = phản lưới).
-function GoalList({ events, teamId, align }) {
+export function GoalList({ events, teamId, align }) {
     const goals = events.filter((event) => event.teamId === teamId)
 
     if (goals.length === 0) {
@@ -21,7 +21,7 @@ function GoalList({ events, teamId, align }) {
     )
 }
 
-function Scoreline({ homeName, awayName, homeScore, awayScore, events, size = 'large' }) {
+export function Scoreline({ homeName, awayName, homeScore, awayScore, events, size = 'large' }) {
     return (
         <div className={`scoreline scoreline--${size}`}>
             <div className="scoreline__team">
@@ -158,6 +158,7 @@ export function FullTimeOverlay({
     onOpenLeague,
     onReplay,
     onNewSeason,
+    onSummary,
 }) {
     const result =
         blueScore > redScore ? 'WIN' : blueScore < redScore ? 'LOSS' : 'DRAW'
@@ -193,12 +194,15 @@ export function FullTimeOverlay({
                 )}
 
                 <div className="match-card__actions">
+                    <button type="button" className="btn btn--primary" onClick={onSummary}>
+                        MATCH SUMMARY
+                    </button>
                     {nextFixture ? (
-                        <button type="button" className="btn btn--primary" onClick={onNextMatch}>
+                        <button type="button" className="btn" onClick={onNextMatch}>
                             NEXT MATCH · {nextOpponentName}
                         </button>
                     ) : (
-                        <button type="button" className="btn btn--primary" onClick={onNewSeason}>
+                        <button type="button" className="btn" onClick={onNewSeason}>
                             SEASON COMPLETE · NEW SEASON
                         </button>
                     )}

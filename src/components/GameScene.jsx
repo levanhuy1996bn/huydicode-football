@@ -2,6 +2,13 @@ import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
 import TeamManagementPanel from './TeamManagementPanel'
 import SubstitutionBoard from './SubstitutionBoard'
+import MatchSidePanel from './MatchSidePanel'
+import TopBar from './screens/TopBar'
+import HomeScreen from './screens/HomeScreen'
+import PreMatchScreen from './screens/PreMatchScreen'
+import PostMatchScreen from './screens/PostMatchScreen'
+import { formatMoney, getSquadValue } from '../services/clubService'
+import { buildMatchSummary } from '../systems/matchStats'
 import MatchWorld from './MatchWorld'
 import {
     FullTimeOverlay,
@@ -13,6 +20,8 @@ import {
     loadLeague,
     saveLeague,
     getNextUserFixture,
+    getLeagueStandings,
+    getSeasonProgress,
     getTeamById,
     recordUserFixtureResult,
     startNewSeason,
@@ -38,6 +47,7 @@ import {
 import {
     ROSTER_STORAGE_KEY,
     buildMatchRoster,
+    getOpponentColor,
     getPositionGroup,
     getRole,
     loadSavedRoster,
@@ -45,6 +55,27 @@ import {
 
 // Màn hình trận đấu: giao diện (scoreboard, bảng điều khiển, giải đấu, CLB).
 // Engine trận đấu nằm trong src/systems, scene 3D nằm trong MatchWorld.jsx.
+
+const SETTINGS_KEY = 'ultimate-football-settings-v1'
+const DEFAULT_SETTINGS = { matchDuration: MATCH_DURATION, labelMode: 'smart' }
+
+function loadSettings() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null')
+
+        return { ...DEFAULT_SETTINGS, ...(saved || {}) }
+    } catch {
+        return { ...DEFAULT_SETTINGS }
+    }
+}
+
+function saveSettings(settings) {
+    try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+    } catch {
+        // Không lưu được (chế độ riêng tư...) — vẫn dùng trong phiên hiện tại.
+    }
+}
 
 export default function GameScene() {
     const [roster, setRoster] = useState(loadSavedRoster)
@@ -69,7 +100,31 @@ export default function GameScene() {
     const [redScore, setRedScore] = useState(0)
     const [matchTime, setMatchTime] = useState(0)
 
-    const [matchStatus, setMatchStatus] = useState('playing')
+    // 'idle' (chưa đá) | 'playing' | 'paused' | 'goal' | 'halftime' | 'fulltime'
+    const [matchStatus, setMatchStatus] = useState('idle')
+
+    // Màn hình: 'home' | 'prematch' | 'match' | 'postmatch'
+    const [screen, setScreen] = useState('home')
+    const [prematchFixtureId, setPrematchFixtureId] = useState(null)
+    const [matchSummary, setMatchSummary] = useState(null)
+    const [isClubOpen, setIsClubOpen] = useState(false)
+    const [lineupMode, setLineupMode] = useState('match') // 'match' | 'prematch'
+    const statsRef = useRef(null)
+
+    // Cài đặt người chơi (lưu trên trình duyệt).
+    const [settings, setSettings] = useState(loadSettings)
+    const matchDuration = settings.matchDuration
+    const labelMode = settings.labelMode
+    const matchDurationRef = useRef(matchDuration)
+    matchDurationRef.current = matchDuration
+
+    const updateSettings = useCallback((patch) => {
+        setSettings((current) => {
+            const next = { ...current, ...patch }
+            saveSettings(next)
+            return next
+        })
+    }, [])
     const [goalMessage, setGoalMessage] = useState('')
     const [resetKey, setResetKey] = useState(0)
     const [substitutionCount, setSubstitutionCount] = useState(0)
@@ -83,7 +138,6 @@ export default function GameScene() {
     // HUD: bảng thay người, cầu thủ đã rời sân, chế độ hiện tên, radar.
     const [isSubsOpen, setIsSubsOpen] = useState(false)
     const [subbedOffIds, setSubbedOffIds] = useState([])
-    const [labelMode, setLabelMode] = useState('smart') // smart | all | off
     const resumeAfterSubsRef = useRef(false)
     const radarRef = useRef(null)
 
@@ -170,7 +224,7 @@ export default function GameScene() {
     const handleGoal = useCallback((teamId, info = {}) => {
         const minute = Math.min(
             90,
-            Math.floor((matchTimeRef.current / MATCH_DURATION) * 90) + 1,
+            Math.floor((matchTimeRef.current / matchDurationRef.current) * 90) + 1,
         )
 
         const credit = info.scorerName
@@ -209,7 +263,7 @@ export default function GameScene() {
 
         const interval = setInterval(() => {
             setMatchTime((current) =>
-                Math.min(MATCH_DURATION, current + 0.25),
+                Math.min(matchDuration, current + 0.25),
             )
         }, 250)
 
@@ -220,7 +274,7 @@ export default function GameScene() {
     useEffect(() => {
         if (
             matchStatus === 'playing' &&
-            matchTime >= MATCH_DURATION
+            matchTime >= matchDuration
         ) {
             handleMatchEnd()
         }
@@ -231,9 +285,9 @@ export default function GameScene() {
         if (
             matchStatus === 'playing' &&
             half === 1 &&
-            matchTime >= MATCH_DURATION / 2
+            matchTime >= matchDuration / 2
         ) {
-            setMatchTime(MATCH_DURATION / 2)
+            setMatchTime(matchDuration / 2)
             setMatchStatus('halftime')
             setActionMessage('HALF TIME')
         }
@@ -286,6 +340,28 @@ export default function GameScene() {
         blueScore,
         redScore,
     ])
+
+    // Hết trận: chụp thống kê từ engine để làm màn tổng kết.
+    useEffect(() => {
+        if (matchStatus !== 'fulltime') return
+
+        const blue = roster.find((team) => team.id === 'blue')
+        const allBlue = [...(blue?.players || []), ...(blue?.substitutes || [])]
+
+        setMatchSummary(
+            buildMatchSummary({
+                stats: statsRef.current?.stats,
+                players: blue?.players || [],
+                subbedOffPlayers: allBlue.filter((player) => subbedOffIds.includes(player.id)),
+                blueScore,
+                redScore,
+                goalEvents,
+                forfeit,
+            }),
+        )
+        // Chỉ chụp một lần khi vừa hết trận.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [matchStatus, forfeit])
 
     // Thông báo bàn thắng.
     useEffect(() => {
@@ -373,6 +449,8 @@ export default function GameScene() {
         resetMatchFlow()
 
         setIsLeagueOpen(false)
+        setMatchSummary(null)
+        setScreen('match')
 
         const nextOpponentId =
             fixture.homeTeamId === 'blue'
@@ -403,7 +481,9 @@ export default function GameScene() {
         setRedScore(0)
         setMatchTime(0)
         setGoalMessage('')
-        setMatchStatus('playing')
+        setMatchStatus('idle')
+        setScreen('home')
+        setMatchSummary(null)
         setResetKey((key) => key + 1)
         setSubstitutionCount(0)
         resetMatchFlow()
@@ -413,13 +493,13 @@ export default function GameScene() {
     }, [league])
 
     const totalGameMinutes = Math.floor(
-        (matchTime / MATCH_DURATION) * 90,
+        (matchTime / matchDuration) * 90,
     )
 
     const displayMinutes = Math.min(totalGameMinutes, 90)
 
     const displaySeconds = Math.floor(
-        ((matchTime / MATCH_DURATION) * 90 * 60) % 60,
+        ((matchTime / matchDuration) * 90 * 60) % 60,
     )
 
     const timeLabel = `${String(displayMinutes).padStart(2, '0')}:${String(
@@ -481,17 +561,20 @@ export default function GameScene() {
     // Luật: tối đa MAX_SUBSTITUTIONS lượt; thủ môn chỉ thay bằng thủ môn;
     // cầu thủ đã rời sân không được vào lại. Cầu thủ vào sân nhận đúng vị trí
     // của người ra (đá trái sở trường vẫn được, như FO4).
-    const substitutePlayer = (playerOutId, playerInId) => {
+    const substitutePlayer = (playerOutId, playerInId, options = {}) => {
+        // Trước trận (chỉnh đội hình): không giới hạn, không tính lượt thay.
+        const isPrematch = options.prematch === true
+
         const fail = (message) => {
             setActionMessage(message.toUpperCase())
             return { ok: false, message }
         }
 
-        if (substitutionCount >= MAX_SUBSTITUTIONS) {
+        if (!isPrematch && substitutionCount >= MAX_SUBSTITUTIONS) {
             return fail('No substitutions remaining.')
         }
 
-        if (subbedOffIds.includes(playerInId)) {
+        if (!isPrematch && subbedOffIds.includes(playerInId)) {
             return fail('A player who has been substituted off cannot come back on.')
         }
 
@@ -559,13 +642,15 @@ export default function GameScene() {
             setSelectedId(playerInId)
         }
 
-        setSubstitutionCount((count) => count + 1)
-        setSubbedOffIds((ids) => [...ids, playerOutId])
+        if (!isPrematch) {
+            setSubstitutionCount((count) => count + 1)
+            setSubbedOffIds((ids) => [...ids, playerOutId])
+        }
 
         const outOfPosition =
             getPositionGroup(incoming.position) !== getPositionGroup(outgoing.position)
 
-        const message = `${incoming.name} on, ${outgoing.name} off${
+        const message = `${incoming.name} ${isPrematch ? 'starts' : 'on'}, ${outgoing.name} ${isPrematch ? 'to the bench' : 'off'}${
             outOfPosition ? ` (playing out of position as ${outgoing.position})` : ''
         }.`
 
@@ -622,6 +707,8 @@ export default function GameScene() {
 
     // Mở bảng thay người: đang đá thì tạm dừng, đóng lại thì đá tiếp.
     const openSubstitutions = () => {
+        setLineupMode('match')
+
         if (matchStatus === 'playing') {
             resumeAfterSubsRef.current = true
             setMatchStatus('paused')
@@ -642,18 +729,219 @@ export default function GameScene() {
     }
 
     const cycleLabelMode = () => {
-        setLabelMode((mode) => {
-            const next = mode === 'smart' ? 'all' : mode === 'all' ? 'off' : 'smart'
-            setActionMessage(`PLAYER NAMES: ${next.toUpperCase()}`)
-            return next
-        })
+        const next = labelMode === 'smart' ? 'all' : labelMode === 'all' ? 'off' : 'smart'
+
+        updateSettings({ labelMode: next })
+        setActionMessage(`PLAYER NAMES: ${next.toUpperCase()}`)
     }
 
     const openLeague = () => {
         setIsLeagueOpen(true)
     }
 
+    // ---- Điều hướng giữa các màn hình ngoài trận ----
+    const prematchFixture = useMemo(
+        () =>
+            league.fixtures.find((fixture) => fixture.id === prematchFixtureId) ||
+            nextFixture ||
+            null,
+        [league.fixtures, prematchFixtureId, nextFixture],
+    )
+
+    const openPrematch = (fixture) => {
+        const target = fixture && !fixture.played ? fixture : nextFixture
+
+        setPrematchFixtureId(target?.id || null)
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setScreen('prematch')
+    }
+
+    const kickOff = () => {
+        if (prematchFixture) startLeagueFixture(prematchFixture)
+    }
+
+    const goHome = () => {
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        setScreen('home')
+    }
+
+    const openSummary = () => {
+        setScreen('postmatch')
+        setMatchStatus('idle')
+    }
+
+    const navigate = (tab) => {
+        if (tab === 'home') goHome()
+        else if (tab === 'prematch') openPrematch(nextFixture)
+        else if (tab === 'league') setIsLeagueOpen(true)
+        else if (tab === 'club') setIsClubOpen(true)
+    }
+
+    const openLineupEditor = () => {
+        setLineupMode('prematch')
+        resumeAfterSubsRef.current = false
+        setIsSubsOpen(true)
+    }
+
+    // ---- Dữ liệu cho các màn hình ngoài trận ----
+    const standings = useMemo(
+        () => getLeagueStandings(league.fixtures),
+        [league.fixtures],
+    )
+
+    const seasonProgress = useMemo(
+        () => getSeasonProgress(league.fixtures),
+        [league.fixtures],
+    )
+
+    const positionOf = (teamId) =>
+        standings.findIndex((team) => team.teamId === teamId) + 1
+
+    const blueRow = standings.find((team) => team.teamId === 'blue')
+    const blueTeam = roster.find((team) => team.id === 'blue')
+
+    const opponentIdOf = (fixture) =>
+        fixture.homeTeamId === 'blue' ? fixture.awayTeamId : fixture.homeTeamId
+
+    const homeNextMatch = nextFixture && nextOpponent
+        ? {
+            fixture: nextFixture,
+            isHome: nextFixture.homeTeamId === 'blue',
+            opponent: nextOpponent,
+            opponentColor: getOpponentColor(nextOpponent.id),
+            opponentPosition: positionOf(nextOpponent.id),
+            blueStrength: getTeamById('blue')?.strength,
+        }
+        : null
+
+    const lastPlayedFixture = league.fixtures
+        .filter(
+            (fixture) =>
+                fixture.played &&
+                (fixture.homeTeamId === 'blue' || fixture.awayTeamId === 'blue'),
+        )
+        .sort((a, b) => b.round - a.round)[0]
+
+    const lastResult = lastPlayedFixture
+        ? (() => {
+            const isHome = lastPlayedFixture.homeTeamId === 'blue'
+            const blueGoals = isHome ? lastPlayedFixture.homeGoals : lastPlayedFixture.awayGoals
+            const opponentGoals = isHome ? lastPlayedFixture.awayGoals : lastPlayedFixture.homeGoals
+
+            return {
+                round: lastPlayedFixture.round,
+                blueGoals,
+                opponentGoals,
+                opponentName: getTeamById(opponentIdOf(lastPlayedFixture))?.name,
+                outcome:
+                    blueGoals > opponentGoals ? 'win' : blueGoals < opponentGoals ? 'loss' : 'draw',
+            }
+        })()
+        : null
+
+    const squadSummary = {
+        formation: blueTeam?.formationKey || '4-3-3',
+        averageOverall: blueTeam?.players.length
+            ? Math.round(
+                blueTeam.players.reduce((sum, player) => sum + (player.overall || 0), 0) /
+                    blueTeam.players.length,
+            )
+            : 0,
+        size: (blueTeam?.players.length || 0) + (blueTeam?.substitutes.length || 0),
+        value: formatMoney(getSquadValue(roster)),
+    }
+
+    const homeProgress = {
+        userPlayed: seasonProgress.userPlayed,
+        userTotal: seasonProgress.userTotal,
+        won: blueRow?.won || 0,
+        drawn: blueRow?.drawn || 0,
+        lost: blueRow?.lost || 0,
+    }
+
+    const prematchOpponent = prematchFixture
+        ? getTeamById(opponentIdOf(prematchFixture))
+        : null
+
+    const prematchRoster = useMemo(
+        () => (prematchOpponent ? buildMatchRoster(roster, prematchOpponent) : roster),
+        [roster, prematchOpponent],
+    )
+
+    const selectedPlayerProfile = matchRoster
+        .flatMap((team) => [...team.players, ...(team.substitutes || [])])
+        .find((player) => player.id === selectedId)
+
+    const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
+
     return (
+        <main className="app-shell">
+            <TopBar
+                screen={screen}
+                inMatch={inMatch}
+                season={league.season || 2026}
+                record={blueRow ? { position: positionOf('blue'), points: blueRow.points } : null}
+                onNavigate={navigate}
+            />
+
+            {screen === 'home' && (
+                <HomeScreen
+                    nextMatch={homeNextMatch}
+                    champion={seasonProgress.completed ? standings[0] : null}
+                    standings={standings}
+                    lastResult={lastResult}
+                    squad={squadSummary}
+                    progress={homeProgress}
+                    settings={settings}
+                    onSettingsChange={updateSettings}
+                    onPlay={() => openPrematch(nextFixture)}
+                    onEditLineup={() => {
+                        openPrematch(nextFixture)
+                        openLineupEditor()
+                    }}
+                    onOpenLeague={() => setIsLeagueOpen(true)}
+                    onOpenClub={() => setIsClubOpen(true)}
+                    onNewSeason={createNewSeason}
+                />
+            )}
+
+            {screen === 'prematch' && (
+                <PreMatchScreen
+                    fixture={prematchFixture}
+                    blueTeam={blueTeam}
+                    opponentTeam={prematchRoster.find((team) => team.id === 'red')}
+                    opponentInfo={prematchOpponent}
+                    bluePosition={positionOf('blue')}
+                    opponentPosition={prematchOpponent ? positionOf(prematchOpponent.id) : null}
+                    tacticKey={tacticKey}
+                    onTacticChange={changeTactic}
+                    onFormationChange={changeFormation}
+                    onEditLineup={openLineupEditor}
+                    onKickOff={kickOff}
+                    onBack={goHome}
+                />
+            )}
+
+            {screen === 'postmatch' && (
+                <PostMatchScreen
+                    summary={matchSummary}
+                    opponentName={opponentTeam?.name || 'RED UNITED'}
+                    fixture={activeFixture}
+                    nextFixture={nextFixture}
+                    nextOpponentName={nextOpponent?.name || 'OPPONENT'}
+                    onHome={goHome}
+                    onNext={() => openPrematch(nextFixture)}
+                    onOpenLeague={() => setIsLeagueOpen(true)}
+                    onNewSeason={createNewSeason}
+                />
+            )}
+
+            {screen === 'match' && (
+            <section className="content-grid">
+            <div className="pitch-panel">
         <div className="game-canvas">
             <Canvas shadows dpr={[1, 1.75]}>
                 <Suspense fallback={null}>
@@ -665,6 +953,7 @@ export default function GameScene() {
                         <MatchWorld
                             chargeHudRef={chargeHudRef}
                             radarRef={radarRef}
+                            statsRef={statsRef}
                             labelMode={labelMode}
                             roster={matchRoster}
                             half={half}
@@ -840,10 +1129,7 @@ export default function GameScene() {
                 substitutionCount={substitutionCount}
             />
 
-            <ClubManagementPanel
-                roster={roster}
-                onRosterChange={setRoster}
-            />
+            {/* Trong trận không mở quản lý CLB (giống FO4) — dùng ở sảnh. */}
 
             {/* MATCH CONTROLS */}
             <div
@@ -909,15 +1195,6 @@ export default function GameScene() {
             </div>
 
             {/* LEAGUE MANAGEMENT */}
-            {isLeagueOpen && (
-                <LeagueManagementPanel
-                    league={league}
-                    onClose={() => setIsLeagueOpen(false)}
-                    onStartFixture={startLeagueFixture}
-                    onNewSeason={createNewSeason}
-                />
-            )}
-
             {/* GOAL / PAUSE / HALF TIME / FULL TIME */}
             {matchStatus === 'goal' && (
                 <StatusOverlay title="GOAL!" subtitle={goalMessage} />
@@ -971,22 +1248,11 @@ export default function GameScene() {
                     }
                     nextFixture={nextFixture}
                     nextOpponentName={nextOpponent?.name || 'OPPONENT'}
-                    onNextMatch={() => startLeagueFixture(nextFixture)}
+                    onNextMatch={() => openPrematch(nextFixture)}
+                    onSummary={openSummary}
                     onOpenLeague={openLeague}
                     onReplay={restartMatch}
                     onNewSeason={createNewSeason}
-                />
-            )}
-
-            {isSubsOpen && (
-                <SubstitutionBoard
-                    team={roster.find((team) => team.id === 'blue')}
-                    substitutionCount={substitutionCount}
-                    maxSubstitutions={MAX_SUBSTITUTIONS}
-                    subbedOffIds={subbedOffIds}
-                    onSubstitute={substitutePlayer}
-                    onSwap={swapStarters}
-                    onClose={closeSubstitutions}
                 />
             )}
 
@@ -1039,6 +1305,56 @@ export default function GameScene() {
                 {actionMessage}
             </div>
         </div>
+            </div>
+
+            <MatchSidePanel selectedPlayer={selectedPlayerProfile} />
+            </section>
+            )}
+
+            {/* Các bảng dùng chung cho mọi màn hình */}
+            {isLeagueOpen && (
+                <LeagueManagementPanel
+                    league={league}
+                    onClose={() => setIsLeagueOpen(false)}
+                    onStartFixture={openPrematch}
+                    onNewSeason={createNewSeason}
+                />
+            )}
+
+            {isClubOpen && screen !== 'match' && (
+                <div className="modal-host">
+                    <ClubManagementPanel
+                        roster={roster}
+                        onRosterChange={setRoster}
+                        isOpen
+                        hideTrigger
+                        onOpenChange={(open) => setIsClubOpen(open)}
+                    />
+                </div>
+            )}
+
+            {isSubsOpen && (
+                <div className="modal-host">
+                    <SubstitutionBoard
+                        team={blueTeam}
+                        isPrematch={lineupMode === 'prematch'}
+                        substitutionCount={lineupMode === 'prematch' ? 0 : substitutionCount}
+                        maxSubstitutions={MAX_SUBSTITUTIONS}
+                        subbedOffIds={lineupMode === 'prematch' ? [] : subbedOffIds}
+                        onSubstitute={(outId, inId) =>
+                            substitutePlayer(outId, inId, { prematch: lineupMode === 'prematch' })
+                        }
+                        onSwap={swapStarters}
+                        onClose={closeSubstitutions}
+                    />
+                </div>
+            )}
+
+            <footer>
+                ULTIMATE FOOTBALL MANAGER 3D
+                <span>EARLY DEVELOPMENT BUILD</span>
+            </footer>
+        </main>
     )
 }
 

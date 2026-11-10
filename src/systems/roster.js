@@ -1,6 +1,55 @@
 import { clamp } from './constants'
 import { TEAMS } from '../data/teams'
 
+// Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
+const GENERIC_NAME = /^(Blue|Red) [A-Z]{2,3} \d+$/
+
+// Kho tên để đặt tên cho đội hình các đối thủ khác trong giải (tất định
+// theo id đội + số áo, nên mỗi đội luôn có cùng một bộ tên).
+const FIRST_NAMES = [
+    'Adam', 'Leon', 'Oliver', 'Jonas', 'Mason', 'Victor', 'Felix', 'Ryan',
+    'Owen', 'Callum', 'Theo', 'Nathan', 'Jamie', 'Elias', 'Isaac', 'Tomas',
+    'Andre', 'Dylan', 'Rafael', 'Kevin', 'Sean', 'Milan', 'Luca', 'Ivan',
+    'Marco', 'Emil', 'Joel', 'Arthur', 'Caleb', 'Hassan',
+]
+
+const LAST_NAMES = [
+    'Carter', 'Holloway', 'Brennan', 'Okonkwo', 'Lindqvist', 'Moreau',
+    'Kowalski', 'Hargreaves', 'Duarte', 'Novak', 'Achterberg', 'Sullivan',
+    'Bianchi', 'Thornton', 'Petrovic', 'Garrido', 'Fairweather', 'Kingsley',
+    'Abernathy', 'Vasquez', 'Lambert', 'Osei', 'Fischer', 'Doherty',
+    'Marchetti', 'Whitfield', 'Andersen', 'Delgado', 'Rutherford', 'Yilmaz',
+    'Castellanos', 'Brightwell', 'Mbeki', 'Ostrowski', 'Galloway', 'Haddad',
+]
+
+function hashString(value) {
+    let hash = 2166136261
+
+    for (const char of String(value)) {
+        hash ^= char.charCodeAt(0)
+        hash = Math.imul(hash, 16777619) >>> 0
+    }
+
+    return hash
+}
+
+export function generatePlayerName(teamId, number) {
+    const seed = hashString(`${teamId}:${number}`)
+
+    return `${FIRST_NAMES[seed % FIRST_NAMES.length]} ${LAST_NAMES[(seed >>> 7) % LAST_NAMES.length]}`
+}
+
+// Bản lưu cũ còn tên mặc định → thay bằng tên mới theo id cầu thủ.
+function migrateNames(players, defaults) {
+    const defaultById = new Map(defaults.map((player) => [player.id, player]))
+
+    return players.map((player) =>
+        GENERIC_NAME.test(player.name || '') && defaultById.get(player.id)
+            ? { ...player, name: defaultById.get(player.id).name }
+            : player,
+    )
+}
+
 export const ROSTER_STORAGE_KEY = 'ultimate-football-roster-save-v1'
 
 export const RED_BASE_STRENGTH = 79
@@ -41,9 +90,8 @@ export function buildMatchRoster(roster, opponent) {
             }
         })
 
-        if (/^Red /.test(next.name || '')) {
-            next.name = `${opponent.shortName} ${next.position} ${next.number}`
-        }
+        // Đối thủ khác RED UNITED: mỗi đội một bộ tên riêng.
+        next.name = generatePlayerName(opponent.id, next.number)
 
         return next
     }
@@ -101,14 +149,16 @@ export function loadSavedRoster() {
                 }
             }
 
+            const defaults = [...defaultTeam.players, ...defaultTeam.substitutes]
+
             return {
                 ...defaultTeam,
                 ...savedTeam,
                 players: Array.isArray(savedTeam.players)
-                    ? savedTeam.players
+                    ? migrateNames(savedTeam.players, defaults)
                     : [...defaultTeam.players],
                 substitutes: Array.isArray(savedTeam.substitutes)
-                    ? savedTeam.substitutes
+                    ? migrateNames(savedTeam.substitutes, defaults)
                     : [...defaultTeam.substitutes],
             }
         })

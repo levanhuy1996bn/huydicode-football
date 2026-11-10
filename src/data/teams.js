@@ -83,6 +83,36 @@ const redBench = [
   ['ST', 18, 'Luis Moreno', 81],
 ]
 
+// Tên cầu thủ đá chính (hư cấu). Trước đây là tên mặc định kiểu "Blue ST 9".
+export const STARTER_NAMES = {
+  blue: {
+    1: 'Matthew Harrington',
+    2: 'Noah Pembroke',
+    3: 'Liam Fitzgerald',
+    4: 'Samuel Whitaker',
+    5: 'Benjamin Ashcroft',
+    6: 'Alexander Montgomery',
+    7: 'Marcus Delacroix-Okafor',
+    8: 'Lucas Fernandes',
+    9: 'Ethan Blackwood',
+    10: 'Gabriel Santos',
+    11: 'Kai Nakamura',
+  },
+  red: {
+    1: 'Diego Navarro',
+    2: 'Iker Mendoza',
+    3: 'Mateo Herrera',
+    4: 'Sergio Castillo',
+    5: 'Alvaro Dominguez',
+    6: 'Rodrigo Valverde',
+    7: 'Joaquin Montenegro',
+    8: 'Hugo Salvatierra',
+    9: 'Santiago Villalobos',
+    10: 'Rafael Ibanez',
+    11: 'Bruno Esquivel',
+  },
+}
+
 const buildTeam = (
     teamId,
     name,
@@ -105,7 +135,7 @@ const buildTeam = (
         ([position, number, x, z, overall]) =>
             makePlayer(
                 `${teamId}-${number}`,
-                `${prefix} ${position} ${number}`,
+                STARTER_NAMES[teamId]?.[number] || `${prefix} ${position} ${number}`,
                 position,
                 number,
                 x,

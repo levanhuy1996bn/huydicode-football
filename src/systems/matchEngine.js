@@ -10,6 +10,7 @@ import {
 import { updateGoalkeeper } from './goalkeeper'
 import { resolvePlayerCollisions, trackVelocities } from './movement'
 import { updatePlayerStates } from './playerState'
+import { recordPossession } from './matchStats'
 
 function tickTimers(state, dt) {
     Object.keys(state.timers).forEach((key) => {
@@ -43,6 +44,8 @@ export function stepMatch(ctx, dt) {
         ownerId: state.possession,
         ownerItem: state.possession ? getPlayer(ctx, state.possession) : null,
     }
+
+    recordPossession(state, snapshot.ownerItem?.teamId, dt)
 
     // 2. Cầu thủ người chơi điều khiển + thanh lực.
     updateControlledPlayer(ctx, dt)

@@ -2,6 +2,7 @@ import { clamp, distance2D } from './constants'
 import { facingFor, ownGoalSign } from './matchState'
 import { attachBallToPlayer, teamPlayers } from './ball'
 import { moveAIPlayer } from './movement'
+import { recordPlayer, recordTeam } from './matchStats'
 
 const KEEPER_REACH = 2.4
 
@@ -147,6 +148,11 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         state.pickupLocks[keeperItem.id] = 0.6
         return
     }
+
+    // Cứu thua thành công: tính sút trúng đích cho đội sút, cứu thua cho thủ môn.
+    recordTeam(state, enemyTeamId, 'onTarget')
+    recordTeam(state, teamId, 'saves')
+    recordPlayer(state, keeperItem.id, 'saves')
 
     if (ballSpeed < 20) {
         attachBallToPlayer(ctx, keeper, keeperItem.id)

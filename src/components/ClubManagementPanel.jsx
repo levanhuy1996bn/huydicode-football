@@ -86,9 +86,18 @@ function Stat({ label, value }) {
 export default function ClubManagementPanel({
                                                 roster,
                                                 onRosterChange,
+                                                // Tùy chọn: điều khiển mở/đóng từ ngoài (dùng ở sảnh).
+                                                isOpen: controlledOpen,
+                                                onOpenChange,
+                                                hideTrigger = false,
                                             }) {
     const [club, setClub] = useState(loadClub)
-    const [isOpen, setIsOpen] = useState(false)
+    const [internalOpen, setInternalOpen] = useState(false)
+    const isOpen = controlledOpen ?? internalOpen
+    const setIsOpen = (value) => {
+        if (onOpenChange) onOpenChange(value)
+        else setInternalOpen(value)
+    }
     const [tab, setTab] = useState('overview')
 
     const [search, setSearch] = useState('')
@@ -292,6 +301,7 @@ export default function ClubManagementPanel({
 
     return (
         <>
+            {!hideTrigger && (
             <button
                 onClick={() => setIsOpen(true)}
                 style={{
@@ -306,6 +316,7 @@ export default function ClubManagementPanel({
             >
                 CLUB MANAGEMENT
             </button>
+            )}
 
             {isOpen && (
                 <div

@@ -1,3 +1,5 @@
+import { createMatchStats } from './matchStats'
+
 // Toàn bộ trạng thái "sống" của trận đấu nằm trong một object duy nhất.
 // Các system nhận `ctx` (xem MatchWorld) và đọc/ghi vào ctx.state.
 
@@ -49,6 +51,9 @@ export function createMatchState() {
 
         // State machine của từng cầu thủ: { state, time, duration, elapsed }
         playerStates: {},
+
+        // Thống kê trận (sút, chuyền, tắc, cứu thua, kiểm soát bóng...)
+        stats: createMatchStats(),
 
         matchEnded: false,
     }

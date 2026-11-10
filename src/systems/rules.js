@@ -7,6 +7,7 @@ import {
 } from './matchState'
 import { clearPlayerStates } from './playerState'
 import { placeBall, teamPlayers } from './ball'
+import { recordPlayer, recordTeam } from './matchStats'
 
 const otherTeam = (teamId) => (teamId === 'blue' ? 'red' : 'blue')
 
@@ -183,6 +184,29 @@ export function checkGoalAndOut(ctx) {
             scorerId: scorer?.id || null,
             scorerName: scorer?.name || null,
             ownGoal: Boolean(scorer && scorer.teamId !== scoringTeam),
+            assistName: null,
+        }
+
+        // Thống kê: bàn thắng (không tính phản lưới) + kiến tạo.
+        if (!goalInfo.ownGoal) {
+            recordTeam(state, scoringTeam, 'onTarget')
+            recordPlayer(state, goalInfo.scorerId, 'goals')
+
+            const passerId = state.stats?.lastPasserId
+
+            if (
+                passerId &&
+                passerId !== goalInfo.scorerId &&
+                state.stats.lastPassTeam === scoringTeam
+            ) {
+                recordPlayer(state, passerId, 'assists')
+                goalInfo.assistName = ctx.byId.get(passerId)?.name || null
+            }
+        }
+
+        if (state.stats) {
+            state.stats.lastPasserId = null
+            state.stats.lastPassTeam = null
         }
 
         state.timers.goalCooldown = 4
