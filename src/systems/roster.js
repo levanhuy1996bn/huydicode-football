@@ -51,6 +51,37 @@ function migrateNames(players, defaults) {
     )
 }
 
+// Phase 19: bản lưu cũ có 6 chỉ số "phẳng" (≈ overall, không theo vị trí).
+// Cầu thủ mặc định (id có trong đội hình gốc) được cập nhật chỉ số chính
+// theo vị trí; cầu thủ mua từ thị trường giữ nguyên chỉ số của mình.
+const STAT_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical']
+
+function looksFlat(player) {
+    const values = STAT_KEYS.map((key) => player[key]).filter((value) => typeof value === 'number')
+
+    if (values.length < STAT_KEYS.length) return false
+
+    return Math.max(...values) - Math.min(...values) <= 9
+}
+
+function migrateStats(players, defaults) {
+    const defaultById = new Map(defaults.map((player) => [player.id, player]))
+
+    return players.map((player) => {
+        const fallback = defaultById.get(player.id)
+
+        if (!fallback || !looksFlat(player)) return player
+
+        const next = { ...player }
+
+        STAT_KEYS.forEach((key) => {
+            next[key] = fallback[key]
+        })
+
+        return next
+    })
+}
+
 // v2: đổi đội người chơi sang Manchester United (đội hình khác) → bản lưu cũ bỏ qua.
 export const ROSTER_STORAGE_KEY = 'ultimate-football-roster-save-v2'
 
@@ -162,10 +193,10 @@ export function loadSavedRoster() {
                 shortName: defaultTeam.shortName,
                 color: defaultTeam.color,
                 players: Array.isArray(savedTeam.players)
-                    ? migrateNames(savedTeam.players, defaults)
+                    ? migrateStats(migrateNames(savedTeam.players, defaults), defaults)
                     : [...defaultTeam.players],
                 substitutes: Array.isArray(savedTeam.substitutes)
-                    ? migrateNames(savedTeam.substitutes, defaults)
+                    ? migrateStats(migrateNames(savedTeam.substitutes, defaults), defaults)
                     : [...defaultTeam.substitutes],
             }
         })

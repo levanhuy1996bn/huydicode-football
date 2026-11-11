@@ -51,6 +51,7 @@ export default function HomeScreen({
     onEditLineup,
     onOpenLeague,
     onOpenClub,
+    onOpenDevelopment,
     onNewSeason,
 }) {
     const bluePosition = standings.findIndex((team) => team.teamId === 'blue') + 1
@@ -202,6 +203,17 @@ export default function HomeScreen({
                         <div><b>{squad.size}</b><small>PLAYERS</small></div>
                         <div><b>{squad.value}</b><small>SQUAD VALUE</small></div>
                     </div>
+                    <div className="home-card__head home-card__head--spaced">
+                        <span>PLAYER DEVELOPMENT</span>
+                        <button type="button" className="link-btn" onClick={onOpenDevelopment}>
+                            LEVEL UP →
+                        </button>
+                    </div>
+                    <p className="home-card__empty">
+                        {squad.unspentPoints > 0
+                            ? <><b className="points-callout">{squad.unspentPoints} attribute points</b> waiting to be spent.</>
+                            : 'Players earn XP every match and gain attribute points when they level up.'}
+                    </p>
                     <div className="home-card__head home-card__head--spaced">
                         <span>CLUB</span>
                         <button type="button" className="link-btn" onClick={onOpenClub}>

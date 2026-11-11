@@ -27,6 +27,7 @@ export function createMatchState() {
             aiDecisionCooldown: 0,
             goalCooldown: 0,
             shieldCooldown: 0,
+            aiAttemptCooldownBlue: 0,
         },
 
         // Mỗi cú đá tăng kickId để thủ môn chỉ phán quyết 1 lần/cú.
@@ -58,6 +59,18 @@ export function createMatchState() {
         duel: { key: null, time: 0, cooldown: 0 },
         duelSlow: {},
 
+        // Phase 18 (xem tactics.js, carrierAI.js): thời gian trận, tỉ số,
+        // chiến thuật đối thủ đang dùng, người đang cầm bóng + hướng rê của AI,
+        // đội vừa mất bóng (để vây ráp), đội đang kiểm soát bóng.
+        elapsed: 0,
+        score: { blue: 0, red: 0 },
+        aiTacticKey: null,
+        aiTacticTimer: 0,
+        carry: { id: null, time: 0, decideIn: 0, dirX: 0, dirZ: 0 },
+        turnover: null,
+        possessionTeam: null,
+        supportMemo: {},
+
         // Cú đá đang vung chân (xem ball.js → updateWindup).
         windup: null,
 
@@ -76,6 +89,18 @@ export function createMatchState() {
 
         matchEnded: false,
     }
+}
+
+// Đầu mỗi trận: xóa tiến trình trận đấu (thời gian, tỉ số, chiến thuật AI).
+export function resetMatchProgress(state) {
+    state.elapsed = 0
+    state.score = { blue: 0, red: 0 }
+    state.aiTacticKey = null
+    state.aiTacticTimer = 0
+    state.turnover = null
+    state.possessionTeam = null
+    state.carry = { id: null, time: 0, decideIn: 0, dirX: 0, dirZ: 0 }
+    state.supportMemo = {}
 }
 
 export function resetTimers(state) {

@@ -4,6 +4,8 @@ import { attachBallToPlayer, teamPlayers } from './ball'
 import { moveAIPlayer } from './movement'
 import { recordPlayer, recordTeam } from './matchStats'
 import { isPlayerLocked, setPlayerAction } from './playerState'
+import { attr, skill01 } from './attributes'
+import { fatiguePenalty } from './stamina'
 
 // ---- Phase 16: thủ môn ----
 // Khi có cú sút/bóng nhanh hướng về khung thành, thủ môn lập "kế hoạch"
@@ -84,13 +86,18 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         return { kickId: state.kickId, type: 'leave', resolved: true }
     }
 
-    const rating = keeperItem.overall || 75
-    const reaction = clamp(0.24 - (rating - 70) * 0.006, 0.1, 0.3)
+    // Phase 19: Reflexes → thời gian phản xạ, Diving → tầm bay người,
+    // trung bình Diving/Reflexes → tỉ lệ cứu thua; mệt thì kém đi.
+    const tired = fatiguePenalty(state, keeperItem.id)
+    const reflexes = attr(keeperItem, 'reflexes') - tired
+    const diving = attr(keeperItem, 'diving') - tired
+    const rating = (reflexes + diving) / 2
+    const reaction = clamp(0.24 - (reflexes - 70) * 0.006, 0.1, 0.3)
     const speed = Math.hypot(velocity.x, velocity.y, velocity.z)
     const timeToDive = timeToKeeper - reaction
     const maxReach =
-        STAND_REACH + DIVE_SPEED * clamp(timeToDive, 0, DIVE_PUSH_TIME) + 0.55 +
-        (rating - 70) * 0.02
+        STAND_REACH + DIVE_SPEED * clamp(timeToDive, 0, DIVE_PUSH_TIME) + 0.8 +
+        (diving - 70) * 0.025
 
     const standing = distance <= STAND_REACH
     // Đang nằm sân sau pha bay người trước: không kịp phản ứng.
@@ -108,15 +115,24 @@ function planSave(ctx, teamId, keeper, keeperItem) {
             0.97,
         )
     } else if (reachable) {
+        // Phase 18: tính theo tỉ lệ tầm với đã dùng (0 = sát người, 1 = vươn
+        // hết cỡ), thay vì mét tuyệt đối — trước đây bay người gần như luôn
+        // thất bại (≈15%) khi AI sút có chủ đích hơn.
+        const reachRatio = clamp(
+            (distance - STAND_REACH) / Math.max(0.1, maxReach - STAND_REACH),
+            0,
+            1,
+        )
+
         chance = clamp(
-            0.55 +
-            (rating - 70) * 0.012 +
-            (1.2 - distance) * 0.22 -
-            (speed - 20) * 0.02 -
+            0.84 +
+            (rating - 70) * 0.01 -
+            reachRatio * 0.45 -
+            Math.max(0, speed - 22) * 0.015 -
             Math.max(0, crossY - 1.9) * 0.25 -
-            (timeToDive < 0.18 ? 0.18 : 0),
-            0.08,
-            0.93,
+            (timeToDive < 0.18 ? 0.15 : 0),
+            0.1,
+            0.9,
         )
     }
 
@@ -157,6 +173,7 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         crossY,
         // Cứu thua thất bại: phản xạ chậm hơn một nhịp (bay người muộn).
         startAt: success ? reaction : reaction + 0.12,
+        reachable,
         elapsed: 0,
         expires: timeToKeeper + 0.8,
         started: false,
@@ -189,16 +206,19 @@ function resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel) {
     recordPlayer(state, keeperItem.id, 'saves')
 
     const standing = ['catch', 'catchHigh', 'scoop'].includes(plan.type)
+    // Handling (Phase 19): thủ môn bắt dính tốt bắt được bóng mạnh hơn
+    // (±4 m/s), kém thì hay phải đẩy ra.
+    const grip = (attr(keeperItem, 'handling') - 70) * 0.2
     const canHold =
-        (standing && plan.speed < 25) ||
-        (plan.type === 'diveMid' && plan.speed < 17) ||
-        (plan.type === 'diveLow' && plan.speed < 14)
+        (standing && plan.speed < 25 + grip) ||
+        (plan.type === 'diveMid' && plan.speed < 17 + grip) ||
+        (plan.type === 'diveLow' && plan.speed < 14 + grip)
 
     if (canHold) {
         keeperCatch(ctx, keeper, keeperItem)
         ctx.onActionMessage(
             teamId === 'blue'
-                ? `${saveLabel} SAVE! · S/W THROW · A/D KICK`
+                ? `${saveLabel} SAVE! · ARROWS WALK · S/W THROW · A/D KICK`
                 : `${saveLabel} SAVE!`,
         )
         return
@@ -332,8 +352,10 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         }
     }
 
-    // Đứng trên đường phân giác giữa bóng và tâm khung thành.
-    let targetX = clamp(predictedX * 0.75, -3.2, 3.2)
+    // Đứng trên đường phân giác giữa bóng và tâm khung thành. Positioning
+    // kém (Phase 19) thì đứng lệch về phía tâm khung thành hơn (che góc kém).
+    const coverage = 0.6 + skill01(attr(keeperItem, 'positioning')) * 0.25
+    let targetX = clamp(predictedX * coverage, -3.2, 3.2)
     let targetZ =
         goalZ - goalSign * clamp((goalZ - ballPosition.z) * goalSign * 0.2, 0, 5)
 

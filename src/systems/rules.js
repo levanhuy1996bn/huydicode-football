@@ -58,6 +58,8 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
     state.duel = { key: null, time: 0, cooldown: 0 }
     state.duelSlow = {}
     state.restart = null
+    state.whistle = null
+    state.deadBall = false
 
     // BLUE giao bóng: người chơi điều khiển luôn cầu thủ giao bóng.
     if (kickoffTeam === 'blue' && kickoffObject) {
@@ -67,7 +69,8 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
 
     state.timers.tackleCooldown = 0
     state.timers.aiAttemptCooldown = 0
-    state.timers.aiDecisionCooldown = 1
+    state.timers.aiAttemptCooldownBlue = 0
+    state.timers.aiDecisionCooldown = 0.6
 
     clearPlayerStates(state)
 }
@@ -222,6 +225,8 @@ export function checkGoalAndOut(ctx) {
             state.stats.lastPasserId = null
             state.stats.lastPassTeam = null
         }
+
+        if (state.score) state.score[scoringTeam] += 1
 
         state.timers.goalCooldown = 4
         resetPositions(ctx, defendingTeam)

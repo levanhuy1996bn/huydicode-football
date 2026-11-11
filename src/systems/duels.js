@@ -1,4 +1,6 @@
 import { clamp, distance2D, facingVector } from './constants'
+import { attr } from './attributes'
+import { fatiguePenalty } from './stamina'
 import { getPlayer } from './ball'
 import { isPlayerLocked, setPlayerAction } from './playerState'
 import { recordPlayer, recordTeam } from './matchStats'
@@ -22,7 +24,14 @@ const CONTACT_RANGE = 1.32        // coi như đang tì vai (bán kính va chạ
 const DUEL_INTERVAL = 0.55        // thời gian tiếp xúc cho mỗi lần đấu sức
 const DUEL_COOLDOWN = 1.2
 
-const physicalOf = (item) => item?.physical || item?.overall || 75
+// Sức mạnh trong tranh chấp (Phase 19): Strength (người cầm bóng cộng thêm
+// Balance — giữ thăng bằng khi bị tì), trừ đi khi mệt.
+const physicalOf = (state, item, carrier = false) => {
+    const strength = attr(item, 'strength')
+    const value = carrier ? strength * 0.65 + attr(item, 'balance') * 0.35 : strength
+
+    return value - fatiguePenalty(state, item?.id)
+}
 
 export function isShielding(state, playerId) {
     return Boolean(playerId) && state.shieldingId === playerId
@@ -109,7 +118,7 @@ export function pushShare(ctx, itemA, itemB) {
     if (isShielding(state, itemB.id)) return 0.85
     if (itemA.teamId === itemB.teamId) return 0.5
 
-    return clamp(0.5 + (physicalOf(itemB) - physicalOf(itemA)) * 0.012, 0.25, 0.75)
+    return clamp(0.5 + (physicalOf(state, itemB) - physicalOf(state, itemA)) * 0.012, 0.25, 0.75)
 }
 
 // Hệ số tốc độ của một cầu thủ (bị tì vai thì chậm lại).
@@ -157,7 +166,7 @@ export function updateDuels(ctx, dt) {
     }
 
     const shielding = isShielding(state, ownerId)
-    const difference = physicalOf(rival.item) - physicalOf(item)
+    const difference = physicalOf(state, rival.item) - physicalOf(state, item, true)
 
     // Bị tì vai: chậm lại (người che bóng vốn đã đi chậm nên không trừ thêm).
     if (!shielding) {
@@ -181,11 +190,19 @@ export function updateDuels(ctx, dt) {
     const speed = Math.hypot(velocity.x, velocity.z)
     const sprinting = speed > 6.5
 
-    const loseChance = clamp(
-        0.07 + difference * 0.008 + (sprinting ? 0.04 : 0) - (shielding ? 0.03 : 0),
-        0.01,
-        shielding ? 0.16 : 0.3,
-    )
+    // Cầu thủ đội người chơi không tự hất được bóng khỏi chân đối thủ chỉ
+    // bằng tì vai: người chơi phải bấm tắc / xoạc (yêu cầu playtest). Máy thì
+    // vẫn có thể thắng tay đôi.
+    const passiveAllowed =
+        rival.item.teamId !== 'blue' || ctx.autoPlay || state.autoPilot
+
+    const loseChance = passiveAllowed
+        ? clamp(
+            0.07 + difference * 0.008 + (sprinting ? 0.04 : 0) - (shielding ? 0.03 : 0),
+            0.01,
+            shielding ? 0.16 : 0.3,
+        )
+        : 0
     const holdChance = clamp(
         0.05 - difference * 0.008 + (shielding ? 0.06 : 0),
         0.01,
@@ -243,7 +260,7 @@ export function updateDuels(ctx, dt) {
 }
 
 // Tỉ lệ tắc bóng thành công mà đoạt được bóng gọn (còn lại: chọc bóng văng ra).
-export const CLEAN_TACKLE_RATE = 0.68
+export const CLEAN_TACKLE_RATE = 0.75
 
 // Chọc bóng văng khỏi chân người cầm bóng theo hướng người tắc đang nhìn.
 export function pokeBallLoose(ctx, tackler, ownerId, tacklerId, teamId) {
@@ -251,23 +268,21 @@ export function pokeBallLoose(ctx, tackler, ownerId, tacklerId, teamId) {
     const ball = ctx.ballRef.current
     const direction = facingVector(tackler.rotation.y)
     const side = Math.random() < 0.5 ? -1 : 1
-    const speed = 4.5 + Math.random() * 2
+    const speed = 3 + Math.random() * 1.5
 
-    // Lệch ngang một chút để bóng không lăn thẳng vào chân người vừa mất bóng.
-    ball.setLinvel(
-        {
-            x: (direction.x + -direction.z * side * 0.45) * speed,
-            y: 0.5,
-            z: (direction.z + direction.x * side * 0.45) * speed,
-        },
-        true,
-    )
+    // Bóng bật sang ngang, hơi về phía người tắc (trước đây bóng lăn tiếp về
+    // phía trước, tức là về phía đội vừa mất bóng → họ lấy lại rất dễ).
+    const x = -direction.z * side * 0.9 - direction.x * 0.3
+    const z = direction.x * side * 0.9 - direction.z * 0.3
+    const length = Math.hypot(x, z) || 1
+
+    ball.setLinvel({ x: (x / length) * speed, y: 0.35, z: (z / length) * speed }, true)
 
     state.possession = null
     state.pendingPass = null
     state.lastTouchTeam = teamId
     state.lastToucherId = tacklerId
-    state.pickupLocks[ownerId] = 0.7
-    state.pickupLocks[tacklerId] = 0.25
+    state.pickupLocks[ownerId] = 0.9
+    state.pickupLocks[tacklerId] = 0.12
     state.shieldAi = null
 }

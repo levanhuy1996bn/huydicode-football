@@ -1,0 +1,475 @@
+import { FIELD, clamp, distance2D } from './constants'
+import { attackDir } from './matchState'
+import {
+    getPlayer,
+    kickFromPlayer,
+    listPassCandidates,
+} from './ball'
+import { moveAIPlayer } from './movement'
+import { isPlayerLocked } from './playerState'
+import { startAiShield } from './duels'
+import { teamTactic } from './tactics'
+import { attr, skill01 } from './attributes'
+
+// ---- Phase 18: AI cầm bóng ----
+//
+// Mỗi ~0.2 giây người cầm bóng (không do người chơi điều khiển) đánh giá:
+//   1. Sút     — theo khoảng cách, góc sút và có người chắn hay không.
+//   2. Chuyền  — mọi đồng đội × 3 kiểu (sệt, chọc khe, bổng), chấm điểm theo
+//                độ an toàn của đường chuyền (laneSlack), độ thoáng của người
+//                nhận và số mét tiến lên được.
+//   3. Rê bóng — chọn hướng thoáng nhất trong 9 hướng, ưu tiên tiến lên.
+//   4. Che bóng / phá bóng khi bị áp sát mà không còn lựa chọn nào.
+// Trước đây AI chỉ chuyền khi đối thủ đã ở sát người (≤ 2.5m) và không xét
+// đường chuyền có bị chắn không → khoảng 60% đường chuyền bị cắt.
+
+// Thủ môn người chơi được ôm bóng tối đa 6 giây rồi tự phát bóng.
+export const KEEPER_HOLD_LIMIT = 6
+
+const CLOSE_PRESSURE = 2.3
+const NEAR_PRESSURE = 5.5
+const DECIDE_MIN = 0.16
+const DECIDE_JITTER = 0.12
+
+// Tốc độ rê bóng của AI: giữ bóng sát chân (~5.3 m/s) khi có người ở gần,
+// chỉ tăng tốc (~7.4 m/s, bóng xa chân hơn và dễ bị cắt) khi phía trước trống.
+const CONTROL_SCALE = 0.72
+const SPRINT_SCALE = 1
+
+const DRIBBLE_ANGLES = [0, 0.45, -0.45, 0.9, -0.9, 1.4, -1.4, 2.2, -2.2]
+
+function opponentsNear(ctx, ownerItem, owner, range) {
+    const { state, objects } = ctx
+    const list = []
+
+    ctx.players.forEach((other) => {
+        if (other.teamId === ownerItem.teamId) return
+
+        const object = objects[other.id]
+        if (!object) return
+
+        const distance = distance2D(object.position, owner.position)
+
+        if (distance > range) return
+
+        list.push({
+            item: other,
+            x: object.position.x,
+            z: object.position.z,
+            distance,
+            // Người đang nằm sân / mất đà không gây áp lực.
+            active: !isPlayerLocked(state, other.id),
+        })
+    })
+
+    return list.sort((a, b) => a.distance - b.distance)
+}
+
+// Càng bị áp sát, rê bóng càng kém giá trị → chuyền sớm trước khi bị vây.
+function pressureFactor(nearest) {
+    if (nearest < CLOSE_PRESSURE) return 0.3
+    if (nearest < 4) return 0.5
+    if (nearest < 6.5) return 0.7
+    if (nearest < 9) return 0.9
+
+    return 1
+}
+
+// Giá trị cú sút 0..1 (≈ khả năng đáng để sút).
+function evaluateShot(owner, direction, opponents) {
+    const goalZ = direction * FIELD.lineZ
+    const depth = (goalZ - owner.position.z) * direction
+
+    if (depth < 1 || depth > 27) return 0
+
+    const distance = Math.hypot(owner.position.x, depth)
+
+    if (distance > 27) return 0
+
+    // Góc nhìn thấy khung thành.
+    const angle =
+        Math.atan2(FIELD.goalHalfWidth - owner.position.x, depth) -
+        Math.atan2(-FIELD.goalHalfWidth - owner.position.x, depth)
+
+    const angleFactor = clamp(angle / 0.42, 0.12, 1)
+    const distanceFactor = clamp(1.45 - distance / 24, 0, 1)
+
+    // Có hậu vệ đứng chắn ngay trên đường sút.
+    const lineX = 0 - owner.position.x
+    const lineZ = goalZ - owner.position.z
+    const lengthSq = lineX * lineX + lineZ * lineZ
+
+    const blocked = opponents.some((opponent) => {
+        if (opponent.item.role === 'GK' || !opponent.active) return false
+
+        const projection =
+            ((opponent.x - owner.position.x) * lineX +
+                (opponent.z - owner.position.z) * lineZ) /
+            lengthSq
+
+        if (projection < 0.04 || projection > 0.6) return false
+
+        const closestX = owner.position.x + lineX * projection
+        const closestZ = owner.position.z + lineZ * projection
+
+        return Math.hypot(opponent.x - closestX, opponent.z - closestZ) < 1
+    })
+
+    return distanceFactor * angleFactor * (blocked ? 0.4 : 1)
+}
+
+// Chấm điểm mọi lựa chọn chuyền bóng. Trả về danh sách đã sắp xếp (tốt nhất trước).
+function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { allowKeeper }) {
+    const options = []
+    const ownerAdvance = owner.position.z * direction
+
+    const consider = (kind) => {
+        listPassCandidates(ctx, ownerId, kind).forEach((candidate) => {
+            if (candidate.item.role === 'GK' && !(allowKeeper && kind === 'pass')) return
+
+            const distance = candidate.distance
+            const progress = candidate.forwardGap
+            const open = candidate.nearestOpponent
+
+            if (kind === 'pass' && (distance < 4 || distance > 26)) return
+            if (kind === 'through' && (distance < 8 || distance > 30 || progress < 5)) return
+            if (kind === 'lob' && (distance < 15 || distance > 40)) return
+
+            // Bóng bổng kém chính xác hơn: rơi xuống còn nảy, dễ bị tranh.
+            const lane =
+                kind === 'lob'
+                    ? 0.62 * clamp(0.5 + candidate.laneSlack * 0.3, 0.3, 1)
+                    : clamp(0.5 + candidate.laneSlack * 0.45, 0, 1)
+
+            // Chọc khe: người nhận phải tới điểm rơi trước hậu vệ gần nhất.
+            if (kind === 'through') {
+                const run = distance2D(candidate.object.position, candidate.targetPosition)
+                const velocity = ctx.state.velocities[candidate.item.id] || { x: 0, z: 0 }
+                // Người nhận đang chạy lên có đà sẵn; hậu vệ phải quay người đuổi.
+                const moving = velocity.z * direction > 3
+
+                if (open < run + (moving ? 0.3 : 1.5)) return
+            }
+
+            // Người nhận bị kèm sát (< 2m) là lựa chọn tồi: nhận bóng xong mất ngay.
+            const safety = lane * clamp((open - 1) / 3.5, 0.15, 1)
+
+            const targetAdvance = candidate.targetPosition.z * direction
+            const inBox = targetAdvance > 36 && Math.abs(candidate.targetPosition.x) < 14
+
+            // Bóng bổng về phía sau không có ý nghĩa; chuyền dài ngoài vòng cấm
+            // chỉ khi người nhận thật sự trống (bóng rơi xuống còn nảy).
+            if (kind === 'lob' && !inBox && (progress < 8 || open < 5)) return
+
+            const progressTerm =
+                progress >= 0
+                    ? (clamp(progress, 0, 28) / 28) * (0.5 + tactic.directness * 0.5)
+                    : (clamp(progress, -15, 0) / 15) * 0.3
+
+            // Không chuyền ngang/về trong 1/3 sân nhà nếu không cần.
+            const ownThirdPenalty =
+                targetAdvance < -30 && ownerAdvance > targetAdvance ? 0.12 : 0
+
+            const value =
+                safety *
+                (0.3 +
+                    progressTerm +
+                    (inBox ? 0.25 : 0) +
+                    (kind === 'through' ? 0.08 : 0) -
+                    (kind === 'lob' && !inBox ? 0.14 - tactic.directness * 0.08 : 0) -
+                    ownThirdPenalty)
+
+            // Vision (Phase 19): cầu thủ nhìn bao quát tốt mới thấy và dám
+            // thực hiện đường chọc khe / chuyền dài.
+            const visionFactor =
+                kind === 'pass' ? 1 : 0.65 + skill01(attr(ownerItem, 'vision')) * 0.35
+
+            options.push({
+                kind,
+                receiverId: candidate.item.id,
+                safety,
+                progress,
+                inBox,
+                value: value * visionFactor,
+            })
+        })
+    }
+
+    consider('pass')
+    consider('through')
+    consider('lob')
+
+    return options.sort((a, b) => b.value - a.value)
+}
+
+// Hướng rê bóng thoáng nhất (vector đơn vị) + điểm số của hướng đó.
+function chooseDribbleDirection(owner, direction, opponents, carry) {
+    const advance = owner.position.z * direction
+
+    // Hướng cơ sở: tiến lên, hơi bó vào trung lộ; vào 1/3 cuối sân thì hướng
+    // thẳng tới khung thành.
+    let baseX
+    let baseZ
+
+    if (advance > 22) {
+        baseX = clamp(-owner.position.x * 0.5, -6, 6)
+        baseZ = (direction * FIELD.lineZ - owner.position.z) || direction
+    } else {
+        baseX = (clamp(owner.position.x * 0.72, -18, 18) - owner.position.x) * 0.6
+        baseZ = direction * 9
+    }
+
+    const baseLength = Math.hypot(baseX, baseZ) || 1
+
+    baseX /= baseLength
+    baseZ /= baseLength
+
+    let best = null
+
+    DRIBBLE_ANGLES.forEach((angle) => {
+        const cos = Math.cos(angle)
+        const sin = Math.sin(angle)
+        const dx = baseX * cos - baseZ * sin
+        const dz = baseX * sin + baseZ * cos
+
+        let score = cos
+
+        opponents.forEach((opponent) => {
+            if (!opponent.active) return
+
+            const relX = opponent.x - owner.position.x
+            const relZ = opponent.z - owner.position.z
+            const along = relX * dx + relZ * dz
+            const lateral = Math.abs(relX * dz - relZ * dx)
+
+            if (along > -0.6 && along < 7) {
+                score -= Math.max(0, 1 - lateral / 2.4) * (1.5 - along / 7)
+            }
+        })
+
+        // Không rê ra ngoài sân.
+        const aheadX = owner.position.x + dx * 5
+        const aheadZ = owner.position.z + dz * 5
+
+        if (Math.abs(aheadX) > FIELD.maxX - 2) score -= 1.2
+        if (Math.abs(aheadZ) > FIELD.maxZ - 1.5) score -= 1.2
+
+        // Giữ hướng cũ một chút để không lắc qua lắc lại.
+        score += 0.22 * (dx * carry.dirX + dz * carry.dirZ)
+
+        if (!best || score > best.score) {
+            best = { x: dx, z: dz, score }
+        }
+    })
+
+    return best
+}
+
+function dribble(ctx, ownerItem, owner, carry, speedScale, dt) {
+    if (!carry.dirX && !carry.dirZ) return
+
+    moveAIPlayer(
+        ctx,
+        ownerItem,
+        {
+            x: owner.position.x + carry.dirX * 6,
+            z: owner.position.z + carry.dirZ * 6,
+        },
+        speedScale,
+        dt,
+    )
+}
+
+function passTo(ctx, ownerId, option) {
+    return kickFromPlayer(ctx, ownerId, option.kind, true, {
+        receiverId: option.receiverId,
+    })
+}
+
+// Thủ môn AI phát bóng sau khi bắt được: ném tay cho đồng đội trống ở
+// khoảng 8–30m, không có thì phát bóng dài bằng chân.
+function distributeFromHands(ctx, keeperId) {
+    const { state } = ctx
+    const target = listPassCandidates(ctx, keeperId, 'pass')[0]
+    const open =
+        target &&
+        target.item.role !== 'GK' &&
+        target.distance >= 8 &&
+        target.distance <= 30 &&
+        target.nearestOpponent > 4 &&
+        target.laneSlack > 0.3
+
+    const kicked = kickFromPlayer(ctx, keeperId, open ? 'pass' : 'lob', true, {
+        receiverId: open ? target.item.id : null,
+    })
+
+    state.timers.aiDecisionCooldown = kicked ? 1.5 : 0.5
+}
+
+export function updateCarrierAI(ctx, dt) {
+    const { state, objects } = ctx
+    const ownerId = state.possession
+    const owner = ownerId ? objects[ownerId] : null
+    const ownerItem = ownerId ? getPlayer(ctx, ownerId) : null
+
+    if (!owner || !ownerItem) return
+
+    const keeperHolding = state.keeperHands === ownerId
+
+    // Người chơi điều khiển: AI không quyết định thay, trừ khi thủ môn BLUE
+    // ôm bóng quá lâu (người chơi không bấm phát bóng) → tự phát bóng.
+    if (ownerId === ctx.selectedId && !keeperHolding) return
+
+    // Đang vung chân / đang che bóng / mất đà: chờ.
+    if (state.windup || state.shieldingId === ownerId || isPlayerLocked(state, ownerId)) return
+
+    const carry = state.carry?.id === ownerId
+        ? state.carry
+        : (state.carry = { id: ownerId, time: 0, decideIn: 0, dirX: 0, dirZ: 0 })
+
+    if (keeperHolding) {
+        if (state.timers.aiDecisionCooldown > 0) return
+
+        // Thủ môn BLUE: chờ người chơi phát bóng (5s), hoặc 1.5s nếu người chơi
+        // đã chuyển sang điều khiển cầu thủ khác.
+        if (ownerItem.teamId === 'blue' && !ctx.autoPlay) {
+            const wait = ownerId === ctx.selectedId ? KEEPER_HOLD_LIMIT : 1.5
+
+            if ((state.keeperHoldTime || 0) < wait) return
+        }
+
+        distributeFromHands(ctx, ownerId)
+        return
+    }
+
+    // AI ném biên: ném cho đồng đội phù hợp, không có thì ném xa lên trên.
+    if (state.restart?.type === 'throw-in' && state.restart.playerId === ownerId) {
+        if (state.timers.aiDecisionCooldown > 0) return
+
+        if (!kickFromPlayer(ctx, ownerId, 'pass', true)) {
+            kickFromPlayer(ctx, ownerId, 'lob', true)
+        }
+
+        state.timers.aiDecisionCooldown = 1.2
+        return
+    }
+
+    // Vừa giao bóng / đá phạt: chờ một nhịp cho đồng đội vào vị trí.
+    if (state.timers.aiDecisionCooldown > 0 && carry.time < 0.05) return
+
+    const direction = attackDir(state, ownerItem.teamId)
+    const tactic = teamTactic(ctx, ownerItem.teamId)
+    const speedScale = carry.sprint ? SPRINT_SCALE : CONTROL_SCALE
+
+    carry.decideIn -= dt
+
+    if (carry.decideIn > 0 || state.timers.aiDecisionCooldown > 0) {
+        // Giữa hai lần quyết định: tiếp tục rê theo hướng đã chọn.
+        dribble(ctx, ownerItem, owner, carry, speedScale, dt)
+        return
+    }
+
+    carry.decideIn = DECIDE_MIN + Math.random() * DECIDE_JITTER
+
+    const opponents = opponentsNear(ctx, ownerItem, owner, 28)
+    const pressers = opponents.filter((opponent) => opponent.active)
+    const nearest = pressers[0]?.distance ?? Infinity
+    const close = nearest < CLOSE_PRESSURE
+    const near = nearest < NEAR_PRESSURE
+    const advance = owner.position.z * direction
+    const role = ownerItem.role
+
+    // ---- 1. Sút ----
+    const shot = evaluateShot(owner, direction, opponents)
+    const shootThreshold = 0.5 - tactic.risk * 0.08
+
+    if (shot > shootThreshold) {
+        if (kickFromPlayer(ctx, ownerId, 'shoot', true)) return
+    }
+
+    // ---- 2. Chuyền ----
+    const options = evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, {
+        allowKeeper: (close || role === 'DF') && advance < -5,
+    })
+
+    const minSafety = 0.62 - tactic.risk * 0.14
+    const best = options.find((option) => option.safety >= minSafety) || null
+
+    // Tạt bóng: ở biên trong 1/3 cuối sân, có đồng đội trong vòng cấm.
+    const wide = Math.abs(owner.position.x) > 13 && advance > 32
+    const cross = wide
+        ? options.find(
+            (option) => option.kind === 'lob' && option.inBox && option.safety > 0.3,
+        ) || options.find(
+            (option) => option.inBox && option.safety >= minSafety,
+        )
+        : null
+
+    if (cross && (near || advance > 45 || Math.random() < 0.35)) {
+        if (passTo(ctx, ownerId, cross)) return
+    }
+
+    // Thời gian giữ bóng thoải mái; quá mức này thì càng lúc càng muốn chuyền.
+    const holdTime =
+        role === 'GK'
+            ? 0.3
+            : role === 'DF'
+                ? 1.4
+                : role === 'MF'
+                    ? 2.8 - tactic.tempo * 1.4
+                    : 3.4 - tactic.tempo * 1.2
+
+    // So sánh giá trị: chuyền cho lựa chọn tốt nhất hay tự rê bóng tiếp.
+    // Rê bóng có giá trị cao khi phía trước thoáng, thấp khi bị áp sát.
+    const choice = chooseDribbleDirection(owner, direction, pressers.slice(0, 6), carry)
+
+    let dribbleValue =
+        clamp(0.24 + 0.3 * choice.score, 0.05, 0.58) *
+        pressureFactor(nearest) *
+        (role === 'DF' ? 0.8 : 1) -
+        Math.max(0, carry.time - holdTime) * 0.15
+
+    if (role === 'GK') dribbleValue = 0
+
+    if (best && best.value > dribbleValue && passTo(ctx, ownerId, best)) return
+
+    // ---- 3. Bị áp sát mà không có đường chuyền ----
+    if (close && !best) {
+        if (shot > 0.25 && kickFromPlayer(ctx, ownerId, 'shoot', true)) return
+
+        // Sát khung thành nhà: phá bóng lên.
+        if (advance < -30 || role === 'GK') {
+            if (kickFromPlayer(ctx, ownerId, 'lob', true, { clearance: true })) return
+        }
+
+        if (
+            state.timers.shieldCooldown <= 0 &&
+            (pressers[1]?.distance ?? Infinity) > 4 &&
+            Math.random() < 0.6
+        ) {
+            startAiShield(state, ownerId, 0.6 + Math.random() * 0.6)
+            return
+        }
+    }
+
+    // Thủ môn có bóng trong chân mà chưa có đường chuyền: phá bóng.
+    if (role === 'GK' && carry.time > 0.8) {
+        if (kickFromPlayer(ctx, ownerId, 'lob', true, { clearance: true })) return
+    }
+
+    // ---- 4. Rê bóng ----
+    carry.dirX = choice.x
+    carry.dirZ = choice.z
+    // Trống trải thì tăng tốc (bóng xa chân hơn, dễ bị cắt hơn nếu có người).
+    // (điểm của hướng rê chỉ bị trừ bởi đối thủ ở PHÍA TRƯỚC, nên bị đuổi
+    // từ phía sau khi đã thoát xuống thì vẫn bứt tốc.)
+    const throughOnGoal = !pressers.some(
+        (opponent) =>
+            opponent.item.role !== 'GK' &&
+            opponent.z * direction > owner.position.z * direction + 1,
+    )
+
+    carry.sprint = choice.score > 0.75 && (nearest > 7 || throughOnGoal)
+
+    dribble(ctx, ownerItem, owner, carry, carry.sprint ? SPRINT_SCALE : CONTROL_SCALE, dt)
+}

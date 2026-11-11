@@ -15,16 +15,19 @@ import Player from './Player'
 
 import { FIXED_STEP, TACTICS, clamp } from '../systems/constants'
 import { getRole } from '../systems/roster'
+import { halftimeRecovery, resetStamina } from '../systems/stamina'
+import { stepWhistle } from '../systems/whistle'
 import {
     createMatchState,
     facingFor,
     homePosition,
+    resetMatchProgress,
 } from '../systems/matchState'
 import { attachBallToPlayer } from '../systems/ball'
 import { resetPositions } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { handleKeyDown, handleKeyUp } from '../systems/control'
-import { stepMatch } from '../systems/matchEngine'
+import { noteUserInput, stepMatch } from '../systems/matchEngine'
 import { USER_TEAM } from '../data/leagueData'
 
 function FixedCamera({ ballRef }) {
@@ -402,6 +405,10 @@ export default function MatchWorld({
     radarRef,
     statsRef,
     labelMode = 'smart',
+    matchDuration,
+    whistlePending = null,
+    onWhistleDone,
+    onAutoPilotChange,
 }) {
     const keys = useKeyboard()
 
@@ -468,6 +475,12 @@ export default function MatchWorld({
         redPlayers,
         byId,
         tactic,
+        // Độ dài trận (giây): AI đối thủ đổi chiến thuật theo thời gian còn lại.
+        matchDuration,
+        // Hết giờ, đang chờ bóng chết để thổi còi ('half' | 'full' | null).
+        whistlePending,
+        onWhistleDone,
+        onAutoPilotChange,
         isPlaying,
         opponentName,
         userTeamName,
@@ -495,6 +508,8 @@ export default function MatchWorld({
     useEffect(() => {
         state.stats = createMatchStats()
         state.timers.goalCooldown = 1
+        resetMatchProgress(state)
+        resetStamina(ctx)
         resetPositions(ctx, 'blue')
     }, [ctx, state])
 
@@ -575,6 +590,7 @@ export default function MatchWorld({
         state.sidesSwapped = shouldSwap
 
         if (shouldSwap) {
+            halftimeRecovery(state)
             resetPositions(ctx, 'red')
             state.timers.goalCooldown = 1
             onActionMessage('SECOND HALF - TEAMS SWITCH ENDS')
@@ -591,17 +607,21 @@ export default function MatchWorld({
         state.sidesSwapped = false
         state.timers.goalCooldown = 1
         state.stats = createMatchStats()
+        resetMatchProgress(state)
+        resetStamina(ctx)
 
         resetPositions(ctx, 'blue')
         onActionMessage('MATCH RESTARTED')
     }, [resetKey, ctx, state, onActionMessage])
 
     // Phím hành động: S/W/A/D giữ để lấy lực, nhả để đá; Q đổi người;
-    // Space tắc bóng; Ctrl xoạc.
+    // Space tắc bóng; A (khi phòng ngự) hoặc Ctrl xoạc.
     useEffect(() => {
         const onKeyDown = (event) => {
             if (!ctx.isPlaying) return
 
+            // Bấm phím bất kỳ: lấy lại quyền điều khiển nếu máy đang đá thay.
+            noteUserInput(ctx)
             handleKeyDown(ctx, event)
         }
 
@@ -630,6 +650,14 @@ export default function MatchWorld({
         const ball = ballRef.current
 
         if (!ball) return
+
+        // Trọng tài đã thổi còi hết hiệp / hết trận: chạy hoạt cảnh, đứng yên
+        // sau khi xong cho tới khi GameScene chuyển màn.
+        if (state.whistle) {
+            if (!state.whistle.done) stepWhistle(ctx, FIXED_STEP)
+            else ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
+            return
+        }
 
         if (!ctx.isPlaying || state.matchEnded) {
             ball.setLinvel({ x: 0, y: 0, z: 0 }, true)

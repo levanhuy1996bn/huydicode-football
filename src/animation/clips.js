@@ -566,6 +566,101 @@ export const CLIPS = {
         },
         { t: 1, pose: {} },
     ],
+
+    // ---- Hết trận (whistle.js) ----
+
+    // Ăn mừng: khuỵu gối lấy đà rồi bật nhảy, hai tay giơ cao.
+    celebrate: [
+        { t: 0, pose: { lShoulderX: -2.4, rShoulderX: -2.4, lShoulderZ: -0.3, rShoulderZ: 0.3 } },
+        {
+            t: 0.3,
+            pose: {
+                rootY: -0.16, lKnee: 0.9, rKnee: 0.9, lHipX: -0.55, rHipX: -0.55, torsoPitch: 0.25,
+                lShoulderX: -1.6, rShoulderX: -1.6, lShoulderZ: -0.4, rShoulderZ: 0.4,
+                lElbow: -0.6, rElbow: -0.6,
+            },
+        },
+        {
+            t: 0.55,
+            pose: {
+                rootY: 0.38, lKnee: 0.25, rKnee: 0.5, lHipX: -0.2, torsoPitch: -0.2,
+                lShoulderX: -2.95, rShoulderX: -2.95, lShoulderZ: -0.35, rShoulderZ: 0.35,
+                lElbow: -0.15, rElbow: -0.15, headPitch: -0.45,
+            },
+        },
+        {
+            t: 0.8,
+            pose: {
+                rootY: -0.06, lKnee: 0.45, rKnee: 0.45, lHipX: -0.25, rHipX: -0.25,
+                lShoulderX: -2.6, rShoulderX: -2.6, lShoulderZ: -0.3, rShoulderZ: 0.3,
+                lElbow: -0.3, rElbow: -0.3, headPitch: -0.2,
+            },
+        },
+        { t: 1, pose: { lShoulderX: -2.4, rShoulderX: -2.4, lShoulderZ: -0.3, rShoulderZ: 0.3 } },
+    ],
+
+    // Thất vọng: cúi gập người, hai tay chống gối, đầu cúi.
+    dejected: [
+        { t: 0, pose: {} },
+        {
+            t: 0.15,
+            pose: {
+                rootY: -0.12, torsoPitch: 0.95, headPitch: 0.45,
+                lKnee: 0.55, rKnee: 0.55, lHipX: -0.45, rHipX: -0.45,
+                lShoulderX: -0.85, rShoulderX: -0.85, lShoulderZ: 0.12, rShoulderZ: -0.12,
+                lElbow: -0.15, rElbow: -0.15,
+            },
+        },
+        {
+            t: 0.9,
+            pose: {
+                rootY: -0.13, torsoPitch: 1, headPitch: 0.5,
+                lKnee: 0.58, rKnee: 0.58, lHipX: -0.47, rHipX: -0.47,
+                lShoulderX: -0.9, rShoulderX: -0.9, lShoulderZ: 0.12, rShoulderZ: -0.12,
+                lElbow: -0.12, rElbow: -0.12,
+            },
+        },
+        { t: 1, pose: { torsoPitch: 0.3, headPitch: 0.35 } },
+    ],
+
+    // Vỗ tay (hòa / cảm ơn khán giả).
+    clap: [
+        {
+            t: 0,
+            pose: {
+                lShoulderX: -1.15, rShoulderX: -1.15, lShoulderZ: 0.35, rShoulderZ: -0.35,
+                lElbow: -1.3, rElbow: -1.3, headPitch: -0.1,
+            },
+        },
+        {
+            t: 0.25,
+            pose: {
+                lShoulderX: -1.2, rShoulderX: -1.2, lShoulderZ: 0.72, rShoulderZ: -0.72,
+                lElbow: -1.35, rElbow: -1.35, headPitch: -0.1,
+            },
+        },
+        {
+            t: 0.5,
+            pose: {
+                lShoulderX: -1.15, rShoulderX: -1.15, lShoulderZ: 0.35, rShoulderZ: -0.35,
+                lElbow: -1.3, rElbow: -1.3, headPitch: -0.1,
+            },
+        },
+        {
+            t: 0.75,
+            pose: {
+                lShoulderX: -1.2, rShoulderX: -1.2, lShoulderZ: 0.72, rShoulderZ: -0.72,
+                lElbow: -1.35, rElbow: -1.35, headPitch: -0.1,
+            },
+        },
+        {
+            t: 1,
+            pose: {
+                lShoulderX: -1.15, rShoulderX: -1.15, lShoulderZ: 0.35, rShoulderZ: -0.35,
+                lElbow: -1.3, rElbow: -1.3, headPitch: -0.1,
+            },
+        },
+    ],
 }
 
 // Tư thế tĩnh: giữ bóng trên đầu chờ ném biên.

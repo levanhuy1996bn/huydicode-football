@@ -3,6 +3,7 @@
 const TABS = [
     ['home', 'HOME'],
     ['prematch', 'PLAY'],
+    ['development', 'SQUAD'],
     ['league', 'LEAGUE'],
     ['club', 'CLUB'],
 ]

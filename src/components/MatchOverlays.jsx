@@ -66,6 +66,7 @@ export function HalfTimeOverlay({
     events,
     tacticKey,
     onTacticChange,
+    opponentTacticKey,
     formationKey,
     onFormationChange,
     substitutionCount,
@@ -103,6 +104,19 @@ export function HalfTimeOverlay({
                             ))}
                         </select>
                     </label>
+
+                    <p className="tactic-summary">
+                        {TACTICS[tacticKey]?.summary}
+                        {opponentTacticKey && TACTICS[opponentTacticKey] && (
+                            <>
+                                {' '}
+                                <b>
+                                    {opponentName} are playing{' '}
+                                    {TACTICS[opponentTacticKey].label}.
+                                </b>
+                            </>
+                        )}
+                    </p>
 
                     <div className="halftime-settings__row">
                         <span>Formation</span>

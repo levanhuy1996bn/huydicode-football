@@ -118,6 +118,8 @@ export default function Player({
     const numberTexture = useNumberTexture(player.number, shirt)
     const labelRef = useRef(null)
     const labelVisible = useRef(null)
+    const staminaRef = useRef(null)
+    const staminaShown = useRef(-1)
 
     useEffect(() => {
         onReady?.(player.id, root.current)
@@ -141,6 +143,16 @@ export default function Player({
             if (labelVisible.current !== show) {
                 labelVisible.current = show
                 labelRef.current.style.display = show ? 'flex' : 'none'
+            }
+
+            // Thanh thể lực dưới tên (Phase 19): xanh > 60, vàng > 35, đỏ.
+            const stamina = Math.round(matchState?.stamina?.[player.id] ?? 100)
+
+            if (show && staminaRef.current && staminaShown.current !== stamina) {
+                staminaShown.current = stamina
+                staminaRef.current.style.width = `${stamina}%`
+                staminaRef.current.style.background =
+                    stamina > 60 ? '#7ee081' : stamina > 35 ? '#ffd166' : '#ff6b5b'
             }
         }
 
@@ -314,6 +326,9 @@ export default function Player({
                 >
                     <b>{player.number}</b>
                     <span>{shortPlayerName(player.name, 12)}</span>
+                    <i className="player-tag__stamina">
+                        <s ref={staminaRef} />
+                    </i>
                 </div>
             </Html>
 

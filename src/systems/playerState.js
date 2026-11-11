@@ -40,6 +40,10 @@ const ACTION_DURATIONS = {
     scoop: 0.6,
     gkThrow: 0.55,
     punt: 0.6,
+    // Hết trận (whistle.js)
+    celebrate: 0.9,
+    dejected: 3.5,
+    clap: 0.7,
 }
 
 // Các trạng thái khóa di chuyển (cầu thủ không tự chạy được).

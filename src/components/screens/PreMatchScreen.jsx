@@ -11,7 +11,19 @@ const average = (players) =>
         ? Math.round(players.reduce((sum, player) => sum + (player.overall || 0), 0) / players.length)
         : 0
 
-function Lineup({ title, color, players, align }) {
+// Phong độ thể lực (Phase 19): cầu thủ đá nhiều trận liên tiếp sẽ mệt.
+function ConditionChip({ value }) {
+    const condition = Math.round(value ?? 100)
+    const tone = condition > 80 ? '' : condition > 60 ? ' is-warn' : ' is-low'
+
+    return (
+        <span className={`condition-chip${tone}`} title="Condition (fitness for this match)">
+            {condition}%
+        </span>
+    )
+}
+
+function Lineup({ title, color, players, align, showCondition = false }) {
     return (
         <div className={`lineup lineup--${align}`}>
             <div className="lineup__head" style={{ '--team': color }}>
@@ -28,6 +40,7 @@ function Lineup({ title, color, players, align }) {
                             {shortPlayerName(player.name, 20)}
                         </span>
                         <em>{player.position}</em>
+                        {showCondition && <ConditionChip value={player.condition} />}
                         <b>{player.overall}</b>
                     </li>
                 ))}
@@ -85,6 +98,7 @@ export default function PreMatchScreen({
                     color={blueTeam.color}
                     players={blueTeam.players}
                     align="left"
+                    showCondition
                 />
 
                 <div className="prematch-setup">
@@ -115,12 +129,15 @@ export default function PreMatchScreen({
                                 ))}
                             </select>
                         </label>
+                        <p className="tactic-summary">{TACTICS[tacticKey]?.summary}</p>
 
                         <button type="button" className="btn btn--block" onClick={onEditLineup}>
                             EDIT LINEUP (DRAG &amp; DROP)
                         </button>
                         <p className="home-card__empty">
                             Lineup changes before kick-off do not use substitutions.
+                            The % next to each player is their condition: players who
+                            played recently start tired, so rotate the squad.
                         </p>
                     </div>
 

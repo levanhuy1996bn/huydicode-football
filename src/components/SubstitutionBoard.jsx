@@ -14,9 +14,13 @@ function shortName(player) {
     return shortPlayerName(player.name, 16)
 }
 
+// Màu theo thể lực / phong độ thể lực (Phase 19).
+const staminaColor = (value) => (value > 60 ? '#7ee081' : value > 35 ? '#ffd166' : '#ff6b5b')
+
 function PlayerCard({
     player,
     zone,
+    stamina,
     isPicked,
     isDisabled,
     isDropTarget,
@@ -77,6 +81,12 @@ function PlayerCard({
                 <b>{player.overall}</b>
             </span>
             {isDisabled && <span className="sub-card__flag">SUBBED OFF</span>}
+            <span
+                className="sub-card__stamina"
+                title={`Stamina ${Math.round(stamina)}%`}
+            >
+                <i style={{ width: `${stamina}%`, background: staminaColor(stamina) }} />
+            </span>
         </div>
     )
 }
@@ -90,6 +100,7 @@ export default function SubstitutionBoard({
     onSwap,
     onClose,
     isPrematch = false,
+    staminaById = null,
 }) {
     const [picked, setPicked] = useState(null)
     const [dropTarget, setDropTarget] = useState(null)
@@ -98,6 +109,10 @@ export default function SubstitutionBoard({
     if (!team) return null
 
     const remaining = maxSubstitutions - substitutionCount
+
+    // Trong trận: thể lực hiện tại; trước trận / dự bị chưa ra sân: phong độ thể lực.
+    const staminaOf = (player) =>
+        Math.round(staminaById?.[player.id] ?? player.condition ?? 100)
 
     // Xử lý một cặp (nguồn → đích), dùng chung cho kéo-thả và bấm-chọn.
     const resolve = (source, target) => {
@@ -182,6 +197,7 @@ export default function SubstitutionBoard({
                                 <PlayerCard
                                     key={player.id}
                                     player={player}
+                                    stamina={staminaOf(player)}
                                     zone="pitch"
                                     isPicked={picked?.id === player.id}
                                     isDropTarget={dropTarget === player.id}
@@ -201,6 +217,7 @@ export default function SubstitutionBoard({
                             <PlayerCard
                                 key={player.id}
                                 player={player}
+                                stamina={staminaOf(player)}
                                 zone="bench"
                                 isPicked={picked?.id === player.id}
                                 isDisabled={subbedOffIds.includes(player.id)}

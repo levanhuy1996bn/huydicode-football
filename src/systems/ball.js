@@ -6,10 +6,21 @@ import {
     facingVector,
 } from './constants'
 import { attackDir } from './matchState'
-import { isPlayerLocked, setPlayerAction } from './playerState'
+import { setPlayerAction } from './playerState'
 import { recordPlayer, recordTeam } from './matchStats'
+import { attr, skill01 } from './attributes'
+import { fatiguePenalty } from './stamina'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
+
+// Tổ hợp phím mũi tên đang giữ (vd. "ArrowDown+ArrowRight").
+export function heldArrows(keys) {
+    const pressed = keys?.current || {}
+
+    return ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+        .filter((key) => pressed[key])
+        .join('+')
+}
 
 // Góc tối đa (rad) giữa hướng ngắm và đồng đội để vẫn được chọn (~70°).
 const MAX_AIM_ANGLE = 1.22
@@ -65,6 +76,9 @@ export function attachBallToPlayer(ctx, object, playerId) {
     state.lastToucherId = playerId
     // Người khác chạm bóng: thủ môn không còn ôm bóng (keeperCatch đặt lại sau).
     state.keeperHands = null
+    // Nhịp chạm bóng là của người rê trước đó; người mới được chạm ngay.
+    // (Trước đây người vừa nhận bóng rồi quay đầu chạy có thể bỏ quên bóng.)
+    if (state.dribble) state.dribble.touchTimer = 0
 
     if (item) {
         state.lastTouchTeam = item.teamId
@@ -77,12 +91,34 @@ export function attachBallToPlayer(ctx, object, playerId) {
     }
 }
 
-export function findPassTarget(ctx, playerId, action, aim = null) {
+// Tốc độ trung bình của bóng trên đường tới người nhận (m/s): bóng mất
+// khoảng 1/4 tốc độ ban đầu do ma sát cỏ. Dùng để ước lượng đối phương có
+// kịp chặn đường chuyền không.
+const passTravelSpeed = (action, distance) => {
+    if (action === 'through') return clamp(14 + distance * 0.32, 15, 22) * 0.75
+    if (action === 'lob') return clamp(11 + distance * 0.2, 12, 16) * 0.9
+
+    return clamp(12 + distance * 0.38, 13, 20) * 0.75
+}
+
+export function findPassTarget(ctx, playerId, action, aim = null, receiverId = null) {
+    const candidates = listPassCandidates(ctx, playerId, action, aim)
+
+    if (receiverId) {
+        return candidates.find((entry) => entry.item.id === receiverId) || null
+    }
+
+    return candidates[0] || null
+}
+
+// Mọi đồng đội có thể nhận bóng, đã chấm điểm (điểm thấp = tốt), kèm số liệu
+// cho AI cầm bóng (carrierAI.js): laneSlack, nearestOpponent, blockedLane.
+export function listPassCandidates(ctx, playerId, action, aim = null) {
     const { state, objects } = ctx
     const player = objects[playerId]
     const item = getPlayer(ctx, playerId)
 
-    if (!player || !item) return null
+    if (!player || !item) return []
 
     const teamList = teamPlayers(ctx, item.teamId)
     const opponents = teamPlayers(
@@ -90,6 +126,15 @@ export function findPassTarget(ctx, playerId, action, aim = null) {
         item.teamId === 'blue' ? 'red' : 'blue',
     )
     const attackDirection = attackDir(state, item.teamId)
+
+    // Hậu vệ đứng thấp nhất của đối phương (không tính thủ môn), theo trục tấn công.
+    const lastLine = opponents.reduce((deepest, opponent) => {
+        const object = objects[opponent.id]
+
+        if (!object || opponent.role === 'GK') return deepest
+
+        return Math.max(deepest, object.position.z * attackDirection)
+    }, -Infinity)
 
     const candidates = teamList
         .filter((teammate) => teammate.id !== playerId)
@@ -119,13 +164,18 @@ export function findPassTarget(ctx, playerId, action, aim = null) {
             let targetX = teammate.position.x + velocity.x * leadTime
             let targetZ = teammate.position.z + velocity.z * leadTime
 
-            // Chọc khe phải hướng vào khoảng trống phía trước.
+            // Chọc khe phải hướng vào khoảng trống phía trước. Người nhận đã
+            // đứng ngang/sau hậu vệ cuối cùng (không còn ai phía trước ngoài
+            // thủ môn) thì chọc sâu hơn để họ bứt tốc đón bóng.
             if (action === 'through') {
-                targetZ += attackDirection * clamp(
+                const receiverAdvance = teammate.position.z * attackDirection
+                const behindLine = receiverAdvance >= lastLine - 1.5
+
+                targetZ += attackDirection * (clamp(
                     1.5 + currentDistance * 0.1,
                     2,
                     4,
-                )
+                ) + (behindLine ? 5 : 0))
             }
 
             targetX = clamp(targetX, FIELD.minX + 1, FIELD.maxX - 1)
@@ -191,6 +241,10 @@ export function findPassTarget(ctx, playerId, action, aim = null) {
 
             let nearestOpponent = Infinity
             let blockedLane = 0
+            // laneSlack: khoảng "dư" (m) của đường chuyền trước người có khả
+            // năng chặn nhất. > 0: bóng qua trước khi họ kịp chạm; < 0: bị cắt.
+            let laneSlack = Infinity
+            const travelSpeed = passTravelSpeed(action, distance)
 
             opponents.forEach((opponent) => {
                 const opponentObject = objects[opponent.id]
@@ -230,12 +284,26 @@ export function findPassTarget(ctx, playerId, action, aim = null) {
                     opponentObject.position.z - closestZ,
                 )
 
-                if (projection > 0.08 && projection < 0.92) {
+                // Quãng đường bóng đã đi khi ngang qua đối thủ này.
+                const along = Math.sqrt(lengthSq) * projection
+
+                // Trước đây bỏ qua 8% đầu đường chuyền, nên người áp sát ngay
+                // trước mặt người chuyền không được tính là "chắn đường".
+                if (along > 0.5 && projection < 0.92) {
                     if (laneDistance < 1.8) {
                         blockedLane += 1
                     } else if (laneDistance < 3.2) {
                         blockedLane += 0.5
                     }
+                }
+
+                // Đối thủ chạy ~6 m/s vào đường bóng trong lúc bóng bay tới
+                // (bóng bổng chỉ chặn được lúc vừa rời chân và ở đoạn cuối).
+                if (action !== 'lob' || projection > 0.8 || along < 4) {
+                    const slack =
+                        laneDistance - 0.9 - 6 * (along / travelSpeed) * 0.75
+
+                    laneSlack = Math.min(laneSlack, slack)
                 }
             })
 
@@ -260,11 +328,13 @@ export function findPassTarget(ctx, playerId, action, aim = null) {
                 outOfAim,
                 nearestOpponent,
                 blockedLane,
+                laneSlack,
+                forwardGap,
             }
         })
         .sort((a, b) => a.score - b.score)
 
-    return candidates[0] || null
+    return candidates
 }
 
 // options (chỉ người chơi dùng):
@@ -328,7 +398,10 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             }
             : null
 
-        passTarget = findPassTarget(ctx, playerId, action, aim)
+        // options.clearance (AI): phá bóng lên phía trước, không cần người nhận.
+        passTarget = options.clearance
+            ? null
+            : findPassTarget(ctx, playerId, action, aim, options.receiverId || null)
 
         let distance = passTarget?.distance || 10
 
@@ -357,7 +430,7 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             if (nearest) {
                 spaceReceiver = { id: nearest.mate.id, spot }
             }
-        } else if (!passTarget && item.role !== 'GK') {
+        } else if (!passTarget && item.role !== 'GK' && !options.clearance) {
             if (!isAI) {
                 ctx.onActionMessage('NO AVAILABLE PASS TARGET')
             }
@@ -375,7 +448,14 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             ).normalize()
         }
 
-        if (!passTarget && item.role === 'GK') {
+        if (!passTarget && options.clearance && item.role !== 'GK') {
+            // Hậu vệ phá bóng: lên phía trước, lệch ra biên gần nhất.
+            direction.set(Math.sign(player.position.x || 1) * 0.45, 0, attackDirection).normalize()
+
+            power = 19
+            lift = 5.5
+            message = 'CLEARANCE'
+        } else if (!passTarget && item.role === 'GK') {
             // Không có đồng đội phù hợp: thủ môn phá bóng lên phía trước.
             direction.set(0, 0, attackDirection)
 
@@ -383,11 +463,11 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             lift = 3.8
             message = 'GOALKEEPER CLEARANCE'
         } else if (action === 'pass') {
-            power = clamp(11 + distance * 0.28, 12, 17)
+            power = clamp(12 + distance * 0.38, 13, 20)
             lift = 0.02
             message = item.role === 'GK' ? 'GOALKEEPER PASS' : 'SHORT PASS'
         } else if (action === 'through') {
-            power = clamp(14 + distance * 0.25, 15, 20)
+            power = clamp(14 + distance * 0.32, 15, 22)
             lift = 0.08
             message = 'THROUGH BALL'
         } else if (action === 'lob') {
@@ -395,17 +475,33 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             lift = 4.5
             message = 'LOFTED PASS'
         }
+
+        // Người chơi giữ phím lâu hơn → bóng đi căng hơn (×0.88 khi chạm nhẹ,
+        // ×1.30 khi đầy thanh). Trước đây lực chuyền cho đồng đội chỉ tính theo
+        // khoảng cách nên giữ đầy lực vẫn "chuyền lưng chừng".
+        if (isCharged && !options.clearance && !isThrowIn) {
+            const boost = 0.88 + charge * 0.42
+
+            power = Math.min(power * boost, action === 'lob' ? 21 : 27)
+
+            if (action === 'lob') lift *= 0.9 + charge * 0.25
+        }
     } else if (action === 'shoot') {
         const goalZ = attackDirection * FIELD.lineZ
 
         const distanceToGoal = Math.abs(goalZ - player.position.z)
 
-        // Chỉ số dứt điểm ảnh hưởng độ chính xác.
+        // Phase 19: Finishing (gần) / Long shots (xa > 20m) quyết định độ
+        // chính xác, Shot power quyết định lực sút. Mệt thì kém đi.
+        const longRange = clamp((distanceToGoal - 16) / 10, 0, 1)
         const finishing = clamp(
-            item.finishing || item.shooting || item.overall || 70,
+            attr(item, 'finishing') * (1 - longRange) +
+            attr(item, 'longShots') * longRange -
+            fatiguePenalty(state, playerId),
             40,
             99,
         )
+        const shotPower = attr(item, 'shotPower')
 
         // Cầu thủ dứt điểm tốt có độ lệch nhỏ hơn.
         const accuracy = (finishing - 40) / 59
@@ -424,8 +520,11 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
             targetX += (Math.random() * 2 - 1) * spread
         } else {
+            // AI: phần lớn cú sút đi vào khoảng giữa khung thành (trong tầm
+            // thủ môn), chỉ thỉnh thoảng mới hiểm vào góc. Trước đây phân bố
+            // đều theo chiều ngang nên rất nhiều cú sút sát cột.
             const spread = 5 - accuracy * 3
-            targetX = (Math.random() * 2 - 1) * spread
+            targetX = (Math.random() + Math.random() - 1) * spread
         }
 
         direction.set(
@@ -437,7 +536,7 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         if (isCharged) {
             // Lực giữ phím quyết định tốc độ (~17–30 m/s) và độ bổng.
             // Trên 90% lực bóng có thể vọt xà.
-            power = 15 + charge * 12 + finishing * 0.03
+            power = 15 + charge * 12 + shotPower * 0.03
             lift =
                 0.5 +
                 charge * 2 +
@@ -447,7 +546,7 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         } else {
             // AI: vận tốc thật 22–29 m/s, sút xa bổng hơn một chút.
             power = clamp(
-                19 + finishing * 0.08 + (distanceToGoal > 20 ? 1.5 : 0),
+                19 + shotPower * 0.08 + (distanceToGoal > 20 ? 1.5 : 0),
                 22,
                 29,
             )
@@ -594,6 +693,34 @@ function beginWindup(ctx, params) {
         direction, power, lift, passTarget, spaceReceiver,
     } = params
 
+    // Phase 19: độ chính xác chuyền bóng theo chỉ số (chuyền ngắn / dài /
+    // tầm nhìn khi chọc khe, Kicking cho thủ môn phát bóng) và thể lực.
+    // Bóng lệch một góc nhỏ và lực sai lệch chút ít; người nhận chạy đón theo
+    // đường bóng thật (teamAI.js → updateReceiverRun).
+    if (!isThrowIn && action !== 'shoot') {
+        const skillKey =
+            animation === 'punt' || animation === 'gkThrow'
+                ? 'kicking'
+                : action === 'lob'
+                    ? 'longPassing'
+                    : 'shortPassing'
+        let skill = attr(item, skillKey)
+
+        if (action === 'through') skill = skill * 0.5 + attr(item, 'vision') * 0.5
+
+        skill -= fatiguePenalty(state, playerId)
+
+        const sloppiness = 1 - skill01(skill)
+        const angleError = (Math.random() + Math.random() - 1) * (0.015 + sloppiness * 0.09)
+        const cos = Math.cos(angleError)
+        const sin = Math.sin(angleError)
+        const dx = direction.x * cos - direction.z * sin
+        const dz = direction.x * sin + direction.z * cos
+
+        direction.set(dx, 0, dz)
+        params.power = power * (1 + (Math.random() * 2 - 1) * (0.02 + sloppiness * 0.08))
+    }
+
     // Quay người về hướng đá để animation đúng hướng.
     player.rotation.y = Math.atan2(direction.x, direction.z)
 
@@ -611,7 +738,7 @@ function beginWindup(ctx, params) {
         isAI,
         message,
         direction: { x: direction.x, z: direction.z },
-        power,
+        power: params.power,
         lift,
         passTarget: passTarget
             ? {
@@ -761,6 +888,20 @@ function releaseKick(ctx, windup) {
         state.pendingPass = null
     }
 
+    // Người chơi vừa chuyền (FO4): chuyển điều khiển sang người nhận ngay khi
+    // bóng rời chân. Người nhận vẫn tự chạy đón bóng cho tới khi người chơi
+    // bấm hướng (phím mũi tên đang giữ để ngắm bị bỏ qua cho tới khi nhả ra,
+    // xem control.js → steerLock).
+    if (!isAI && !isKeeperRelease && teamId === 'blue' && state.pendingPass?.receiverId) {
+        const receiverId = state.pendingPass.receiverId
+
+        if (receiverId !== ctx.selectedId) {
+            ctx.onSelect(receiverId)
+            ctx.selectedId = receiverId
+            state.steerLock = { id: receiverId, keys: heldArrows(ctx.keys), time: 0 }
+        }
+    }
+
     // Thủ môn BLUE vừa phát bóng: chuyển điều khiển sang người nhận
     // (hoặc cầu thủ gần điểm rơi nhất).
     if (isKeeperRelease && teamId === 'blue') {
@@ -792,6 +933,11 @@ function releaseKick(ctx, windup) {
     }
 }
 
+const PICKUP_REACH = 1.5   // đỡ bóng chậm / bóng của đội mình
+const BLOCK_REACH = 0.9    // chặn bóng đang lăn của đối phương (đứng trên đường bóng)
+const CONTROL_SPEED = 15   // đồng đội khống chế ngay bóng chậm hơn mức này
+const MOVING_BALL = 3.5    // m/s: chậm hơn thế coi như bóng "chết", ai gần thì lấy
+
 // Cầu thủ ở gần có thể đỡ/khống chế bóng tự do.
 export function updateLooseBallPickup(ctx) {
     const { state, objects } = ctx
@@ -802,6 +948,7 @@ export function updateLooseBallPickup(ctx) {
     const ballPosition = ball.translation()
     const velocity = ball.linvel()
     const ballSpeed = Math.hypot(velocity.x, velocity.y, velocity.z)
+    const horizontalSpeed = Math.hypot(velocity.x, velocity.z)
 
     // Bóng quá cao thì cầu thủ chưa thể khống chế bằng chân.
     if (ballPosition.y >= 1.55) return
@@ -815,7 +962,19 @@ export function updateLooseBallPickup(ctx) {
 
         const distance = distance2D(object.position, ballPosition)
 
-        if (distance > 1.5) return
+        // Tầm đỡ bóng (Phase 18). Người được chuyền tới và đồng đội đón bóng
+        // trong 1.5m. Đối phương muốn chặn một quả bóng đang đi nhanh thì phải
+        // đứng đúng trên đường bóng (0.85m): trước đây chỉ cần ở cách 1.5m là
+        // "hút" được bóng, nên người áp sát luôn cắt được đường chuyền ngay
+        // khi bóng vừa rời chân.
+        const sameTeamAsKicker = item.teamId === state.lastTouchTeam
+        // Interceptions (Phase 19) nới tầm chặn bóng thêm tối đa 0.15m.
+        const reach =
+            sameTeamAsKicker || horizontalSpeed < MOVING_BALL
+                ? PICKUP_REACH
+                : BLOCK_REACH + skill01(attr(item, 'interceptions')) * 0.15
+
+        if (distance > reach) return
 
         if (state.pickupLocks[item.id] > 0) return
 
@@ -849,7 +1008,17 @@ export function updateLooseBallPickup(ctx) {
 
     if (!best) return
 
-    if (ballSpeed > 7.5) {
+    // Người được chuyền tới (hoặc đồng đội của người chuyền) khống chế được
+    // ngay đường chuyền có tốc độ vừa phải. Đối phương chặn bóng nhanh thì
+    // bóng chỉ bật ra chậm lại, phải tranh tiếp mới có bóng (Phase 18).
+    // Ball control (Phase 19): khống chế gọn bóng tới 10–18 m/s.
+    const controlSpeed =
+        CONTROL_SPEED - 4 +
+        skill01(attr(best.item, 'ballControl') - fatiguePenalty(state, best.item.id)) * 8
+    const cleanControl =
+        best.item.teamId === state.lastTouchTeam && ballSpeed <= controlSpeed
+
+    if (ballSpeed > 7.5 && !cleanControl) {
         // Chạm bước một: giảm tốc bóng trước khi kiểm soát.
         ball.setLinvel(
             {
@@ -1030,29 +1199,11 @@ export function updateDribble(ctx, dt) {
         return
     }
 
-    // Đối thủ đứng sát bóng lúc bóng xa chân người rê → cắt được bóng.
-    if (distance > 0.95) {
-        const thief = ctx.players.find((other) => {
-            if (other.teamId === item.teamId) return false
-            if (isPlayerLocked(state, other.id)) return false
-
-            const object = objects[other.id]
-
-            return object && distance2D(object.position, position) < 0.8
-        })
-
-        if (thief) {
-            attachBallToPlayer(ctx, objects[thief.id], thief.id)
-            recordTeam(state, thief.teamId, 'tackles')
-            recordPlayer(state, thief.id, 'tackles')
-            ctx.onActionMessage(
-                thief.teamId === 'blue'
-                    ? `${ctx.userTeamName} INTERCEPTS!`
-                    : `${ctx.opponentName} INTERCEPTS!`,
-            )
-            return
-        }
-    }
+    // (Đã bỏ: trước đây đối thủ chỉ cần đứng sát quả bóng lúc bóng xa chân
+    // người rê là tự cướp được bóng. Theo yêu cầu playtest, bóng chỉ đổi chủ
+    // khi có động tác tắc / xoạc (người chơi bấm Space / A, máy tự quyết định
+    // trong teamAI.js → updateAISteal), khi người rê chạm bóng quá mạnh
+    // (bóng thành bóng tự do) hoặc khi đường chuyền bị cắt.)
 
     // Ma sát cỏ: bóng đang rê chậm dần.
     const damp = Math.exp(-DRIBBLE.damping * dt)
@@ -1085,8 +1236,20 @@ export function updateDribble(ctx, dt) {
         return
     }
 
+    // Rê thường (không nước rút): giữ bóng sát chân. Nếu bóng đang chạy xa
+    // dần (người rê bị tì vai chậm lại, đổi hướng...) thì hãm bóng mạnh hơn.
+    const ballSpeedNow = Math.hypot(velocity.x, velocity.z)
+    const keepClose =
+        !sprinting && distance > 0.85 && ballSpeedNow > speed
+            ? Math.exp(-7 * dt)
+            : 1
+
     ball.setLinvel(
-        { x: velocity.x * damp, y: velocity.y, z: velocity.z * damp },
+        {
+            x: velocity.x * damp * keepClose,
+            y: velocity.y,
+            z: velocity.z * damp * keepClose,
+        },
         true,
     )
 
@@ -1094,15 +1257,22 @@ export function updateDribble(ctx, dt) {
     // Khi đổi hướng, "ahead" theo hướng mới nhỏ → chạm để kéo bóng theo.
     const ahead = dx * moveX + dz * moveZ
 
+    // Bóng không nằm phía trước (vừa nhận bóng rồi quay người): với xa hơn
+    // một chút để kéo bóng theo.
+    const reach = ahead < 0.2 ? DRIBBLE.touchReach + 0.5 : DRIBBLE.touchReach
+
     const needsTouch =
         state.dribble.touchTimer <= 0 &&
-        distance < DRIBBLE.touchReach &&
+        distance < reach &&
         ahead < DRIBBLE.footOffset
 
     if (!needsTouch) return
 
     // Kỹ năng rê bóng càng cao, hướng chạm càng chuẩn.
-    const skill = clamp(((item.dribbling || 70) - 50) / 45, 0, 1)
+    // Phase 19: Ball control + Agility, trừ khi mệt.
+    const dribbleSkill =
+        attr(item, 'ballControl') * 0.6 + attr(item, 'agility') * 0.4 - fatiguePenalty(state, ownerId)
+    const skill = clamp((dribbleSkill - 50) / 45, 0, 1)
     const error =
         (Math.random() * 2 - 1) *
         (0.22 - skill * 0.17) *

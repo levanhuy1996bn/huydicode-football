@@ -1,9 +1,10 @@
 import * as THREE from 'three'
-import { CHARGE_TIME, clamp, distance2D, facingVector } from './constants'
+import { CHARGE_TIME, FIELD, clamp, distance2D, facingVector } from './constants'
 import {
     attachBallToPlayer,
     getBallDistance,
     getPlayer,
+    heldArrows,
     kickFromPlayer,
 } from './ball'
 import {
@@ -11,7 +12,9 @@ import {
     isPlayerLocked,
     setPlayerAction,
 } from './playerState'
-import { clampPlayer } from './movement'
+import { clampPlayer, rampSpeed, topSpeedOf } from './movement'
+import { attr } from './attributes'
+import { fatiguePenalty } from './stamina'
 import { ownGoalSign } from './matchState'
 import { recordPlayer, recordTeam } from './matchStats'
 import {
@@ -21,11 +24,27 @@ import {
     pokeBallLoose,
 } from './duels'
 
+// Thủ môn đi bộ khi ôm bóng (m/s), trong vòng cấm nhà.
+const KEEPER_WALK_SPEED = 3.2
+
+function clampToOwnBox(state, object) {
+    const sign = ownGoalSign(state, 'blue')
+    const inner = sign * (FIELD.lineZ - 16.5 + 0.5)
+    const outer = sign * (FIELD.lineZ - 1)
+
+    object.position.x = clamp(object.position.x, -19.6, 19.6)
+    object.position.z = clamp(object.position.z, Math.min(inner, outer), Math.max(inner, outer))
+}
+
+// Tầm tắc bóng (khoảng cách tới BÓNG) và bước lao vào bóng khi tắc đứng.
+const TACKLE_RANGE = 2.2
+const SLIDE_RANGE = 3.2
+const TACKLE_LUNGE = 0.8
+
 const SLIDE_LUNGE_TIME = 0.32
 const SLIDE_LUNGE_SPEED = 10
 
 const RUN_SPEED = 5.2
-const SPRINT_SPEED = 8.2
 // Rê bóng chậm hơn chạy không bóng một chút.
 const DRIBBLE_SPEED_FACTOR = 0.92
 
@@ -66,6 +85,7 @@ export function updateControlledPlayer(ctx, dt) {
     state.dribble.speed = 0
     state.dribble.sprinting = false
     state.containingId = null
+    state.userSteering = false
 
     if (!controlled) return
 
@@ -87,15 +107,50 @@ export function updateControlledPlayer(ctx, dt) {
 
     if (isPlayerLocked(state, ctx.selectedId)) return
 
-    const direction = inputDirection(keys)
+    let direction = inputDirection(keys)
+
+    // Vừa chuyền và được đổi sang người nhận: tổ hợp mũi tên đang giữ để ngắm
+    // đường chuyền không điều khiển người nhận (người nhận tự chạy đón bóng).
+    // Khóa được mở ngay khi: người chơi nhả / đổi phím, người nhận đã có bóng,
+    // bóng không còn bay tới người nhận, hoặc sau 0.6s. (Bản trước chỉ mở khi
+    // nhả HẾT phím, nên nếu cứ giữ mũi tên thì cầu thủ nhận bóng xong vẫn
+    // đứng im, chỉ chuyền/sút được.)
+    const lock = state.steerLock
+
+    if (lock) {
+        lock.time += dt
+
+        const stillFlying =
+            state.pendingPass?.receiverId === lock.id && state.possession !== lock.id
+        const sameKeys = heldArrows(keys) === lock.keys
+
+        if (
+            lock.id !== ctx.selectedId ||
+            !direction ||
+            !sameKeys ||
+            !stillFlying ||
+            lock.time > 0.6
+        ) {
+            state.steerLock = null
+        } else {
+            direction = null
+        }
+    }
+
+    state.userSteering = Boolean(direction)
+
     const pressed = keys.current
     const sprinting = Boolean(pressed.KeyE || pressed.ShiftLeft || pressed.ShiftRight)
     const hasBall = state.possession === ctx.selectedId
 
-    // Thủ môn ôm bóng: đứng yên, chỉ xoay người theo hướng định phát bóng.
+    // Thủ môn ôm bóng: đi bộ cầm bóng trong vòng cấm nhà (Phase 19, sửa lỗi
+    // playtest — trước đây chỉ xoay người tại chỗ).
     if (state.keeperHands === ctx.selectedId) {
         if (direction) {
             controlled.rotation.y = Math.atan2(direction.x, direction.z)
+            controlled.position.x += direction.x * KEEPER_WALK_SPEED * dt
+            controlled.position.z += direction.z * KEEPER_WALK_SPEED * dt
+            clampToOwnBox(state, controlled)
         }
 
         return
@@ -139,11 +194,15 @@ export function updateControlledPlayer(ctx, dt) {
         return
     }
 
-    // Bị đối thủ tì vai thì chậm lại (duels.js).
-    const speed =
-        (sprinting ? SPRINT_SPEED : RUN_SPEED) *
+    // Tốc độ theo chỉ số Sprint speed + thể lực, tăng dần theo Acceleration
+    // (Phase 19). Bị đối thủ tì vai thì chậm lại (duels.js).
+    const controlledItem = getPlayer(ctx, ctx.selectedId)
+    const topSpeed = topSpeedOf(ctx, controlledItem)
+    const desired =
+        (sprinting ? topSpeed : Math.min(RUN_SPEED, topSpeed)) *
         (hasBall ? DRIBBLE_SPEED_FACTOR : 1) *
         duelSpeedFactor(state, ctx.selectedId)
+    const speed = rampSpeed(ctx, controlledItem, desired, direction.x, direction.z, dt)
 
     state.dribble.x = direction.x
     state.dribble.z = direction.z
@@ -184,7 +243,7 @@ function updateContain(ctx, controlled, sprinting, dt) {
     if (sprinting) {
         targetX = ballPosition.x
         targetZ = ballPosition.z
-        speed = SPRINT_SPEED
+        speed = topSpeedOf(ctx, getPlayer(ctx, ctx.selectedId))
     } else {
         const goalZ = ownGoalSign(state, 'blue') * 52.5
         const toGoalX = 0 - carrier.position.x
@@ -200,7 +259,7 @@ function updateContain(ctx, controlled, sprinting, dt) {
             targetZ - controlled.position.z,
         )
 
-        speed = gap > 2.5 ? SPRINT_SPEED * 0.9 : CONTAIN_SPEED
+        speed = gap > 2.5 ? topSpeedOf(ctx, getPlayer(ctx, ctx.selectedId)) * 0.9 : CONTAIN_SPEED
     }
 
     const dx = targetX - controlled.position.x
@@ -241,7 +300,7 @@ export function performTackle(ctx, type) {
     if (!player || !ball || isPlayerLocked(state, selectedId)) return
 
     const isSlide = type === 'slide'
-    const range = isSlide ? 3.2 : 1.9
+    const range = isSlide ? SLIDE_RANGE : TACKLE_RANGE
 
     const tacklerItem = getPlayer(ctx, selectedId)
     const ownerId = state.possession
@@ -262,11 +321,11 @@ export function performTackle(ctx, type) {
     }
 
     if (ballDistance > range) {
-        ctx.onActionMessage('TOO FAR FROM THE BALL')
+        ctx.onActionMessage(`TOO FAR FROM THE BALL (${ballDistance.toFixed(1)} m)`)
         return
     }
 
-    state.timers.tackleCooldown = isSlide ? 1.5 : 0.85
+    state.timers.tackleCooldown = isSlide ? 1.3 : 0.6
 
     // Quay người về phía bóng trước khi tắc/xoạc.
     player.rotation.y = Math.atan2(
@@ -274,20 +333,35 @@ export function performTackle(ctx, type) {
         ballPosition.z - player.position.z,
     )
 
+    // Tắc đứng: bước dài vào bóng (tối đa 0.8m) — trước đây người tắc đứng
+    // nguyên chỗ nên ở xa hơn ~1.2m gần như luôn hụt.
+    if (!isSlide && ballDistance > 0.7) {
+        const lunge = Math.min(TACKLE_LUNGE, ballDistance - 0.7)
+        const direction = facingVector(player.rotation.y)
+
+        player.position.x += direction.x * lunge
+        player.position.z += direction.z * lunge
+        clampPlayer(player)
+    }
+
     setPlayerAction(state, selectedId, isSlide ? 'slide' : 'tackle')
 
     let successChance = 1
-    // Người cầm bóng đang che bóng và mình đứng sau lưng họ.
-    let shieldedFromBehind = false
+    let reason = null
 
     if (ownerItem && ownerObject) {
-        const ownStrength =
-            (tacklerItem?.defending || 75) * 0.6 +
-            (tacklerItem?.physical || 75) * 0.4
+        // Phase 19: chỉ số tắc bóng (đứng / xoạc) + sức mạnh của người tắc so
+        // với khống chế bóng + sức mạnh/thăng bằng của người cầm bóng, trừ khi mệt.
+        const tackleSkill =
+            attr(tacklerItem, isSlide ? 'slidingTackle' : 'standingTackle') * 0.75 +
+            attr(tacklerItem, 'strength') * 0.25 -
+            fatiguePenalty(state, selectedId)
 
-        const opponentStrength =
-            (ownerItem.dribbling || 75) * 0.6 +
-            (ownerItem.physical || 75) * 0.4
+        const holdSkill =
+            attr(ownerItem, 'ballControl') * 0.6 +
+            attr(ownerItem, 'strength') * 0.2 +
+            attr(ownerItem, 'balance') * 0.2 -
+            fatiguePenalty(state, ownerId)
 
         const exposure = clamp(
             (distance2D(ownerObject.position, ballPosition) - 0.7) / 1.0,
@@ -304,22 +378,30 @@ export function performTackle(ctx, type) {
             (ownerFacing.x * toTacklerX + ownerFacing.z * toTacklerZ) /
             toTacklerLength
 
-        successChance = clamp(
-            (isSlide ? 0.4 : 0.34) +
-            exposure * (isSlide ? 0.3 : 0.38) +
-            (ownStrength - opponentStrength) * 0.006 +
-            frontDot * (isSlide ? 0.12 : 0.08) -
-            (ballDistance / range) * 0.15,
-            0.1,
-            0.9,
-        )
+        const reach = clamp((ballDistance - 1.2) / Math.max(0.1, range - 1.2), 0, 1)
+
+        successChance =
+            (isSlide ? 0.5 : 0.52) +
+            exposure * 0.3 +
+            (tackleSkill - holdSkill) * 0.008 +
+            frontDot * 0.14 -
+            reach * 0.15
+
+        if (frontDot < -0.4) reason = 'FROM BEHIND'
 
         // Che bóng: từ sau lưng gần như không với tới bóng, phải vòng sang
         // phía có bóng (trước mặt người cầm bóng).
-        if (isShielding(state, ownerId) && frontDot < 0.35) {
-            shieldedFromBehind = true
-            successChance = clamp(successChance - (isSlide ? 0.22 : 0.3), 0.04, 0.9)
+        if (isShielding(state, ownerId)) {
+            if (frontDot < -0.2) {
+                successChance -= isSlide ? 0.18 : 0.24
+                reason = 'SHIELDED'
+            } else if (frontDot < 0.3) {
+                successChance -= 0.1
+                reason = 'SHIELDED'
+            }
         }
+
+        successChance = clamp(successChance, 0.06, 0.88)
     }
 
     if (Math.random() >= successChance) {
@@ -328,11 +410,13 @@ export function performTackle(ctx, type) {
         }
 
         ctx.onActionMessage(
-            shieldedFromBehind
+            reason === 'SHIELDED'
                 ? 'SHIELDED! GO AROUND TO THE BALL SIDE'
-                : isSlide
-                    ? 'SLIDE TACKLE MISSED'
-                    : 'TACKLE MISSED',
+                : reason === 'FROM BEHIND'
+                    ? `${isSlide ? 'SLIDE' : 'TACKLE'} MISSED - TOO FAR BEHIND THE BALL`
+                    : isSlide
+                        ? 'SLIDE TACKLE MISSED'
+                        : 'TACKLE MISSED',
         )
         return
     }
@@ -364,7 +448,7 @@ export function performTackle(ctx, type) {
     }
 
     if (ownerId) {
-        state.pickupLocks[ownerId] = 0.4
+        state.pickupLocks[ownerId] = 0.8
     }
 
     // Không phải lần nào cũng đoạt được bóng gọn: đôi khi chỉ chọc được bóng
@@ -438,6 +522,14 @@ export function updateCharge(ctx, dt) {
 
     if (!canKick(ctx, charge.playerId)) {
         state.charge = null
+
+        // Bị cướp bóng trong lúc giữ phím lấy lực: báo rõ thay vì im lặng.
+        const owner = state.possession ? getPlayer(ctx, state.possession) : null
+
+        if (owner && owner.teamId !== 'blue') {
+            ctx.onActionMessage('BALL LOST WHILE CHARGING - RELEASE EARLIER')
+        }
+
         return
     }
 
@@ -454,8 +546,9 @@ export function releaseCharge(ctx, action) {
 
     if (!canKick(ctx, charge.playerId)) return
 
+    // Chạm nhanh để sút vẫn ra lực vừa phải (tối thiểu 35%); chuyền tối thiểu 12%.
     kickFromPlayer(ctx, charge.playerId, action, false, {
-        power: Math.max(0.12, charge.power),
+        power: Math.max(action === 'shoot' ? 0.35 : 0.12, charge.power),
         aimInput: inputDirection(ctx.keys),
     })
 }
@@ -520,10 +613,13 @@ export function handleKeyDown(ctx, event) {
         event.preventDefault()
 
         if (!blueCanKick(ctx)) {
-            // Không có bóng: S = đổi cầu thủ. D (áp sát) và A (gọi đồng đội
-            // pressing) được xử lý theo trạng thái giữ phím mỗi bước logic.
+            // Không có bóng: S = đổi cầu thủ, A = xoạc bóng (như FIFA Online 4).
+            // D (áp sát) và W (gọi đồng đội áp sát) được xử lý theo trạng thái
+            // giữ phím mỗi bước logic.
             if (event.code === 'KeyS') {
                 switchPlayer(ctx, 'nearest')
+            } else if (event.code === 'KeyA') {
+                performTackle(ctx, 'slide')
             }
 
             return

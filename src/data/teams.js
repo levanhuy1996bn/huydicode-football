@@ -2,6 +2,54 @@ import { LEAGUE_TEAMS, USER_TEAM } from './leagueData'
 
 const clampStat = (value) => Math.max(1, Math.min(99, value))
 
+// Phase 19: chỉ số chính theo vị trí (độ lệch so với overall). Trước đây
+// mọi chỉ số ≈ overall, nên tiền đạo tắc bóng giỏi như trung vệ và thủ môn
+// sút giỏi như tiền đạo.
+export const POSITION_PROFILES = {
+  GK: { pace: -25, shooting: -45, passing: -20, dribbling: -30, defending: -40, physical: -10 },
+  CB: { pace: -8, shooting: -30, passing: -12, dribbling: -18, defending: 4, physical: 3 },
+  FB: { pace: 2, shooting: -22, passing: -6, dribbling: -6, defending: 0, physical: -3 },
+  DM: { pace: -8, shooting: -14, passing: 0, dribbling: -6, defending: 2, physical: 2 },
+  CM: { pace: -6, shooting: -6, passing: 3, dribbling: 1, defending: -10, physical: -3 },
+  AM: { pace: -2, shooting: 0, passing: 3, dribbling: 3, defending: -30, physical: -10 },
+  WG: { pace: 5, shooting: -3, passing: -3, dribbling: 3, defending: -38, physical: -12 },
+  ST: { pace: 1, shooting: 3, passing: -10, dribbling: -1, defending: -40, physical: 0 },
+}
+
+export function profileFor(position) {
+  const value = String(position || '').toUpperCase()
+
+  if (value === 'GK') return POSITION_PROFILES.GK
+  if (value === 'CB') return POSITION_PROFILES.CB
+  if (['LB', 'RB', 'LWB', 'RWB'].includes(value)) return POSITION_PROFILES.FB
+  if (value === 'CDM') return POSITION_PROFILES.DM
+  if (['CAM', 'AM'].includes(value)) return POSITION_PROFILES.AM
+  if (['LW', 'RW', 'LM', 'RM'].includes(value)) return POSITION_PROFILES.WG
+  if (['ST', 'CF'].includes(value)) return POSITION_PROFILES.ST
+
+  return POSITION_PROFILES.CM
+}
+
+// Sáu chỉ số chính của một cầu thủ theo vị trí, overall và số áo.
+export function baseStats(position, number, overall) {
+  const profile = profileFor(position)
+  const statVariation = {
+    pace: (number * 5 + 2) % 7 - 3,
+    shooting: (number * 5) % 9 - 4,
+    passing: (number * 3) % 7 - 3,
+    dribbling: (number * 11) % 9 - 4,
+    defending: (number * 13) % 9 - 4,
+    physical: (number * 17) % 7 - 3,
+  }
+
+  return Object.fromEntries(
+    Object.entries(statVariation).map(([key, variation]) => [
+      key,
+      clampStat(overall + profile[key] + variation),
+    ]),
+  )
+}
+
 const makePlayer = (
     id,
     name,
@@ -10,17 +58,7 @@ const makePlayer = (
     x,
     z,
     overall,
-) => {
-  const statVariation = {
-    pace: (number * 7) % 7 - 3,
-    shooting: (number * 5) % 9 - 4,
-    passing: (number * 3) % 7 - 3,
-    dribbling: (number * 11) % 9 - 4,
-    defending: (number * 13) % 9 - 4,
-    physical: (number * 17) % 7 - 3,
-  }
-
-  return {
+) => ({
     id,
     name,
     position,
@@ -28,14 +66,8 @@ const makePlayer = (
     x,
     z,
     overall,
-    pace: clampStat(overall + statVariation.pace),
-    shooting: clampStat(overall + statVariation.shooting),
-    passing: clampStat(overall + statVariation.passing),
-    dribbling: clampStat(overall + statVariation.dribbling),
-    defending: clampStat(overall + statVariation.defending),
-    physical: clampStat(overall + statVariation.physical),
-  }
-}
+    ...baseStats(position, number, overall),
+})
 
 const homeFormation = [
   ['GK', 1, 0, 46, 78],

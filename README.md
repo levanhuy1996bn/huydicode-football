@@ -135,13 +135,16 @@ npm run preview
 | D | Shoot (hold to charge, arrows to aim the corner) |
 | D (hold, defending) | Contain: stay goal-side of the ball carrier about 1.5 m away, facing the ball |
 | D + E (hold, defending) | Aggressive press: sprint straight at the ball |
-| A (hold, defending) | Call the nearest teammate to press the ball carrier |
+| W (hold, defending) | Call the nearest teammate to press the ball carrier (was A) |
+| A (defending) | Sliding tackle |
 | C (hold, with the ball) | Shield the ball: turn your back to the nearest opponent and keep the ball on the far side; arrows move slowly |
 | S / A at a throw-in | Short / long throw (arrows choose the direction) |
+| Arrows (keeper holding the ball) | Walk with the ball inside your penalty area (after 6 s the keeper distributes automatically) |
 | S / W (keeper holding the ball) | Goalkeeper throw (hold to charge, arrows aim) |
 | A / D (keeper holding the ball) | Goalkeeper punt / long kick (hold to charge, arrows aim) |
 | Space | Standing tackle |
-| Ctrl | Sliding tackle |
+| Ctrl | Sliding tackle (same as A when defending) |
+| Any key | Take back control when the AI is playing for you (it takes over after 10 s without a key press) |
 | SUBS button | Open the drag-and-drop substitution board (pauses the match) |
 | NAMES button | Player names above heads: SMART → ALL → OFF |
 | QUIT button | Leave the match (a league match is recorded as a 0–3 loss) |
@@ -223,10 +226,16 @@ ultimate-football-manager-3d/
     │   ├── playerState.js    # player state machine
     │   ├── ball.js           # possession, kicks, pass targeting, dribble, pickup
     │   ├── control.js        # user input: movement, pass/switch, kicks, tackles
-    │   ├── teamAI.js         # positioning, receiver runs, carrier AI, AI steals
+    │   ├── teamAI.js         # team shape, pressing, marking, support runs, AI tackles
+    │   ├── carrierAI.js      # AI ball carrier: shoot / pass / dribble / shield decisions
+    │   ├── tactics.js        # per-team tactics, opponent tactic changes, counter-press
     │   ├── goalkeeper.js     # keeper positioning, save plans, catching
     │   ├── duels.js          # shielding, shoulder duels, poked tackles
-    │   ├── movement.js       # AI movement, collisions, velocity tracking
+    │   ├── attributes.js     # detailed attributes derived from the 6 main stats
+    │   ├── stamina.js        # in-match stamina, fatigue effects, condition between matches
+    │   ├── progression.js    # XP, levels, attribute points by position, potential, OVR
+    │   ├── whistle.js        # end of half / match: wait for a dead ball, whistle, animations
+    │   ├── movement.js       # top speed / acceleration, AI movement, collisions, velocities
     │   ├── rules.js          # goals, out of play, kick-off and restarts
     │   ├── matchStats.js     # match statistics, ratings, summary
     │   └── matchEngine.js    # fixed-step loop calling the systems in order
@@ -236,7 +245,7 @@ ultimate-football-manager-3d/
     ├── utils/
     │   └── names.js          # shortPlayerName()
     └── components/
-        ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen
+        ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen
         ├── GameScene.jsx
         ├── MatchWorld.jsx
         ├── MatchOverlays.jsx
@@ -415,52 +424,245 @@ New system: `systems/duels.js`.
 - **Statistics:** interceptions and duels won are recorded per team and per player, shown on the post-match screen and counted in player ratings.
 - **Animation:** a low, wide-armed shielding stance (`SHIELD_POSE`) and arms-out jostling while a duel is on (`JOSTLE_OFFSET`).
 
+### Phase 18 — Team tactics and ball-carrier AI ✅ (2026-11-11)
+
+**Why:** in Phase 17 testing about 60% of AI passes were cut out. A match simulator (the engine run without a browser, both sides on AI) showed three causes:
+
+- an opponent within 1.5 m of a moving ball "absorbed" it, so any presser standing in front of the passer intercepted almost every pass;
+- the AI only passed once an opponent was already 2.5 m away and never checked whether the passing lane was blocked;
+- AI players could run at 10–12 m/s, nearly as fast as a pass.
+
+**Passing and receiving** (`systems/ball.js`)
+
+- An opponent must now stand on the line of a moving ball (0.9 m) to block it; the intended receiver and his teammates still control it from 1.5 m, and control passes up to 15 m/s cleanly. A dead ball (under 3.5 m/s) goes to whoever is closest.
+- `listPassCandidates` scores every teammate and returns `laneSlack`: how many metres the nearest defender is short of reaching the passing lane before the ball does. Defenders right in front of the passer now count as blocking.
+- Ground passes and through balls are a little faster (13–20 m/s and 15–22 m/s).
+- Through balls to a forward who is level with the last defender are played 5 m deeper into space.
+- The receiver of a pass is moved only by the receiver run (previously the team AI moved him too, so the two orders cancelled out and he stood still).
+- Dribbling keeps the ball closer when not sprinting, a new owner can touch the ball immediately, and an opponent only nicks a loose touch when he is clearly closer to the ball than the dribbler.
+
+**Ball-carrier AI** (`systems/carrierAI.js`, new)
+
+Every ~0.2 s the AI carrier compares:
+
+- **Shot** — distance, visible angle of the goal, defenders on the line.
+- **Pass** — every teammate × ground pass / through ball / lofted pass, valued by lane safety, how open the receiver is, metres gained and whether the target is in the box. Through balls only go to a runner who reaches the spot before the nearest defender.
+- **Dribble** — the clearest of 9 directions, favouring forward progress. The carrier sprints only into open space.
+- **Under pressure with no pass** — shoot if possible, clear near his own goal, otherwise shield.
+- **Crosses** from wide in the final third to teammates in the box.
+
+The more pressure, the less the dribble is worth, so the AI moves the ball on before it is surrounded. Hold time depends on position and tactic tempo.
+
+**Team shape and pressing** (`systems/teamAI.js`)
+
+- **Out of possession:** the back line stays between the ball and goal (height from `defensiveLine`), midfield stays about 10 m in front, and the whole block narrows and slides towards the ball. Defenders mark attackers near the line goal-side, and midfielders keep zonal shape.
+- **Pressing:** 1–3 players by the `press` value. The first goes to the ball, the second covers goal-side, and the third blocks the nearest passing option (in the middle or attacking third only). In the defensive third at least two players always close down.
+- **Counter-press:** right after losing the ball the team swarms for `counterPress` seconds (0–4 s by tactic).
+- **In possession:** full-backs overlap in attacking tactics. One central midfielder stays behind the ball as an outlet. Forwards play on the last defender, run in behind when the carrier has time, and attack the box in the final third. The two nearest teammates come short to offer an angle that no defender blocks.
+- AI teammates of the user now also attempt standing tackles (the player you control still tackles only on Space / Ctrl).
+
+**Tactics** (`systems/constants.js`, `systems/tactics.js`)
+
+- Each tactic now also has `directness`, `tempo`, `risk`, `counterPress` and a one-line `summary`, shown on the pre-match screen and at half-time.
+- Each team plays its own tactic. The opponent picks one from relative strength, then reviews it every 8 s from the score and time left: chasing the game → Attacking, then High Press late; protecting a lead → Counter, then Defensive late. Changes are announced in the match ("… TACTIC: COUNTER ATTACK"), and the half-time screen shows what the opponent is playing.
+
+**Goalkeeper:** the dive save chance now depends on how much of his reach the keeper needs, not on absolute metres. Reachable dives were saved only about 15% of the time once the AI started taking better shots. AI shots now aim towards the middle of the goal more often, with only some going for the corners.
+
+**Results** (simulator, 24 matches × 6 min, both sides AI):
+
+| | Before Phase 18 | After |
+| --- | --- | --- |
+| Passes cut out | 61–67% | 20–24% |
+| Passes completed | 33–39% | 72–77% |
+| Interceptions per team per match | 61–75 | 17–18 |
+| Goals per team per match | 1.5–2.8 | about 1.3–1.8 |
+
+Tactics change the outcome. For example, High Press against Balanced: 46–53% of the time on the ball is spent in the attacking third, against about 35% for Balanced; Defensive against Balanced: fewer passes, more duels.
+
+### Playtest notes (2026-11-11) — fixed in Phase 19 ✅
+
+Reported after playing Phase 18; all four are fixed (see "Fixed" under each item and the Phase 19 section).
+
+1. **Players crowd the keeper after a catch.** When the goalkeeper holds the ball, opponents (and teammates) stay right next to him, so there is no one free to throw to and the throw is easily cut out.
+   - Expected: while `state.keeperHands` is set, opponents gradually drop back (out of the penalty area, at least ~10–15 m from the keeper), and teammates spread out to offer throwing options (full-backs wide, a midfielder short).
+   - Where: `teamAI.js` (team shape while the keeper holds the ball), `carrierAI.js` → `distributeFromHands` (choose a throw only when the receiver is open).
+   - **Fixed:** while a keeper holds the ball, nobody presses him; opponents drop outside the box and at least 14 m away (in testing they went from 3 m to over 15 m within 2 s). His teammates spread out: centre-backs to the corners of the box, full-backs wide, a midfielder short.
+2. **The keeper cannot move while holding the ball.** After a catch he only turns on the spot (`control.js` returns early when `state.keeperHands === selectedId`).
+   - Expected: the keeper can walk with the ball in his hands (slower than running), staying inside his own penalty area, before throwing or kicking. Optionally limit the time he may hold the ball (about 6 s), then release automatically.
+   - Where: `control.js` → `updateControlledPlayer`, `ball.js` → `updateDribble` (ball follows the keeper's hands), AI keeper in `carrierAI.js`.
+   - **Fixed:** the arrow keys walk the keeper at 3.2 m/s with the ball, kept inside his own penalty area. After 6 s without a throw or kick, the AI distributes for you.
+3. **Winning the ball back is too hard.** Tackles almost never succeed, so the user cannot win the ball.
+   - Review standing tackle success in `control.js` → `performTackle`: base 0.34; −0.3 against a shielding player from behind; clean win only 68% (otherwise the ball is poked loose).
+   - Also review tackle range (1.9 m standing / 3.2 m sliding) and cooldowns (0.85 s / 1.5 s), contain (D), and AI dribbling that now keeps the ball close (Phase 18).
+   - Show clearer feedback when the tackle fails and why (too far, behind the shield, bad timing).
+   - Measure the user's tackle success with the match simulator before and after.
+   - **Fixed** (measured on an AI striker dribbling, ball won within 1.2 s, before → after):
+
+     | Tackle | Before | After |
+     | --- | --- | --- |
+     | Standing, from the front | 29% | about 65–68% (after Playtest notes 2; the passive steal is gone) |
+     | Standing, from the side | 17% | about 53% |
+     | Standing, from behind | 8% | about 22% |
+     | Against a shielding player | 2–3% | 7–9% (go round to the ball side) |
+
+     Changes:
+     - Standing tackle range 1.9 → 2.2 m, with a lunge of up to 0.8 m towards the ball. Cooldown 0.85 → 0.6 s.
+     - Success uses the new attributes (Standing / Sliding tackle + Strength against Ball control + Strength + Balance) and stamina.
+     - A clean win is now 75% (was 68%). A poked ball goes sideways, slightly towards the tackler, not on towards the team that lost it.
+     - The player who lost the ball can no longer win it straight back: the dribble-steal and AI tackles respect his recovery time, and a new owner gets 0.45 s before AI tackles.
+     - Messages explain a miss: too far (shows the distance), from behind, or shielded.
+4. **The intended receiver stands still waiting for the user's pass, and the opponent takes it.** After pressing S/W, the teammate who should receive the ball waits at the target spot instead of coming towards the ball, so a defender steps in front.
+   - Expected: like FIFA Online 4, the receiver moves to meet the ball, especially when an opponent is closer to the passing lane. Control could also switch to the receiver while the ball is travelling.
+   - Where: `teamAI.js` → `updateReceiverRun` (it currently runs to the target spot and only chases the ball's path when within 9 m). Check that nothing else moves or blocks the receiver during `pendingPass`, including the user-controlled player.
+   - Check user passes too: they aim with the arrow keys and power, not with `laneSlack`.
+   - **Fixed:**
+     - The receiver now runs to the earliest point on the ball's path he can reach, so he always comes towards the ball, using the real path after pass inaccuracy. Through balls still go into space unless the ball would get there first.
+     - While you hold S, the predicted receiver already starts coming towards you.
+     - Control switches to the receiver as soon as the ball leaves the foot (FIFA Online 4 auto-switch). He keeps running to meet the ball until you steer him. The arrow keys you held to aim are ignored until you release them.
+     - Test (120 passes each, before = receiver waits → after):
+
+       | Situation | Before | After |
+       | --- | --- | --- |
+       | Defender marking about 2 m behind/beside the receiver | 9 received | 120 received |
+       | Defender about 3.5 m from the passing lane | 16 | 70 |
+       | Defender already standing between the receiver and the ball | 0 | 2 (still a bad pass: choose another teammate) |
+
+### Phase 19 — Stamina, fatigue and detailed attributes ✅ (2026-11-11)
+
+**Detailed attributes** (`systems/attributes.js`)
+
+- 18 outfield attributes in six groups:
+  - Pace: acceleration, sprint speed.
+  - Shooting: finishing, shot power, long shots.
+  - Passing: short passing, long passing, vision.
+  - Dribbling: ball control, agility, balance.
+  - Defending: standing tackle, sliding tackle, interceptions, marking.
+  - Physical: strength, stamina, aggression.
+- Goalkeepers also have diving, handling, reflexes, positioning and kicking.
+- Detailed attributes are **derived** from the six main stats, plus a position bias (strikers +finishing, centre-backs +strength/marking, wingers +acceleration…) and a fixed −4…+4 offset per player. Old saves, transfer-market players and generated opponents all get them without a data migration.
+- `player.attributes.<key>`, when present, overrides the derived value. This is the hook for Phase 19B levelling.
+- **Main stats now depend on position** (`POSITION_PROFILES` in `data/teams.js`). Before, every stat was ≈ overall, so strikers tackled like centre-backs and keepers shot like strikers. Default players in old saves are migrated automatically (only when their six stats are still "flat"); bought players keep their own stats.
+- **Where they are used:**
+
+  | Attribute | Effect in the engine |
+  | --- | --- |
+  | Sprint speed | top speed (8.4–8.9 m/s) |
+  | Acceleration | how fast the player you control and AI ball carriers reach top speed |
+  | Agility | how much speed is kept when turning |
+  | Finishing / long shots | shot accuracy, blended by distance |
+  | Shot power | shot speed |
+  | Short passing / long passing / vision | pass angle and power error. Vision also matters for through balls and affects how often the AI chooses through balls and long passes |
+  | Ball control | clean first touch up to 10–18 m/s; dribble touch accuracy (with agility) |
+  | Balance + strength | holding off challenges and tackles |
+  | Standing tackle / sliding tackle | tackle success (yours and the AI's) |
+  | Interceptions | reach for blocking a moving ball, reading interceptions |
+  | Marking | how tightly defenders mark |
+  | Aggression | how often AI players attempt tackles |
+  | Strength | duels and collisions |
+  | Stamina | how fast stamina drains |
+  | Reflexes | keeper reaction time |
+  | Diving | keeper dive reach |
+  | Handling | catching instead of parrying |
+  | Positioning | how well the keeper covers the angle |
+  | Kicking | keeper throws and punts |
+
+**Stamina and fatigue** (`systems/stamina.js`)
+
+- `state.stamina[id]`, 0–100, starts from the player's **condition**.
+  - Sprinting (above 92% of the player's top speed) drains it quickly, running drains it slowly, and walking or standing recovers it.
+  - Tackles, slides, shots, dives and shoulder duels cost a little extra.
+  - The Stamina attribute scales the drain (50 → ×1.0, 90 → ×0.72). Drain is scaled by match length, so players end a 3, 6 or 10-minute match equally tired.
+  - Half-time gives +10.
+- Simulator, end of a 6-minute match before the half-time bonus: average about 56%, midfielders about 36%, defenders about 78%.
+- **Fatigue starts below 70%:** up to −18% top speed and −25% acceleration, and up to −12 points on shooting, passing, ball control, tackling, strength and keeper attributes.
+- **Condition between matches:** after each match, players lose condition for the minutes they played (≈ −30 × stamina factor per full match), and the whole squad recovers +15. Condition never drops below 40, and a new season restores 100%.
+  - A striker who plays every match goes 100 → 93 → 86 → 79 …; one match on the bench gives +15.
+  - Condition is saved with the roster.
+
+**Interface**
+
+- A stamina bar under each player's name tag (green, yellow below 60, red below 35).
+- Live stamina in the player profile, plus a "DETAILED ATTRIBUTES" toggle that shows all groups (goalkeeping first for keepers).
+- Stamina bars on the substitution board: live stamina during the match, condition before kick-off.
+- Condition % next to each starter on the pre-match screen.
+
+**Balance** (simulator, 24 matches × 6 min, both sides AI):
+
+- Passes completed 78–81%, cut out 14–16%.
+- About 11 tackles per team, about 1.1–1.8 goals per team.
+- Acceleration is applied only to the player you control and to AI ball carriers. Applying it to every AI player halved the number of tackles: their run targets change every frame, so they never reached top speed. Goals went up about 60%.
+
+### Playtest notes 2 (2026-11-11) — fixed with Phase 19B ✅
+
+1. **"You should only win the ball with a (slide) tackle or a bad pass, not just by walking up to it."**
+   - Removed the passive steal: an opponent standing next to a loose touch no longer takes the ball automatically.
+   - The ball now changes hands only through:
+     - a tackle or slide;
+     - a heavy touch (the ball becomes loose);
+     - a cut-out pass.
+   - On your team, only the player you control tackles: **Space** standing, **A** (or Ctrl) slide. AI teammates no longer tackle on their own (except when the AI is playing for you), and they cannot knock the ball off a carrier with a shoulder duel.
+   - The AI opponents still decide for themselves: standing tackles, plus **sliding tackles** from 1.6–2.8 m, which happen more often for aggressive players. A successful slide knocks the ball away and floors the carrier. A miss leaves the slider on the ground.
+   - "Call a teammate to press" moved from A to **W**.
+2. **"If I don't press anything for ~10 s, let the AI play."**
+   - After 10 s with no key pressed (holding a key counts as playing), the AI controls your whole team, including the selected player.
+   - An "AUTO PLAY" badge shows while it does. Any key gives control back.
+3. **"Shooting and passing aren't smooth":** opponents closed down too fast, passes were half-hearted, and a full-power pass sometimes didn't happen at all.
+   - **Full power, no pass:** while you held S, opponents rushed in and won the ball, and the charge was silently cancelled. Pressing is now a jockey: the first defender sprints to a goal-side spot, slows down within 6 m and holds about 1.2 m off, waiting for the right moment to tackle. If you do lose the ball while charging, the game now says "BALL LOST WHILE CHARGING".
+   - **Weak passes:** pass speed to a teammate only depended on distance. It now also scales with the power bar: ×0.88 for a tap up to ×1.30 at full, max 27 m/s. A quick tap on D shoots with at least 35% power.
+   - Tested in the simulator, holding S for 0.1 s / 0.5 s / 1 s / 2 s: the pass is always played (before: lost under pressure after about 0.7 s). Ball speed: 18 / 22 / 25–26 / 27 m/s (before: about 20 m/s whatever the power).
+4. **"Sometimes after receiving the ball the player won't move; I can only pass or shoot."**
+   - Cause: the Phase 19 auto-switch ignored the arrow keys you held while aiming the pass until you released all of them. If you kept holding them, the receiver stood still even after he had the ball.
+   - The lock now lasts only while the ball is still travelling to the receiver, only for the exact arrows held at the pass, and for at most 0.6 s.
+   - Test: holding the same arrows through the pass, the receiver moves 16 m in the 3.4 s after receiving the ball.
+5. **"At the end of a half the match should wait for the ball to go dead, with an animation, not just a panel."**
+   - When time is up the clock stops and shows added time (e.g. `45:00 +1:20`). Play continues until the ball is dead: out of play (throw-in, corner, goal kick), a goal, or the keeper holding the ball. There is no time limit (your choice).
+   - After a goal or an out-of-play ball, the whistle waits until the celebration or the set-up for the restart is over.
+   - Then the referee whistles ("HALF TIME" / "FULL TIME"), the ball stops and players stop:
+     - **Half time:** players walk towards the tunnel at the halfway line.
+     - **Full time:** the winners celebrate (crouch, jump, arms up), the losers bend over with hands on knees, and on a draw both teams clap. New clips: `celebrate`, `dejected`, `clap`.
+   - The half-time / full-time panel appears after 2.8 s / 4 s.
+   - In the simulator, the dead ball came 4–77 s (real time) after the clock ran out.
+   - Fixed with it: the "GOAL" overlay could switch the match back to playing just after the whistle.
+
+**Balance after these changes** (simulator, 24 matches × 6 min, both sides AI): passes completed 81–82%, cut out 13–14%, about 4 tackles and 13 interceptions per team (turnovers now come mostly from cut-out passes and AI tackles with an animation, not passive steals), about 1.2–1.6 goals per team.
+
+### Phase 19B — Player progression: levels and attribute points ✅ (2026-11-11)
+
+New: `systems/progression.js`, `screens/DevelopmentScreen.jsx` (**SQUAD** tab).
+
+- **XP after each match** (`matchXp`):
+  - 40 × share of the match played.
+  - Rating above 6.0 × 30.
+  - Goal 15, assist 10, tackle 3, interception 2, save 6.
+  - Clean sheet for GK/defenders who played 60%+: 20. Player of the match: 30. Win: 10.
+  - Unused players get 10 training XP. A forfeited match gives no XP.
+  - Typical full match: about 60 XP (rating 6.4), about 100 (7.2 and a goal), about 150 (8.1, two goals and an assist).
+- **Levels:** 1–30. XP for the next level = `60 + 30 × level` (90 at level 1, 360 at level 10, 660 at level 20). Each level gives 3 attribute points.
+  - A regular starter reaches about level 12–13 after his first season and needs 4–5 seasons for level 30.
+  - The planned `100 × level^1.5` curve was too slow: about level 6 after a whole season.
+- **Spending points** (cost by position):
+  - 1 point for key attributes, 2 for secondary, 3 for the rest.
+  - Example: a striker's keys are finishing, shot power, acceleration, sprint speed, strength and balance. A centre-back's are standing/sliding tackle, marking, interceptions, strength and aggression. Goalkeepers' are diving, handling, reflexes and positioning.
+  - **RECOMMENDED FOR POSITION** spends all points automatically, lowest key attributes first.
+- **Potential and OVR:**
+  - Each player has a potential: current OVR + 3–12, up to +4 more for young bought players, max 95.
+  - OVR is recalculated with position weights: about +0.13 per key point, +0.06 per secondary point, almost nothing for unrelated attributes. It can't go above potential, and every attribute is capped at 99.
+  - The new OVR feeds transfer value.
+- **Data:** new fields on each player: `level`, `xp`, `unspentPoints`, `potential`.
+  - Old saves get defaults: level 1, 0 XP.
+  - On the first upgrade the player's derived attributes are snapshotted into `attributes` / `attributesBase` (plus `baseOverall`), and the six main stats are kept in sync as group averages for the other panels.
+- **Interface:**
+  - The post-match screen has a "PLAYER DEVELOPMENT · XP EARNED" card: XP per player, level, XP bar and **LEVEL UP! +3 pts**.
+  - The SQUAD screen shows every player's level, OVR / potential and unspent points. The player detail has XP, all attribute groups with their cost and a "+" button.
+  - The Home screen shows how many points are waiting. The match profile shows the level.
+- **Simulator check:** 38 matches × 90 XP takes a striker (OVR 85, potential 89) to level 13 and OVR 88.
+- Not done (optional in the plan): AI clubs levelling up during the season.
+
 ### Later phases
 
-- **Phase 18:** Team tactics, pressing, defensive organisation and attacking strategies.
-- **Phase 19:** Stamina, fatigue and more detailed player attributes.
-- **Phase 19B:** Player progression: levels, XP and position-based attribute points (see below).
 - **Phase 20:** Fouls, penalties, offside and full set pieces.
 - **Phase 21:** Match statistics and presentation.
 - **Phase 22:** Visual polish, sound, performance optimisation and release preparation.
-
-### Phase 19B — Player progression: levels and attribute points (planned)
-
-> Ghi chú cho phase mới, chưa triển khai. Xếp sau Phase 19 vì cần bộ chỉ số chi tiết và thể lực của Phase 19. Dùng luôn thống kê và điểm số sau trận đã có từ Step 6.
-
-- **XP after each match:**
-  - Base XP for playing, scaled by minutes on the pitch.
-  - Bonus from the match rating (`ratePlayer` in `systems/matchStats.js`), goals, assists, tackles won, saves and clean sheets.
-  - Extra XP for player of the match.
-  - Unused players get a small amount of training XP.
-- **Levels:** for example level 1–30, with an increasing XP curve (e.g. `100 × level^1.5`). Each level-up gives attribute points (e.g. 3 points).
-- **Position-based upgrades:** points are spent on attributes, and the cost depends on the player's position.
-  - Key attributes for the position cost 1 point.
-  - Secondary attributes cost 2 points.
-  - Attributes unrelated to the position cost 3 points.
-
-  | Position | Key attributes (1 point) | Secondary (2 points) |
-  | --- | --- | --- |
-  | GK | diving, handling, reflexes, positioning (GK attributes come from Phase 19) | kicking, physical |
-  | CB | defending, physical, heading | pace, passing |
-  | LB / RB / LWB / RWB | pace, defending, stamina | passing, dribbling |
-  | CDM | defending, passing, physical | stamina, dribbling |
-  | CM / CAM | passing, dribbling, vision | shooting, stamina |
-  | LW / RW / LM / RM | pace, dribbling, crossing | shooting, passing |
-  | ST / CF | shooting, pace, positioning | dribbling, physical |
-
-- **Limits:**
-  - Each player has a hidden or visible potential (maximum OVR), and every attribute is capped at 99.
-  - Overall (OVR) is recalculated with position weights, so a centre-back who adds shooting barely gains OVR.
-- **Interface:**
-  - Level badge and XP bar in the squad list, player profile and substitution board.
-  - The post-match screen shows "LEVEL UP!" for players who level up.
-  - An upgrade screen to spend points, with a "Recommended for position" button that spends them automatically.
-- **Data and save:**
-  - New fields on each player: `level`, `xp`, `unspentPoints`, `potential`.
-  - Saved in the roster (bump the storage key or migrate with defaults `level: 1, xp: 0`).
-  - The new OVR affects transfer value in `clubService.getPlayerValue`.
-- **AI clubs (optional):** opposing players also gain levels during the season so the league stays balanced.
 
 ### Phase 23 — Club selection and club crests (planned)
 

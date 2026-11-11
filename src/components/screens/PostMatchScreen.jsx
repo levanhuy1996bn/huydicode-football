@@ -35,6 +35,7 @@ export default function PostMatchScreen({
     onNext,
     onOpenLeague,
     onNewSeason,
+    onOpenDevelopment,
 }) {
     if (!summary) {
         return (
@@ -172,6 +173,47 @@ export default function PostMatchScreen({
                     </table>
                 </div>
             </div>
+
+            {summary.progression?.length > 0 && (
+                <div className="home-card progression-card">
+                    <div className="home-card__head">
+                        <span>PLAYER DEVELOPMENT · XP EARNED</span>
+                        <button type="button" className="link-btn" onClick={onOpenDevelopment}>
+                            SPEND POINTS →
+                        </button>
+                    </div>
+                    <div className="progression-list">
+                        {[...summary.progression]
+                            .sort((a, b) => b.levelsGained - a.levelsGained || b.gained - a.gained)
+                            .map((row) => (
+                                <div
+                                    className={`progression-row${row.levelsGained ? ' is-levelup' : ''}`}
+                                    key={row.id}
+                                >
+                                    <span className="lineup__number">{row.number}</span>
+                                    <span className="progression-row__name" title={row.name}>
+                                        {shortPlayerName(row.name, 16)}
+                                        <em>{row.position}</em>
+                                    </span>
+                                    <span className="progression-row__xp">+{row.gained} XP</span>
+                                    <span className="progression-row__level">
+                                        LV {row.level}
+                                        {row.levelsGained > 0 && (
+                                            <b>LEVEL UP! +{row.pointsGained} pts</b>
+                                        )}
+                                    </span>
+                                    <div className="xp-bar">
+                                        <i
+                                            style={{
+                                                width: `${row.xpNeeded ? Math.min(100, (row.xp / row.xpNeeded) * 100) : 100}%`,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+            )}
         </section>
     )
 }

@@ -2,6 +2,7 @@ import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
 import TeamManagementPanel from './TeamManagementPanel'
 import SubstitutionBoard from './SubstitutionBoard'
+import DevelopmentScreen from './screens/DevelopmentScreen'
 import MatchSidePanel from './MatchSidePanel'
 import TopBar from './screens/TopBar'
 import HomeScreen from './screens/HomeScreen'
@@ -9,6 +10,8 @@ import PreMatchScreen from './screens/PreMatchScreen'
 import PostMatchScreen from './screens/PostMatchScreen'
 import { formatMoney, getSquadValue } from '../services/clubService'
 import { buildMatchSummary } from '../systems/matchStats'
+import { applyMatchCondition } from '../systems/stamina'
+import { applyMatchProgression, progressOf } from '../systems/progression'
 import MatchWorld from './MatchWorld'
 import {
     FullTimeOverlay,
@@ -111,6 +114,10 @@ export default function GameScene() {
     const [isClubOpen, setIsClubOpen] = useState(false)
     const [lineupMode, setLineupMode] = useState('match') // 'match' | 'prematch'
     const statsRef = useRef(null)
+    // resetKey của trận đã cập nhật phong độ thể lực (tránh cộng/trừ hai lần).
+    const conditionAppliedRef = useRef(null)
+    // XP / lên cấp của trận vừa xong (hiện ở màn sau trận).
+    const progressionReportRef = useRef([])
 
     // Cài đặt người chơi (lưu trên trình duyệt).
     const [settings, setSettings] = useState(loadSettings)
@@ -145,7 +152,16 @@ export default function GameScene() {
     const matchTimeRef = useRef(0)
     matchTimeRef.current = matchTime
 
+    // Hết giờ nhưng chờ bóng chết mới thổi còi: 'half' | 'full' | null,
+    // số giây bù giờ đã đá, máy đang đá thay người chơi (không bấm 10 giây).
+    const [whistlePending, setWhistlePending] = useState(null)
+    const [addedTime, setAddedTime] = useState(0)
+    const [autoPilot, setAutoPilot] = useState(false)
+
     const resetMatchFlow = useCallback(() => {
+        setWhistlePending(null)
+        setAddedTime(0)
+        setAutoPilot(false)
         setHalf(1)
         setGoalEvents([])
         setForfeit(null)
@@ -263,36 +279,47 @@ export default function GameScene() {
         if (matchStatus !== 'playing') return undefined
 
         const interval = setInterval(() => {
+            // Đang bù giờ (chờ bóng chết): đồng hồ chính dừng, đếm giờ bù.
+            if (whistlePending) {
+                setAddedTime((current) => current + 0.25)
+                return
+            }
+
             setMatchTime((current) =>
                 Math.min(matchDuration, current + 0.25),
             )
         }, 250)
 
         return () => clearInterval(interval)
-    }, [matchStatus])
+    }, [matchStatus, whistlePending])
 
-    // Kết thúc trận khi đồng hồ đạt 90 phút.
+    // Hết 90 phút / hết hiệp 1: KHÔNG dừng ngay. Báo cho engine "đã hết giờ",
+    // trận đá bù cho tới khi bóng chết (ra ngoài, bàn thắng, thủ môn ôm bóng),
+    // trọng tài thổi còi, cầu thủ có hoạt cảnh rồi mới hiện bảng
+    // (xem systems/whistle.js → handleWhistleDone).
     useEffect(() => {
-        if (
-            matchStatus === 'playing' &&
-            matchTime >= matchDuration
-        ) {
-            handleMatchEnd()
-        }
-    }, [matchTime, matchStatus, handleMatchEnd])
+        if (matchStatus !== 'playing' || whistlePending) return
 
-    // Hết hiệp 1: dừng trận, mở màn nghỉ giữa hiệp.
-    useEffect(() => {
-        if (
-            matchStatus === 'playing' &&
-            half === 1 &&
-            matchTime >= matchDuration / 2
-        ) {
+        if (half === 1 && matchTime >= matchDuration / 2) {
             setMatchTime(matchDuration / 2)
+            setAddedTime(0)
+            setWhistlePending('half')
+        } else if (half === 2 && matchTime >= matchDuration) {
+            setAddedTime(0)
+            setWhistlePending('full')
+        }
+    }, [matchTime, matchStatus, half, whistlePending])
+
+    const handleWhistleDone = useCallback((type) => {
+        setWhistlePending(null)
+
+        if (type === 'half') {
             setMatchStatus('halftime')
             setActionMessage('HALF TIME')
+        } else {
+            handleMatchEnd()
         }
-    }, [matchTime, matchStatus, half])
+    }, [handleMatchEnd])
 
     // Ghi nhận kết quả trận của đội người chơi vào giải đấu đúng một lần.
     useEffect(() => {
@@ -342,24 +369,69 @@ export default function GameScene() {
         redScore,
     ])
 
-    // Hết trận: chụp thống kê từ engine để làm màn tổng kết.
+    // Hết trận: chụp thống kê từ engine để làm màn tổng kết, cập nhật phong độ
+    // thể lực (Phase 19) và XP / cấp độ (Phase 19B) cho đội người chơi.
     useEffect(() => {
         if (matchStatus !== 'fulltime') return
 
         const blue = roster.find((team) => team.id === 'blue')
         const allBlue = [...(blue?.players || []), ...(blue?.substitutes || [])]
 
-        setMatchSummary(
-            buildMatchSummary({
-                stats: statsRef.current?.stats,
-                players: blue?.players || [],
-                subbedOffPlayers: allBlue.filter((player) => subbedOffIds.includes(player.id)),
-                blueScore,
-                redScore,
-                goalEvents,
-                forfeit,
-            }),
-        )
+        const summary = buildMatchSummary({
+            stats: statsRef.current?.stats,
+            players: blue?.players || [],
+            subbedOffPlayers: allBlue.filter((player) => subbedOffIds.includes(player.id)),
+            blueScore,
+            redScore,
+            goalEvents,
+            forfeit,
+        })
+
+        // Chỉ cập nhật đội hình một lần cho mỗi trận (effect có thể chạy lại
+        // khi `forfeit` đổi sau khi đã hết trận).
+        if (conditionAppliedRef.current !== resetKey) {
+            conditionAppliedRef.current = resetKey
+
+            const onPitch = statsRef.current?.onPitchTime || {}
+            const fractions = Object.fromEntries(
+                Object.entries(onPitch).map(([id, seconds]) => [
+                    id,
+                    Math.min(1, seconds / Math.max(1, matchDuration)),
+                ]),
+            )
+
+            const rested = applyMatchCondition(allBlue, fractions)
+            const { players: progressed, reports } = applyMatchProgression(
+                rested,
+                summary.ratings,
+                fractions,
+                {
+                    goalsFor: blueScore,
+                    goalsAgainst: redScore,
+                    motmId: summary.manOfTheMatch?.id || null,
+                    forfeit,
+                },
+            )
+            const updatedById = new Map(progressed.map((player) => [player.id, player]))
+
+            progressionReportRef.current = reports
+
+            setRoster((current) =>
+                current.map((team) =>
+                    team.id !== 'blue'
+                        ? team
+                        : {
+                            ...team,
+                            players: team.players.map((player) => updatedById.get(player.id) || player),
+                            substitutes: (team.substitutes || []).map(
+                                (player) => updatedById.get(player.id) || player,
+                            ),
+                        },
+                ),
+            )
+        }
+
+        setMatchSummary({ ...summary, progression: progressionReportRef.current || [] })
         // Chỉ chụp một lần khi vừa hết trận.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchStatus, forfeit])
@@ -369,7 +441,9 @@ export default function GameScene() {
         if (matchStatus !== 'goal') return undefined
 
         const timeout = setTimeout(() => {
-            setMatchStatus('playing')
+            // Chỉ quay lại 'playing' nếu chưa chuyển sang trạng thái khác
+            // (vd. còi hết hiệp vừa thổi ngay sau bàn thắng ở phút bù giờ).
+            setMatchStatus((status) => (status === 'goal' ? 'playing' : status))
             setGoalMessage('')
         }, 2800)
 
@@ -393,6 +467,8 @@ export default function GameScene() {
     }
 
     const confirmQuit = () => {
+        setWhistlePending(null)
+
         const isLeagueMatch = Boolean(activeFixture && !activeFixture.played)
 
         if (isLeagueMatch) {
@@ -471,6 +547,22 @@ export default function GameScene() {
 
         setLeague(nextLeague)
 
+        // Mùa mới: cả đội hồi phục hoàn toàn (Phase 19).
+        const rested = (players) =>
+            (players || []).map((player) =>
+                player.condition == null || player.condition === 100
+                    ? player
+                    : { ...player, condition: 100 },
+            )
+
+        setRoster((current) =>
+            current.map((team) =>
+                team.id !== 'blue'
+                    ? team
+                    : { ...team, players: rested(team.players), substitutes: rested(team.substitutes) },
+            ),
+        )
+
         const firstFixture = getNextUserFixture(
             nextLeague.fixtures,
         )
@@ -506,6 +598,12 @@ export default function GameScene() {
     const timeLabel = `${String(displayMinutes).padStart(2, '0')}:${String(
         displaySeconds,
     ).padStart(2, '0')}`
+
+    // Bù giờ: quy đổi giây thực ra phút:giây trận đấu (ví dụ "+1:20").
+    const addedGameSeconds = Math.floor((addedTime / matchDuration) * 90 * 60)
+    const addedLabel = whistlePending
+        ? `+${Math.floor(addedGameSeconds / 60)}:${String(addedGameSeconds % 60).padStart(2, '0')}`
+        : null
 
     const isPlaying = matchStatus === 'playing'
 
@@ -777,8 +875,33 @@ export default function GameScene() {
     const navigate = (tab) => {
         if (tab === 'home') goHome()
         else if (tab === 'prematch') openPrematch(nextFixture)
+        else if (tab === 'development') openDevelopment()
         else if (tab === 'league') setIsLeagueOpen(true)
         else if (tab === 'club') setIsClubOpen(true)
+    }
+
+    // Phase 19B: màn phát triển cầu thủ.
+    const openDevelopment = () => {
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        setScreen('development')
+    }
+
+    const updateBluePlayer = (updated) => {
+        setRoster((current) =>
+            current.map((team) =>
+                team.id !== 'blue'
+                    ? team
+                    : {
+                        ...team,
+                        players: team.players.map((player) => (player.id === updated.id ? updated : player)),
+                        substitutes: (team.substitutes || []).map((player) =>
+                            player.id === updated.id ? updated : player,
+                        ),
+                    },
+            ),
+        )
     }
 
     const openLineupEditor = () => {
@@ -853,6 +976,9 @@ export default function GameScene() {
             : 0,
         size: (blueTeam?.players.length || 0) + (blueTeam?.substitutes.length || 0),
         value: formatMoney(getSquadValue(roster)),
+        // Phase 19B: tổng điểm chỉ số chưa cộng của cả đội.
+        unspentPoints: [...(blueTeam?.players || []), ...(blueTeam?.substitutes || [])]
+            .reduce((sum, player) => sum + progressOf(player).unspentPoints, 0),
     }
 
     const homeProgress = {
@@ -905,6 +1031,7 @@ export default function GameScene() {
                     }}
                     onOpenLeague={() => setIsLeagueOpen(true)}
                     onOpenClub={() => setIsClubOpen(true)}
+                    onOpenDevelopment={openDevelopment}
                     onNewSeason={createNewSeason}
                 />
             )}
@@ -926,6 +1053,14 @@ export default function GameScene() {
                 />
             )}
 
+            {screen === 'development' && (
+                <DevelopmentScreen
+                    team={blueTeam}
+                    onUpdatePlayer={updateBluePlayer}
+                    onBack={goHome}
+                />
+            )}
+
             {screen === 'postmatch' && (
                 <PostMatchScreen
                     summary={matchSummary}
@@ -937,6 +1072,7 @@ export default function GameScene() {
                     onNext={() => openPrematch(nextFixture)}
                     onOpenLeague={() => setIsLeagueOpen(true)}
                     onNewSeason={createNewSeason}
+                    onOpenDevelopment={openDevelopment}
                 />
             )}
 
@@ -962,6 +1098,10 @@ export default function GameScene() {
                             onSelect={setSelectedId}
                             onActionMessage={showActionMessage}
                             tacticKey={tacticKey}
+                            matchDuration={matchDuration}
+                            whistlePending={whistlePending}
+                            onWhistleDone={handleWhistleDone}
+                            onAutoPilotChange={setAutoPilot}
                             isPlaying={isPlaying}
                             resetKey={resetKey}
                             onGoal={handleGoal}
@@ -1022,6 +1162,7 @@ export default function GameScene() {
                         }}
                     >
                         {timeLabel}
+                        {addedLabel && <span className="added-time">{addedLabel}</span>}
                     </div>
 
                     <div
@@ -1102,6 +1243,7 @@ export default function GameScene() {
 
                 <select
                     aria-label="Team tactic"
+                    title={TACTICS[tacticKey]?.summary}
                     value={tacticKey}
                     onChange={changeTactic}
                     style={{
@@ -1223,6 +1365,7 @@ export default function GameScene() {
                     events={goalEvents}
                     tacticKey={tacticKey}
                     onTacticChange={changeTactic}
+                    opponentTacticKey={statsRef.current?.aiTacticKey}
                     formationKey={
                         roster.find((team) => team.id === 'blue')?.formationKey
                     }
@@ -1299,17 +1442,24 @@ export default function GameScene() {
                 Arrows move/aim · E sprint · Hold S/W/A/D for power, release
                 to pass/through/lob/shoot · Hold C shield the ball ·
                 Defending: S/Q switch, hold D
-                contain, D+E press, A teammate press · Space tackle · Ctrl
-                slide · Throw-in: S short, A long
+                contain, D+E press, hold W teammate press · Space tackle · A
+                (or Ctrl) slide · Throw-in: S short, A long
             </div>
 
             <div className="action-indicator">
                 {actionMessage}
             </div>
+
+            {autoPilot && matchStatus === 'playing' && (
+                <div className="autopilot-badge" role="status">
+                    <b>AUTO PLAY</b>
+                    <span>The AI is playing for you · press any key to take control</span>
+                </div>
+            )}
         </div>
             </div>
 
-            <MatchSidePanel selectedPlayer={selectedPlayerProfile} />
+            <MatchSidePanel selectedPlayer={selectedPlayerProfile} statsRef={statsRef} />
             </section>
             )}
 
@@ -1340,6 +1490,7 @@ export default function GameScene() {
                     <SubstitutionBoard
                         team={blueTeam}
                         isPrematch={lineupMode === 'prematch'}
+                        staminaById={lineupMode === 'prematch' ? null : statsRef.current?.stamina}
                         substitutionCount={lineupMode === 'prematch' ? 0 : substitutionCount}
                         maxSubstitutions={MAX_SUBSTITUTIONS}
                         subbedOffIds={lineupMode === 'prematch' ? [] : subbedOffIds}
