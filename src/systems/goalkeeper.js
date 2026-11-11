@@ -105,6 +105,37 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         STAND_REACH + DIVE_SPEED * clamp(timeToDive, 0, DIVE_PUSH_TIME) + 0.8 +
         (diving - 70) * 0.025
 
+    // Bóng lốp bay qua đầu (cao hơn tầm với ở chỗ đang đứng): lùi về đón
+    // bóng lúc nó rơi xuống — trước vạch vôi, hoặc ngay trên vạch nếu bóng rơi
+    // vào khung thành. Trước đây thủ môn đứng nhìn bóng bay qua.
+    if (crossY >= 2.75 && !isPlayerLocked(state, keeperItem.id)) {
+        const backpedal = planBackpedal(position, velocity, keeper, goalSign, reaction, bendAt)
+
+        if (backpedal) {
+            const rating = (reflexes + diving) / 2
+            const effort = backpedal.run / BACKPEDAL_SPEED / backpedal.time
+            const chance = clamp(0.88 + (rating - 70) * 0.01 - effort * 0.65, 0.08, 0.85)
+
+            return {
+                kickId: state.kickId,
+                type: 'catchHigh',
+                side: Math.sign(backpedal.x - keeper.position.x) || 1,
+                targetX: backpedal.x,
+                backpedal,
+                success: Math.random() < chance,
+                onTarget,
+                speed,
+                crossY: 2.3,
+                startAt: reaction,
+                reachable: true,
+                elapsed: 0,
+                expires: backpedal.time + reaction + 0.8,
+                started: false,
+                resolved: false,
+            }
+        }
+    }
+
     const standing = distance <= STAND_REACH
     // Đang nằm sân sau pha bay người trước: không kịp phản ứng.
     const recovering = isPlayerLocked(state, keeperItem.id)
@@ -135,7 +166,7 @@ function planSave(ctx, teamId, keeper, keeperItem) {
             0.84 +
             (rating - 70) * 0.01 -
             reachRatio * 0.45 -
-            Math.max(0, speed - 22) * 0.015 -
+            Math.max(0, speed - 21) * 0.02 -
             Math.max(0, crossY - 1.9) * 0.25 -
             (timeToDive < 0.18 ? 0.15 : 0),
             0.1,
@@ -213,6 +244,73 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         started: false,
         resolved: false,
     }
+}
+
+// Thủ môn lùi chạy (m/s) khi đón bóng lốp.
+const BACKPEDAL_SPEED = 5
+
+// Điểm thủ môn có thể lùi về đón bóng bổng: nơi bóng rơi xuống còn ~2.3m
+// trước vạch vôi, hoặc trên vạch vôi nếu bóng vào khung thành ở độ cao
+// bắt được. null nếu không kịp.
+// Lực cản của bóng (khớp linearDamping = 0.25 của Ball trong MatchWorld).
+const BALL_DAMPING = 0.25
+
+const travel = (speed, time) => (speed * (1 - Math.exp(-BALL_DAMPING * time))) / BALL_DAMPING
+
+function heightAt(position, velocity, time) {
+    // Gần đúng: trọng lực + lực cản theo phương đứng.
+    const k = BALL_DAMPING
+    const g = 9.81
+
+    return position.y + ((velocity.y + g / k) * (1 - Math.exp(-k * time))) / k - (g / k) * time
+}
+
+function planBackpedal(position, velocity, keeper, goalSign, reaction, bendAt) {
+    const lineZ = goalSign * FIELD.lineZ
+
+    if (Math.abs(velocity.z) < 1) return null
+
+    // Thời điểm bóng rơi xuống còn 2.3m (tìm theo bước 0.02s, tối đa 3s).
+    let time = null
+
+    for (let t = 0.1; t < 3; t += 0.02) {
+        if (heightAt(position, velocity, t) <= 2.3 && heightAt(position, velocity, t - 0.02) > 2.3) {
+            time = t
+            break
+        }
+    }
+
+    if (time === null) return null
+
+    let z = position.z + travel(velocity.z, time)
+
+    // Bóng rơi sau vạch vôi: đón ngay trên vạch (nếu bóng vào khung thành ở
+    // độ cao còn với được).
+    if ((lineZ - z) * goalSign < 0.4) {
+        const distance = lineZ - goalSign * 0.5 - position.z
+        const ratio = (BALL_DAMPING * distance) / velocity.z
+
+        if (ratio >= 1) return null
+
+        time = -Math.log(1 - ratio) / BALL_DAMPING
+
+        const y = heightAt(position, velocity, time)
+
+        if (time <= 0 || y > 2.6) return null
+
+        z = lineZ - goalSign * 0.5
+    }
+
+    const x = position.x + travel(velocity.x, time) + bendAt(time)
+
+    // Bóng ra ngoài khung thành thì không cần đón.
+    if (Math.abs(x) > FIELD.goalHalfWidth + 0.3) return null
+    const run = Math.hypot(x - keeper.position.x, z - keeper.position.z)
+    const available = time - reaction
+
+    if (available <= 0 || run / BACKPEDAL_SPEED > available) return null
+
+    return { x, z, run, time: available }
 }
 
 // Thực hiện cứu thua khi bóng tới mặt phẳng thủ môn.
@@ -348,6 +446,22 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
             })
         }
 
+        // Lùi về đón bóng lốp.
+        if (plan.backpedal) {
+            const dx = plan.backpedal.x - keeper.position.x
+            const dz = plan.backpedal.z - keeper.position.z
+            const gap = Math.hypot(dx, dz)
+
+            if (gap > 0.05 && plan.elapsed >= plan.startAt * 0.5) {
+                const step = Math.min(gap, BACKPEDAL_SPEED * dt)
+
+                keeper.position.x += (dx / gap) * step
+                keeper.position.z += (dz / gap) * step
+            }
+
+            keeper.rotation.y = facingFor(state, teamId)
+        }
+
         // Lao người ngang về điểm dự tính.
         if (plan.started && plan.type.startsWith('dive')) {
             const remaining = plan.targetX - keeper.position.x
@@ -388,10 +502,21 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
 
     // Đứng trên đường phân giác giữa bóng và tâm khung thành. Positioning
     // kém (Phase 19) thì đứng lệch về phía tâm khung thành hơn (che góc kém).
-    const coverage = 0.6 + skill01(attr(keeperItem, 'positioning')) * 0.25
-    let targetX = clamp(predictedX * coverage, -3.2, 3.2)
     let targetZ =
         goalZ - goalSign * clamp((goalZ - ballPosition.z) * goalSign * 0.2, 0, 5)
+
+    // Đứng trên đường nối bóng – tâm khung thành (chia đôi góc sút): cách vạch
+    // vôi bao nhiêu thì lệch ngang theo tỉ lệ đó. Trước đây thủ môn đứng sát
+    // cột gần (x ≈ 0.6–0.85 × vị trí bóng) nên góc xa gần như bỏ trống.
+    // Positioning kém → đứng lệch về cột gần thêm tới ~0.8m.
+    const keeperOffLine = FIELD.lineZ - Math.abs(targetZ)
+    const ballOffLine = Math.max(1, FIELD.lineZ - Math.abs(ballPosition.z))
+    const nearPostBias = (1 - skill01(attr(keeperItem, 'positioning'))) * 0.8 * Math.sign(predictedX)
+    let targetX = clamp(
+        predictedX * clamp((keeperOffLine / ballOffLine) * 1.3, 0.15, 1) + nearPostBias,
+        -3.2,
+        3.2,
+    )
 
     const { ownerId, ownerItem } = snapshot
     const enemyCarrier =
@@ -403,7 +528,9 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         const distanceToGoal = Math.abs(enemyCarrier.position.z - goalZ)
         const distanceToKeeper = distance2D(enemyCarrier.position, keeper.position)
 
-        if (distanceToGoal < 19 && distanceToKeeper < 23) {
+        // Chỉ lao ra khi tiền đạo đã vào gần (≤ 15m); trước đây từ 19m thủ
+        // môn đã lao ra cách vạch 8–10m nên rất dễ bị sút lốp.
+        if (distanceToGoal < 15 && distanceToKeeper < 20) {
             rushingOut = true
             targetX = clamp(enemyCarrier.position.x * 0.8, -6, 6)
             targetZ = goalSign > 0
@@ -412,7 +539,9 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         }
     }
 
-    targetZ = goalSign > 0 ? clamp(targetZ, 42, 51) : clamp(targetZ, -51, -42)
+    // Không đứng cách vạch vôi quá ~7.5m (lao ra cản phá: ~9.5m).
+    const deepest = rushingOut ? 43 : 45
+    targetZ = goalSign > 0 ? clamp(targetZ, deepest, 51) : clamp(targetZ, -51, -deepest)
 
     keeper.rotation.y = facingFor(state, teamId)
 

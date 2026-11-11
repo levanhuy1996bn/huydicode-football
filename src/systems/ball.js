@@ -7,7 +7,7 @@ import {
 } from './constants'
 import { attackDir } from './matchState'
 import { setPlayerAction } from './playerState'
-import { recordPlayer, recordTeam } from './matchStats'
+import { closePass, openPass, recordPlayer, recordShot, recordTeam, shotXg } from './matchStats'
 import { attr, skill01 } from './attributes'
 import { fatiguePenalty } from './stamina'
 import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
@@ -75,6 +75,9 @@ export function attachBallToPlayer(ctx, object, playerId) {
     state.possession = playerId
     state.pendingPass = null
     state.deflection = null
+
+    // Phase 21: kết thúc đường chuyền đang bay (thành công nếu là đồng đội).
+    if (item) closePass(state, item.teamId)
     state.lastToucherId = playerId
     // Người khác chạm bóng: thủ môn không còn ôm bóng (keeperCatch đặt lại sau).
     state.keeperHands = null
@@ -603,7 +606,7 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                 Math.max(0, distanceToGoal - 22) * 0.06
             // Sút xoáy ZD chính xác hơn, sút má ngoài CD nhỉnh hơn sút thường.
             const spreadScale =
-                variant === 'finesse' ? 0.6 : variant === 'trivela' ? 0.85 : variant === 'chip' ? 1.2 : 1
+                variant === 'finesse' ? 0.6 : variant === 'trivela' ? 0.85 : variant === 'chip' ? 1.6 : 1
 
             targetX += (Math.random() * 2 - 1) * spread * spreadScale
         } else {
@@ -612,6 +615,17 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             // đều theo chiều ngang nên rất nhiều cú sút sát cột.
             const spread = 5 - accuracy * 3
             targetX = (Math.random() + Math.random() - 1) * spread
+
+            // Máy sút xoáy / má ngoài thì nhắm hẳn vào góc (xem carrierAI.js).
+            if (variant === 'finesse') {
+                targetX = -(Math.sign(player.position.x) || 1) * (2.2 + Math.random() * 0.9) +
+                    (Math.random() * 2 - 1) * (1 - accuracy) * 1.2
+            } else if (variant === 'trivela') {
+                targetX = (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 1.1) +
+                    (Math.random() * 2 - 1) * (1 - accuracy) * 1.5
+            } else if (variant === 'chip') {
+                targetX = (Math.random() * 2 - 1) * (1.2 + (1 - accuracy) * 1.5)
+            }
         }
 
         direction.set(
@@ -621,9 +635,10 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         ).normalize()
 
         if (isCharged) {
-            // Lực giữ phím quyết định tốc độ (~17–30 m/s) và độ bổng.
-            // Trên 90% lực bóng có thể vọt xà.
-            power = 15 + charge * 12 + shotPower * 0.03
+            // Lực giữ phím quyết định tốc độ (~23–35 m/s, trước đây 17–30 —
+            // người chơi thấy sút "hơi nhẹ") và độ bổng. Trên 90% lực bóng có
+            // thể vọt xà.
+            power = 19 + charge * 12 + shotPower * 0.05
             lift =
                 0.5 +
                 charge * 2 +
@@ -633,14 +648,14 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
             if (variant === 'finesse') {
                 // ZD: sút xoáy bằng lòng trong — chậm hơn, ít bổng, cong vào góc xa.
-                power = 14 + charge * 9 + shotPower * 0.02
+                power = 16 + charge * 8 + shotPower * 0.03
                 lift = 0.7 + charge * 1.5 + distanceToGoal * 0.02
                 message = 'FINESSE SHOT!'
             } else if (variant === 'chip') {
                 // QD: sút lốp qua đầu thủ môn.
                 power = clamp(8 + distanceToGoal * 0.3 + charge * 3, 10, 19)
                 // Khó căn lực: lệch ±7% độ bổng → có quả vọt xà / rơi sớm.
-                lift = (6.5 + charge * 3) * (1 + (Math.random() - 0.5) * 0.14 * (1.3 - accuracy * 0.6))
+                lift = (6.5 + charge * 3) * (1 + (Math.random() - 0.5) * 0.24 * (1.3 - accuracy * 0.6))
                 message = 'CHIP SHOT!'
             } else if (variant === 'trivela') {
                 // CD: sút má ngoài (trivela) — cong ra ngoài, lực gần như sút thường.
@@ -648,41 +663,58 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                 message = 'TRIVELA!'
             }
 
-            // Bóng xoáy: nhắm lệch ra rồi cong về đúng điểm đã chọn (finesse
-            // cong từ ngoài vào, trivela cong từ trong ra). Thủ môn tính cả
-            // độ cong khi đoán điểm bóng tới (goalkeeper.js).
-            if (variant === 'finesse' || variant === 'trivela') {
-                // Đường cong là một cung tròn: hướng đá lệch θ ra ngoài, bóng
-                // quay dần 2θ theo quãng đường bay nên tới đúng điểm ngắm dù
-                // bóng chậm lại.
-                const side = Math.sign(targetX) || 1
-                const length = Math.hypot(targetX - player.position.x, goalZ - player.position.z)
-                const theta = clamp(Math.atan(clamp(length * 0.13, 1.2, 3.5) / length), 0.05, 0.2)
-                const outward = variant === 'finesse' ? side : -side
-                const baseX = (targetX - player.position.x) / length
-                const baseZ = (goalZ - player.position.z) / length
-                // Quay hướng đá theo chiều làm x lệch về phía `outward`.
-                const sign = outward * Math.sign(baseZ || 1)
-                const angle = -sign * theta
-
-                direction.set(
-                    baseX * Math.cos(angle) - baseZ * Math.sin(angle),
-                    0,
-                    baseX * Math.sin(angle) + baseZ * Math.cos(angle),
-                ).normalize()
-
-                curl = { kappa: (sign * 2 * theta) / length, distance: length * 1.05, lateral: -outward }
-            }
         } else {
             // AI: vận tốc thật 22–29 m/s, sút xa bổng hơn một chút.
             power = clamp(
-                19 + shotPower * 0.08 + (distanceToGoal > 20 ? 1.5 : 0),
-                22,
-                29,
+                21 + shotPower * 0.08 + (distanceToGoal > 20 ? 1.5 : 0),
+                24,
+                31,
             )
 
             lift = clamp(1.2 + distanceToGoal * 0.06, 1.2, 3.2)
             message = 'SHOT!'
+
+            // Máy dùng các kiểu sút FO4 (carrierAI.js chọn variant).
+            if (variant === 'finesse') {
+                power = clamp(17 + shotPower * 0.07, 20, 25)
+                lift = 0.9 + distanceToGoal * 0.02
+            } else if (variant === 'chip') {
+                const c = 0.45 + Math.random() * 0.2
+
+                power = clamp(8 + distanceToGoal * 0.3 + c * 3, 10, 19)
+                lift = (6.5 + c * 3) * (1 + (Math.random() - 0.5) * 0.24 * (1.3 - accuracy * 0.6))
+            } else if (variant === 'trivela') {
+                power *= 0.96
+            } else if (variant === 'low') {
+                lift = 0.2
+                power += 1
+            }
+        }
+
+        // Bóng xoáy: nhắm lệch ra rồi cong về đúng điểm đã chọn (finesse
+        // cong từ ngoài vào, trivela cong từ trong ra). Thủ môn tính cả
+        // độ cong khi đoán điểm bóng tới (goalkeeper.js).
+        if (variant === 'finesse' || variant === 'trivela') {
+            // Đường cong là một cung tròn: hướng đá lệch θ ra ngoài, bóng
+            // quay dần 2θ theo quãng đường bay nên tới đúng điểm ngắm dù
+            // bóng chậm lại.
+            const side = Math.sign(targetX) || 1
+            const length = Math.hypot(targetX - player.position.x, goalZ - player.position.z)
+            const theta = clamp(Math.atan(clamp(length * 0.13, 1.2, 3.5) / length), 0.05, 0.2)
+            const outward = variant === 'finesse' ? side : -side
+            const baseX = (targetX - player.position.x) / length
+            const baseZ = (goalZ - player.position.z) / length
+            // Quay hướng đá theo chiều làm x lệch về phía `outward`.
+            const sign = outward * Math.sign(baseZ || 1)
+            const angle = -sign * theta
+
+            direction.set(
+                baseX * Math.cos(angle) - baseZ * Math.sin(angle),
+                0,
+                baseX * Math.sin(angle) + baseZ * Math.cos(angle),
+            ).normalize()
+
+            curl = { kappa: (sign * 2 * theta) / length, distance: length * 1.05, lateral: -outward }
         }
 
         if (restartType === 'free-kick') {
@@ -1023,9 +1055,36 @@ function releaseKick(ctx, windup) {
     if (action === 'shoot') {
         recordTeam(state, teamId, 'shots')
         recordPlayer(state, playerId, 'shots')
+
+        // Phase 21: xG + vị trí cú sút (bản đồ cú sút sau trận).
+        const attack = attackDir(state, teamId)
+        const depth = Math.max(0.5, FIELD.lineZ - player.position.z * attack)
+        const lateral = player.position.x * attack
+        const pressed = ctx.players.some(
+            (other) =>
+                other.teamId !== teamId &&
+                objects[other.id] &&
+                distance2D(objects[other.id].position, player.position) < 2,
+        )
+
+        recordShot(state, {
+            teamId,
+            playerId,
+            depth,
+            lateral,
+            variant: windup.variant || null,
+            xg: shotXg({
+                lateral,
+                depth,
+                penalty: state.restart?.type === 'penalty',
+                freeKick: state.restart?.type === 'free-kick',
+                pressed,
+            }),
+        })
     } else if (!isThrowIn) {
         recordTeam(state, teamId, 'passes')
         recordPlayer(state, playerId, 'passes')
+        openPass(state, teamId, playerId)
 
         if (state.stats) {
             state.stats.lastPasserId = playerId

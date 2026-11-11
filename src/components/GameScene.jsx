@@ -1,6 +1,5 @@
 import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
-import TeamManagementPanel from './TeamManagementPanel'
 import SubstitutionBoard from './SubstitutionBoard'
 import DevelopmentScreen from './screens/DevelopmentScreen'
 import MatchSidePanel from './MatchSidePanel'
@@ -18,6 +17,7 @@ import {
     HalfTimeOverlay,
     QuitConfirm,
     StatusOverlay,
+    PausedStats,
 } from './MatchOverlays'
 import {
     loadLeague,
@@ -41,6 +41,8 @@ import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 
 import { FORMATIONS } from '../data/teams'
+import { LiveStatsPanel, liveStatSource } from './MatchStatsPanel'
+import { shortPlayerName } from '../utils/names'
 import {
     FIXED_STEP,
     MATCH_DURATION,
@@ -144,6 +146,9 @@ export default function GameScene() {
     // thủ đội người chơi bị đuổi (không được thay ra / vào).
     const [cardEvents, setCardEvents] = useState([])
     const [sentOffIds, setSentOffIds] = useState([])
+    // Phase 21: thay người (dòng thời gian) và bảng thống kê trực tiếp.
+    const [subEvents, setSubEvents] = useState([])
+    const [isLiveStatsOpen, setIsLiveStatsOpen] = useState(false)
     const [forfeit, setForfeit] = useState(null) // null | 'league' | 'friendly'
     const [isQuitOpen, setIsQuitOpen] = useState(false)
 
@@ -170,6 +175,7 @@ export default function GameScene() {
         setGoalEvents([])
         setCardEvents([])
         setSentOffIds([])
+        setSubEvents([])
         setForfeit(null)
         setIsQuitOpen(false)
         setIsSubsOpen(false)
@@ -458,7 +464,13 @@ export default function GameScene() {
             )
         }
 
-        setMatchSummary({ ...summary, cardEvents, progression: progressionReportRef.current || [] })
+        setMatchSummary({
+            ...summary,
+            cardEvents,
+            subEvents,
+            shots: [...(statsRef.current?.stats?.shots || [])],
+            progression: progressionReportRef.current || [],
+        })
         // Chỉ chụp một lần khi vừa hết trận.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchStatus, forfeit])
@@ -775,6 +787,20 @@ export default function GameScene() {
         if (!isPrematch) {
             setSubstitutionCount((count) => count + 1)
             setSubbedOffIds((ids) => [...ids, playerOutId])
+
+            const minute = Math.min(
+                90,
+                Math.floor((matchTimeRef.current / matchDurationRef.current) * 90) + 1,
+            )
+
+            setSubEvents((events) => [
+                ...events,
+                {
+                    teamId: 'blue',
+                    minute,
+                    sub: { on: shortPlayerName(incoming.name, 16), off: shortPlayerName(outgoing.name, 16) },
+                },
+            ])
         }
 
         const outOfPosition =
@@ -1295,14 +1321,9 @@ export default function GameScene() {
                 </select>
             </div>
 
-            <TeamManagementPanel
-                roster={roster}
-                selectedId={selectedId}
-                onSelectPlayer={setSelectedId}
-                onFormationChange={changeFormation}
-                onSubstitute={substitutePlayer}
-                substitutionCount={substitutionCount}
-            />
+            {/* Bảng quản lý đội cũ (TeamManagementPanel) đã bỏ khỏi màn hình
+                trận: nó che sân và chặn click. Thay người dùng nút SUBS,
+                đổi sơ đồ ở màn nghỉ giữa hiệp / trước trận. */}
 
             {/* Trong trận không mở quản lý CLB (giống FO4) — dùng ở sảnh. */}
 
@@ -1330,6 +1351,19 @@ export default function GameScene() {
                         style={matchButtonStyle}
                     >
                         PAUSE
+                    </button>
+                )}
+
+                {(matchStatus === 'playing' || matchStatus === 'goal') && (
+                    <button
+                        onClick={() => setIsLiveStatsOpen((open) => !open)}
+                        style={{
+                            ...matchButtonStyle,
+                            ...(isLiveStatsOpen ? { background: '#b9ed70', color: '#0d1f16' } : {}),
+                        }}
+                        aria-pressed={isLiveStatsOpen}
+                    >
+                        STATS
                     </button>
                 )}
 
@@ -1369,6 +1403,15 @@ export default function GameScene() {
                 )}
             </div>
 
+            {/* Phase 21: thống kê trực tiếp (không dừng trận). */}
+            {isLiveStatsOpen && (matchStatus === 'playing' || matchStatus === 'goal') && (
+                <LiveStatsPanel
+                    statsRef={statsRef}
+                    opponentName={opponentTeam?.shortName || 'OPP'}
+                    onClose={() => setIsLiveStatsOpen(false)}
+                />
+            )}
+
             {/* LEAGUE MANAGEMENT */}
             {/* GOAL / PAUSE / HALF TIME / FULL TIME */}
             {matchStatus === 'goal' && (
@@ -1376,7 +1419,13 @@ export default function GameScene() {
             )}
 
             {matchStatus === 'paused' && (
-                <StatusOverlay title="PAUSED" subtitle="Press RESUME to continue">
+                <StatusOverlay
+                    title="PAUSED"
+                    subtitle="Press RESUME to continue"
+                    extra={
+                        <PausedStats statsRef={statsRef} opponentName={opponentTeam?.shortName || 'OPP'} />
+                    }
+                >
                     <button type="button" className="btn btn--primary" onClick={togglePause}>
                         RESUME
                     </button>
@@ -1395,6 +1444,8 @@ export default function GameScene() {
                     blueScore={blueScore}
                     redScore={redScore}
                     events={matchEvents}
+                    statsSource={liveStatSource(statsRef.current?.stats)}
+                    opponentShortName={opponentTeam?.shortName || 'OPP'}
                     tacticKey={tacticKey}
                     onTacticChange={changeTactic}
                     opponentTacticKey={statsRef.current?.aiTacticKey}
@@ -1416,6 +1467,8 @@ export default function GameScene() {
                     blueScore={blueScore}
                     redScore={redScore}
                     events={matchEvents}
+                    statsSource={forfeit ? null : liveStatSource(statsRef.current?.stats)}
+                    opponentShortName={opponentTeam?.shortName || 'OPP'}
                     forfeit={forfeit}
                     fixture={activeFixture}
                     resultSaved={

@@ -7,7 +7,7 @@ import {
 } from './matchState'
 import { clearPlayerStates } from './playerState'
 import { placeBall, teamPlayers } from './ball'
-import { recordPlayer, recordTeam } from './matchStats'
+import { markShotGoal, recordPlayer, recordTeam } from './matchStats'
 import { attr } from './attributes'
 import { BOX_DEPTH, BOX_HALF_WIDTH, PENALTY_SPOT } from './referee'
 
@@ -441,6 +441,7 @@ export function checkGoalAndOut(ctx) {
         if (!goalInfo.ownGoal) {
             recordTeam(state, scoringTeam, 'onTarget')
             recordPlayer(state, goalInfo.scorerId, 'goals')
+            markShotGoal(state, goalInfo.scorerId)
 
             const passerId = state.stats?.lastPasserId
 

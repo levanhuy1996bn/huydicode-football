@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6 and Phases 15–20 — all done ✅ (2026-11-11).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression (levels, XP, attribute points), fouls, cards, offside and set pieces, and FIFA Online-style skill shots and passes (Z+D, Q+D, C+D…). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 21 (match statistics and presentation). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6 and Phases 15–21 — all done ✅ (2026-11-11).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, and match statistics (live stats, xG, shot map, timeline). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 22 (visual polish, sound, performance). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -130,7 +130,8 @@ npm run preview
 - **Phase 19:** stamina, fatigue, condition between matches and detailed attributes.
 - **Phase 19B:** player levels, XP, attribute points by position and potential.
 - **Phase 20:** fouls, yellow and red cards, sending off, offside, free kicks with a wall, penalties, and proper goal kicks, corners and throw-ins.
-- **Skill shots and passes:** finesse (Z+D), chip (Q+D), trivela (C+D), low driven shot (D, D), driven pass (Z+S), lobbed through ball (Q+W), whipped cross (Z+A).
+- **Skill shots and passes:** finesse (Z+D), chip (Q+D), trivela (C+D), low driven shot (D, D), driven pass (Z+S), lobbed through ball (Q+W), whipped cross (Z+A). The AI uses them too.
+- **Phase 21:** live stats during the match (STATS button), full stats when paused and at half time, expected goals (xG), pass accuracy, match timeline, shot map and top performers after the match.
 
 Details and test results for each phase are in the Development roadmap below.
 
@@ -168,6 +169,7 @@ Details and test results for each phase are in the Development roadmap below.
 | Ctrl | Sliding tackle (same as A when defending) |
 | Any key | Take back control when the AI is playing for you (it takes over after 10 s without a key press) |
 | SUBS button | Open the drag-and-drop substitution board (pauses the match) |
+| STATS button | Show / hide live match stats (the match keeps running) |
 | NAMES button | Player names above heads: SMART → ALL → OFF |
 | QUIT button | Leave the match (a league match is recorded as a 0–3 loss) |
 | Click a Manchester United player | Select that player |
@@ -259,7 +261,7 @@ ultimate-football-manager-3d/
     │   ├── referee.js        # fouls, cards, sending off, offside, free-kick wall
     │   ├── movement.js       # top speed / acceleration, AI movement, collisions, velocities
     │   ├── rules.js          # goals, out of play, kick-off, set pieces and spacing
-    │   ├── matchStats.js     # match statistics, ratings, summary
+    │   ├── matchStats.js     # match statistics, pass completion, xG, shot log, ratings, summary
     │   └── matchEngine.js    # fixed-step loop calling the systems in order
     ├── animation/
     │   ├── clips.js          # keyframe clips (pass, shot, tackle, slide...)
@@ -271,6 +273,7 @@ ultimate-football-manager-3d/
         ├── GameScene.jsx
         ├── MatchWorld.jsx
         ├── MatchOverlays.jsx
+        ├── MatchStatsPanel.jsx   # stat comparison bars, live stats, timeline, shot map
         ├── SubstitutionBoard.jsx
         ├── MatchSidePanel.jsx
         ├── Player.jsx
@@ -318,9 +321,9 @@ The project currently uses browser LocalStorage for local game progress.
 | 19 | Stamina, fatigue and detailed attributes | ✅ Done |
 | 19B | Player progression: levels and attribute points | ✅ Done |
 | 20 | Fouls, cards, offside and set pieces (+ playtest notes 3) | ✅ Done |
-| Extra | FO4 skill shots and passes (Z+D, Q+D, C+D…) | ✅ Done |
-| 21 | Match statistics and presentation | ⏳ Next |
-| 22 | Visual polish, sound, performance, release preparation | 🔜 Planned |
+| Extra | FO4 skill shots and passes (Z+D, Q+D, C+D…), also used by the AI | ✅ Done |
+| 21 | Match statistics and presentation | ✅ Done |
+| 22 | Visual polish, sound, performance, release preparation | ⏳ Next |
 | 23 | Club selection and club crests | 🔜 Planned |
 
 ### Status check (2026-11-09)
@@ -762,13 +765,44 @@ Hold a modifier, then press or charge the action key. The modifier also counts i
 
 - Q with the ball is now a modifier only. Without the ball it still cycles players.
 - Shot tests from 18 m (30 shots each, keeper on his line): normal 16 goals, finesse 17, trivela 19, low driven 16. A chip from 22 m beat a keeper standing 8 m off his line every time.
-- The combos follow the standard FO4 keyboard layout (web search was not available to double-check). The AI does not use them yet.
+- The combos follow the standard FO4 keyboard layout (web search was not available to double-check).
+
+### Small fixes before Phase 21 ✅ (2026-11-11)
+
+- **Old team panel removed from the match screen.** The left-hand TeamManagementPanel covered the pitch and blocked clicks. Substitutions use the SUBS button; formation changes are at half time or before the match. (`TeamManagementPanel.jsx` is no longer used and can be deleted.)
+- **Harder shots.** Charged shots now leave the foot at about 23–35 m/s (was 17–30); finesse 16–24 m/s; AI shots 24–31 m/s.
+- **Keeper positioning.** The keeper stands on the line between the ball and the centre of the goal (splitting the angle) instead of hugging the near post, and only rushes out when the striker is within 15 m (was 19 m), never more than ~9.5 m off his line.
+  - Unopposed corner shots from 18 m (30 each): normal 16 goals, finesse 20, trivela 19, low driven 17 — about the same as before even with the harder shots.
+- **Keeper vs chip shots.** When a ball is going over his head, the keeper backpedals (5 m/s) to where it drops to ~2.3 m, or to his line. The save chance depends on how far he has to run. A chip from 18 m against a keeper in his normal position: 30/30 → 14/30 goals.
+- **AI skill shots and passes:**
+  - Chips when the keeper is more than 5.5 m off his line.
+  - Finesse shots from 13–27 m out wide, occasionally a trivela or a low driven shot (more often with better Finishing / Long shots).
+  - Lobbed through balls when the ground lane is blocked, driven passes on long open lanes, and whipped crosses into the box.
+
+### Phase 21 — Match statistics and presentation ✅ (2026-11-11)
+
+- **New stats in the engine** (`matchStats.js`):
+  - Completed passes: a pass counts as completed when a teammate of the passer is the next player to control the ball.
+  - Expected goals (xG) for every shot, from the angle of the goal mouth seen from the shot position. Penalties count as 0.76; free kicks are capped at 0.07; being closed down (< 2 m) is −30%.
+  - xG is calibrated to this game's finishing (24 AI v AI matches: xG 1.0–1.2 v 1.1–1.4 goals per team).
+  - A shot log (position, xG, goal or not, shot type) for the shot map.
+- **During the match:**
+  - The STATS button shows a small live panel (possession, xG, shots, on target, pass accuracy, fouls) that updates every second without pausing.
+  - PAUSE shows every stat in two columns.
+  - Half time has a FIRST-HALF STATS tab next to the team settings.
+  - The full-time card shows the six key stats.
+- **After the match:**
+  - The full comparison: possession, xG, shots, on target, passes, pass accuracy, tackles, interceptions, duels, saves, corners, fouls, offsides and cards.
+  - A **match timeline** (0'–90' with half time) of goals, cards and substitutions.
+  - A **shot map** for each team: dot size = xG, filled = goal.
+  - **Top performers** (most passes completed, tackles, interceptions, shots, highest xG).
+  - The ratings table now shows shots and passes completed/attempted.
+- Match overlays now sit below the scoreboard and scroll if they are taller than the pitch.
 
 ### Later phases (not started)
 
-Everything up to and including Phase 20 is done (see the status table above). Still to do:
+Everything up to and including Phase 21 is done (see the status table above). Still to do:
 
-- **Phase 21:** Match statistics and presentation.
 - **Phase 22:** Visual polish, sound, performance optimisation and release preparation.
 
 ### Phase 23 — Club selection and club crests (planned)
@@ -804,7 +838,7 @@ Everything up to and including Phase 20 is done (see the status table above). St
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–20 (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–21 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

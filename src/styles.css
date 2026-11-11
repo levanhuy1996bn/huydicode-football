@@ -1222,3 +1222,98 @@ footer span { color: #789184; }
   .dev-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .progression-list { grid-template-columns: 1fr; }
 }
+
+/* ---- Phase 21: thống kê & trình bày trận đấu ---- */
+.stat-compare__row.is-blue > b:first-child { color: #fff; }
+.stat-compare__row.is-blue > b:last-child,
+.stat-compare__row.is-red > b:first-child { color: #8ea597; }
+.stat-compare__teams {
+  display: flex; justify-content: space-between;
+  font: 800 11px 'Barlow Condensed', Inter, sans-serif; letter-spacing: 1.5px; color: #b9ed70;
+}
+.stat-compare__bar.is-split { gap: 4px; background: transparent; }
+.stat-compare__half { flex: 1; display: flex; height: 100%; border-radius: 99px; overflow: hidden; background: #1e3328; }
+.stat-compare__half:first-child { justify-content: flex-end; }
+.stat-compare--compact { gap: 7px; }
+.stat-compare--compact .stat-compare__row { grid-template-columns: 36px 1fr 36px; gap: 8px; }
+.stat-compare--compact .stat-compare__row > b { font-size: 15px; }
+.stat-compare--compact .stat-compare__middle span { font-size: 10px; margin-bottom: 3px; }
+.stat-compare--compact .stat-compare__bar { height: 5px; }
+
+.match-card--stats { width: min(600px, 100%); }
+/* Thẻ đè lên sân không được cao quá vùng sân (nếu cần thì cuộn). */
+.match-overlay .match-card { max-height: calc(100% - 24px); overflow-y: auto; }
+.stat-compare--two { grid-template-columns: 1fr 1fr; column-gap: 22px; row-gap: 6px; }
+.stat-compare--two .stat-compare__teams { grid-column: 1 / -1; }
+.match-card__stats { margin-top: 16px; text-align: left; }
+.match-card__stats--compact { max-width: 420px; margin-left: auto; margin-right: auto; }
+.match-card__tabs { justify-content: center; margin-top: 14px; }
+.match-card [hidden] { display: none; }
+
+.live-stats {
+  position: absolute; top: 74px; left: 16px; z-index: 12;
+  width: min(300px, calc(100% - 32px));
+  padding: 12px 14px; border-radius: 10px;
+  background: rgba(8, 18, 14, 0.9); border: 1px solid rgba(130, 170, 145, 0.3);
+  color: #fff; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.live-stats__head {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+  font: 800 12px 'Barlow Condensed', Inter, sans-serif; letter-spacing: 2px; color: #b9ed70;
+}
+
+/* Dòng thời gian */
+.timeline__track {
+  position: relative; height: 34px; margin: 18px 14px 10px;
+  background: linear-gradient(#2a4436, #2a4436) center / 100% 3px no-repeat;
+}
+.timeline__mark {
+  position: absolute; top: 50%; transform: translate(-50%, 8px);
+  font-size: 9px; color: #6f8a7b; font-weight: 700;
+}
+.timeline__mark--half::before {
+  content: ''; position: absolute; left: 50%; top: -14px; width: 1px; height: 12px; background: #547565;
+}
+.timeline__event {
+  position: absolute; transform: translateX(-50%); font-size: 11px; line-height: 1;
+}
+.timeline__event--blue { top: -2px; }
+.timeline__event--red { bottom: -2px; }
+.timeline__goal { color: #fff; }
+.timeline__event--blue .timeline__goal { color: var(--user-color); }
+.timeline__sub { color: #7ee081; font-size: 12px; }
+.timeline__list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12px; color: #c4d5ca; }
+.timeline__item--red { color: #9fb3a8; }
+.timeline__item .card-chip { margin-right: 4px; }
+
+/* Bản đồ cú sút */
+.shotmap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.shotmap__pitch { margin: 0; }
+.shotmap__pitch svg { display: block; width: 100%; height: auto; border-radius: 6px; overflow: visible; }
+.shotmap__pitch figcaption { margin-top: 6px; font-size: 11px; color: #9fb8a9; text-align: center; }
+.shotmap__grass { fill: #1d4a31; }
+.shotmap__line { fill: none; stroke: rgba(255, 255, 255, 0.45); stroke-width: 0.3; }
+.shotmap__goal { fill: rgba(255, 255, 255, 0.8); }
+.shotmap__spot { fill: rgba(255, 255, 255, 0.6); }
+.shotmap__shot { fill: none; stroke-width: 0.45; opacity: 0.95; }
+.shotmap__shot--blue { stroke: #ff6b5e; }
+.shotmap__shot--red { stroke: #cfe0d6; }
+.shotmap__shot--blue.is-goal { fill: #ff6b5e; }
+.shotmap__shot--red.is-goal { fill: #cfe0d6; }
+.shotmap__legend { grid-column: 1 / -1; margin: 0; font-size: 10px; color: #6f8a7b; text-align: center; }
+
+.top-performers { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 14px; }
+.top-performer {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 6px;
+  padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.04);
+}
+.top-performer span { grid-column: 1 / -1; font-size: 9px; letter-spacing: 1px; color: #6f8a7b; font-weight: 800; text-transform: uppercase; }
+.top-performer b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-performer em { font-style: normal; font-weight: 800; color: #b9ed70; }
+
+@media (max-width: 760px) {
+  .postmatch-grid { grid-template-columns: 1fr; }
+  .shotmap { grid-template-columns: 1fr; }
+}
+/* Các thẻ nằm dưới bảng tỉ số / nút điều khiển trận (không bị che). */
+.match-overlay:not(.match-overlay--front):not(.match-overlay--top) { padding-top: 112px; }

@@ -1,6 +1,8 @@
 import { FORMATIONS } from '../data/teams'
 import { TACTICS } from '../systems/constants'
+import { useState } from 'react'
 import { USER_TEAM } from '../data/leagueData'
+import { StatComparison, useLiveStats } from './MatchStatsPanel'
 
 // Danh sách bàn thắng của một đội: "Tên 23'" (OG = phản lưới).
 // Phase 20: kèm thẻ vàng / đỏ (event.card) với biểu tượng thẻ.
@@ -47,14 +49,26 @@ export function Scoreline({ homeName, awayName, homeScore, awayScore, events, si
 }
 
 // Ghi bàn / tạm dừng: thẻ nhỏ giữa màn hình.
-export function StatusOverlay({ title, subtitle, children }) {
+export function StatusOverlay({ title, subtitle, children, extra }) {
     return (
         <div className="match-overlay match-overlay--dim">
-            <div className="match-card match-card--small">
+            <div className={`match-card ${extra ? 'match-card--stats' : 'match-card--small'}`}>
                 <div className="match-card__title">{title}</div>
                 {subtitle && <div className="match-card__subtitle">{subtitle}</div>}
+                {extra}
                 {children && <div className="match-card__actions">{children}</div>}
             </div>
+        </div>
+    )
+}
+
+// Phase 21: thống kê đầy đủ lúc tạm dừng.
+export function PausedStats({ statsRef, opponentName }) {
+    const source = useLiveStats(statsRef)
+
+    return (
+        <div className="match-card__stats">
+            <StatComparison source={source} twoColumns opponentName={opponentName} />
         </div>
     )
 }
@@ -66,6 +80,8 @@ export function HalfTimeOverlay({
     blueScore,
     redScore,
     events,
+    statsSource,
+    opponentShortName,
     tacticKey,
     onTacticChange,
     opponentTacticKey,
@@ -77,6 +93,9 @@ export function HalfTimeOverlay({
     onOpenSubs,
     onQuit,
 }) {
+    // Phase 21: hai thẻ — chỉnh đội / thống kê hiệp 1.
+    const [tab, setTab] = useState('team')
+
     return (
         <div className="match-overlay match-overlay--right">
             <div className="match-card">
@@ -91,7 +110,22 @@ export function HalfTimeOverlay({
                     size="medium"
                 />
 
-                <div className="halftime-settings">
+                <div className="segmented match-card__tabs" role="tablist">
+                    <button type="button" role="tab" aria-selected={tab === 'team'} className={tab === 'team' ? 'is-active' : ''} onClick={() => setTab('team')}>
+                        TEAM
+                    </button>
+                    <button type="button" role="tab" aria-selected={tab === 'stats'} className={tab === 'stats' ? 'is-active' : ''} onClick={() => setTab('stats')}>
+                        FIRST-HALF STATS
+                    </button>
+                </div>
+
+                {tab === 'stats' && (
+                    <div className="match-card__stats">
+                        <StatComparison source={statsSource} twoColumns opponentName={opponentShortName} />
+                    </div>
+                )}
+
+                <div className="halftime-settings" hidden={tab !== 'team'}>
                     <label className="halftime-settings__row">
                         <span>Team tactic</span>
                         <select
@@ -166,6 +200,8 @@ export function FullTimeOverlay({
     blueScore,
     redScore,
     events,
+    statsSource,
+    opponentShortName,
     forfeit,
     fixture,
     resultSaved,
@@ -207,6 +243,12 @@ export function FullTimeOverlay({
                 {fixture && (
                     <div className="match-card__subtitle">
                         {resultSaved ? 'League result saved' : 'Saving result…'}
+                    </div>
+                )}
+
+                {statsSource && (
+                    <div className="match-card__stats match-card__stats--compact">
+                        <StatComparison source={statsSource} compact opponentName={opponentShortName} />
                     </div>
                 )}
 

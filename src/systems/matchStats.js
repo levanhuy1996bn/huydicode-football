@@ -15,6 +15,9 @@ export function createMatchStats() {
         red: 0,
         offsides: 0,
         corners: 0,
+        // Phase 21
+        passesCompleted: 0,
+        xg: 0,
     })
 
     return {
@@ -23,6 +26,10 @@ export function createMatchStats() {
         players: {},
         lastPasserId: null,
         lastPassTeam: null,
+        // Phase 21: đường chuyền đang bay (để biết chuyền thành công hay
+        // không) và danh sách cú sút (bản đồ cú sút sau trận).
+        openPass: null,
+        shots: [],
     }
 }
 
@@ -38,6 +45,8 @@ function playerEntry(stats, playerId) {
             interceptions: 0,
             duels: 0,
             fouls: 0,
+            passesCompleted: 0,
+            xg: 0,
         }
     }
 
@@ -121,6 +130,8 @@ export function buildMatchSummary({
         saves: 0,
         interceptions: 0,
         duels: 0,
+        passesCompleted: 0,
+        xg: 0,
         ...(stats?.players?.[id] || {}),
     })
 
@@ -157,4 +168,78 @@ export function buildMatchSummary({
         ratings,
         manOfTheMatch: forfeit ? null : ratings[0] || null,
     }
+}
+
+// ---- Phase 21: chuyền thành công, xG, bản đồ cú sút ----
+
+// Bóng vừa rời chân trong một đường chuyền.
+export function openPass(state, teamId, playerId) {
+    if (!state.stats) return
+
+    state.stats.openPass = { teamId, playerId, kickId: state.kickId }
+}
+
+// Có người khống chế bóng: đồng đội của người chuyền → chuyền thành công.
+export function closePass(state, receiverTeamId) {
+    const open = state.stats?.openPass
+
+    if (!open) return
+
+    if (open.kickId === state.kickId && open.teamId === receiverTeamId) {
+        recordTeam(state, open.teamId, 'passesCompleted')
+        recordPlayer(state, open.playerId, 'passesCompleted')
+    }
+
+    state.stats.openPass = null
+}
+
+// Bàn thắng kỳ vọng (xG) của một cú sút: theo góc nhìn khung thành (rộng
+// 7.32m) từ vị trí sút. Hiệu chỉnh theo tỉ lệ ghi bàn thực tế của game (mô
+// phỏng 24 trận: xG ≈ số bàn): ~0.26 từ 18m chính diện, ~0.45 từ 11m, ~0.8
+// từ 6m; phạt đền 0.76; bị áp sát (< 2m) giảm 30%.
+export function shotXg({ lateral, depth, penalty = false, freeKick = false, pressed = false }) {
+    if (penalty) return 0.76
+
+    const goalWidth = 7.32
+    const half = goalWidth / 2
+    const denominator = lateral * lateral + depth * depth - half * half
+    let angle = Math.atan2(goalWidth * Math.max(0.1, depth), denominator)
+
+    if (angle < 0) angle += Math.PI
+
+    let xg = 1 / (1 + Math.exp(-(-2.45 + 3.54 * angle)))
+
+    if (freeKick) xg = Math.min(xg, 0.07)
+    if (pressed) xg *= 0.7
+
+    return clamp(xg, 0.01, 0.95)
+}
+
+export function recordShot(state, entry) {
+    if (!state.stats) return
+
+    state.stats.shots.push({ ...entry, goal: false })
+    recordTeam(state, entry.teamId, 'xg', entry.xg)
+    recordPlayer(state, entry.playerId, 'xg', entry.xg)
+}
+
+// Đánh dấu cú sút gần nhất của người ghi bàn là bàn thắng.
+export function markShotGoal(state, scorerId) {
+    const shots = state.stats?.shots
+
+    if (!shots || !scorerId) return
+
+    for (let index = shots.length - 1; index >= Math.max(0, shots.length - 4); index -= 1) {
+        if (shots[index].playerId === scorerId && !shots[index].goal) {
+            shots[index].goal = true
+            return
+        }
+    }
+}
+
+// Tỉ lệ chuyền thành công (%) của một đội.
+export function passAccuracy(team) {
+    if (!team?.passes) return 0
+
+    return Math.round(((team.passesCompleted || 0) / team.passes) * 100)
 }

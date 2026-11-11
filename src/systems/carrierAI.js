@@ -190,6 +190,9 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
             options.push({
                 kind,
                 receiverId: candidate.item.id,
+                distance,
+                blockedLane: candidate.blockedLane,
+                laneSlack: candidate.laneSlack,
                 safety,
                 progress,
                 inBox,
@@ -286,7 +289,61 @@ function dribble(ctx, ownerItem, owner, carry, speedScale, dt) {
 function passTo(ctx, ownerId, option) {
     return kickFromPlayer(ctx, ownerId, option.kind, true, {
         receiverId: option.receiverId,
+        variant: passVariant(ctx, ownerId, option),
     })
+}
+
+// ---- Máy dùng tổ hợp phím kiểu FO4 ----
+// Chuyền: chọc khe bổng (QW) khi đường bóng sệt bị chắn, chuyền căng (ZS / ZW)
+// khi đường chuyền dài và thoáng, tạt căng (ZA) từ biên.
+function passVariant(ctx, ownerId, option) {
+    const item = getPlayer(ctx, ownerId)
+    const skill = skill01(attr(item, option.kind === 'lob' ? 'longPassing' : 'shortPassing'))
+    const roll = Math.random()
+
+    if (option.kind === 'through') {
+        if (option.blockedLane >= 1 && roll < 0.55) return 'lobbed'
+        if (option.distance > 16 && option.laneSlack > 1.5 && roll < 0.3 + skill * 0.2) return 'driven'
+        return null
+    }
+
+    if (option.kind === 'pass') {
+        return option.distance > 17 && option.laneSlack > 1.5 && roll < 0.25 + skill * 0.15 ? 'driven' : null
+    }
+
+    if (option.kind === 'lob' && option.inBox) return roll < 0.35 ? 'whipped' : null
+
+    return null
+}
+
+// Sút: lốp khi thủ môn đã rời vạch vôi xa, sút xoáy vào góc xa từ rìa vòng
+// cấm, đôi khi sút má ngoài / sút chìm. Chỉ số Finishing / Long shots càng cao
+// càng hay dùng kỹ thuật.
+function shootWithVariant(ctx, ownerId, ownerItem, owner) {
+    const { state, objects } = ctx
+    const direction = attackDir(state, ownerItem.teamId)
+    const goalZ = direction * FIELD.lineZ
+    const distance = Math.hypot(owner.position.x, goalZ - owner.position.z)
+    const enemy = ownerItem.teamId === 'blue' ? 'red' : 'blue'
+    const keeper = ctx.players.find((item) => item.teamId === enemy && item.role === 'GK')
+    const keeperObject = keeper ? objects[keeper.id] : null
+    const keeperOffLine = keeperObject ? FIELD.lineZ - Math.abs(keeperObject.position.z) : 0
+    const technique = skill01(attr(ownerItem, distance > 18 ? 'longShots' : 'finishing'))
+    const roll = Math.random()
+
+    let variant = null
+
+    if (keeperOffLine > 5.5 && distance > 12 && distance < 28 && roll < 0.35 + technique * 0.25) {
+        variant = 'chip'
+    } else if (distance > 13 && distance < 27 && Math.abs(owner.position.x) > 3 && roll < 0.25 + technique * 0.2) {
+        variant = 'finesse'
+    } else if (distance > 14 && roll > 0.93) {
+        variant = 'trivela'
+    } else if (distance < 16 && roll > 0.8) {
+        variant = 'low'
+    }
+
+    return kickFromPlayer(ctx, ownerId, 'shoot', true, { variant })
 }
 
 // Thủ môn AI phát bóng sau khi bắt được: ném tay cho đồng đội trống ở
@@ -385,7 +442,7 @@ export function updateCarrierAI(ctx, dt) {
     const shootThreshold = 0.5 - tactic.risk * 0.08
 
     if (shot > shootThreshold) {
-        if (kickFromPlayer(ctx, ownerId, 'shoot', true)) return
+        if (shootWithVariant(ctx, ownerId, ownerItem, owner)) return
     }
 
     // ---- 2. Chuyền ----
@@ -436,7 +493,7 @@ export function updateCarrierAI(ctx, dt) {
 
     // ---- 3. Bị áp sát mà không có đường chuyền ----
     if (close && !best) {
-        if (shot > 0.25 && kickFromPlayer(ctx, ownerId, 'shoot', true)) return
+        if (shot > 0.25 && shootWithVariant(ctx, ownerId, ownerItem, owner)) return
 
         // Sát khung thành nhà: phá bóng lên.
         if (advance < -30 || role === 'GK') {

@@ -1,25 +1,11 @@
 import { USER_TEAM } from '../../data/leagueData'
 import { Scoreline } from '../MatchOverlays'
 import { shortPlayerName } from '../../utils/names'
+import { MatchTimeline, ShotMap, StatComparison, TopPerformers } from '../MatchStatsPanel'
 
 // Màn sau trận: tỉ số, thống kê hai đội, điểm cầu thủ đội người chơi + cầu thủ
 // xuất sắc nhất trận, rồi về sảnh / trận tiếp theo / bảng xếp hạng.
 
-const STAT_ROWS = [
-    ['Possession', (s) => s.possession.blue, (s) => s.possession.red, '%'],
-    ['Shots', (s) => s.teams.blue.shots || 0, (s) => s.teams.red.shots || 0],
-    ['Shots on target', (s) => s.teams.blue.onTarget || 0, (s) => s.teams.red.onTarget || 0],
-    ['Passes', (s) => s.teams.blue.passes || 0, (s) => s.teams.red.passes || 0],
-    ['Tackles won', (s) => s.teams.blue.tackles || 0, (s) => s.teams.red.tackles || 0],
-    ['Interceptions', (s) => s.teams.blue.interceptions || 0, (s) => s.teams.red.interceptions || 0],
-    ['Duels won', (s) => s.teams.blue.duels || 0, (s) => s.teams.red.duels || 0],
-    ['Saves', (s) => s.teams.blue.saves || 0, (s) => s.teams.red.saves || 0],
-    ['Corners', (s) => s.teams.blue.corners || 0, (s) => s.teams.red.corners || 0],
-    ['Fouls', (s) => s.teams.blue.fouls || 0, (s) => s.teams.red.fouls || 0],
-    ['Offsides', (s) => s.teams.blue.offsides || 0, (s) => s.teams.red.offsides || 0],
-    ['Yellow cards', (s) => s.teams.blue.yellow || 0, (s) => s.teams.red.yellow || 0],
-    ['Red cards', (s) => s.teams.blue.red || 0, (s) => s.teams.red.red || 0],
-]
 
 function ratingClass(rating) {
     if (rating == null) return ''
@@ -111,27 +97,7 @@ export default function PostMatchScreen({
                     {summary.forfeit ? (
                         <p className="home-card__empty">No statistics for an abandoned match.</p>
                     ) : (
-                        <div className="stat-compare">
-                            {STAT_ROWS.map(([label, blueValue, redValue, unit = '']) => {
-                                const blue = blueValue(summary)
-                                const red = redValue(summary)
-                                const total = blue + red || 1
-
-                                return (
-                                    <div className="stat-compare__row" key={label}>
-                                        <b>{blue}{unit}</b>
-                                        <div className="stat-compare__middle">
-                                            <span>{label}</span>
-                                            <div className="stat-compare__bar">
-                                                <i className="blue" style={{ width: `${(blue / total) * 100}%` }} />
-                                                <i className="red" style={{ width: `${(red / total) * 100}%` }} />
-                                            </div>
-                                        </div>
-                                        <b>{red}{unit}</b>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                        <StatComparison source={summary} />
                     )}
                 </div>
 
@@ -155,6 +121,8 @@ export default function PostMatchScreen({
                                 <th title="Goals">G</th>
                                 <th title="Assists">A</th>
                                 <th title="Tackles won">T</th>
+                                <th title="Shots (expected goals)">SH</th>
+                                <th title="Passes completed / attempted">PASS</th>
                                 <th>RATING</th>
                             </tr>
                         </thead>
@@ -167,6 +135,8 @@ export default function PostMatchScreen({
                                     <td>{row.goals || ''}</td>
                                     <td>{row.assists || ''}</td>
                                     <td>{row.tackles || ''}</td>
+                                    <td title={row.xg ? `xG ${row.xg.toFixed(2)}` : undefined}>{row.shots || ''}</td>
+                                    <td>{row.passes ? `${row.passesCompleted || 0}/${row.passes}` : ''}</td>
                                     <td>
                                         <span className={`rating-chip ${ratingClass(row.rating)}`}>
                                             {row.rating == null ? '–' : row.rating.toFixed(1)}
@@ -178,6 +148,27 @@ export default function PostMatchScreen({
                     </table>
                 </div>
             </div>
+
+            {!summary.forfeit && (
+                <div className="postmatch-grid">
+                    <div className="home-card">
+                        <div className="home-card__head"><span>MATCH TIMELINE</span></div>
+                        <MatchTimeline
+                            events={[
+                                ...(summary.goalEvents || []),
+                                ...(summary.cardEvents || []),
+                                ...(summary.subEvents || []),
+                            ]}
+                        />
+                        <TopPerformers ratings={summary.ratings} />
+                    </div>
+
+                    <div className="home-card">
+                        <div className="home-card__head"><span>SHOT MAP</span></div>
+                        <ShotMap shots={summary.shots || []} opponentName={opponentName} />
+                    </div>
+                </div>
+            )}
 
             {summary.progression?.length > 0 && (
                 <div className="home-card progression-card">
