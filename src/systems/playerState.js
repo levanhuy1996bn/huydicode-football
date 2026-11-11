@@ -31,10 +31,21 @@ const ACTION_DURATIONS = {
     fallen: 1.1,
     stumble: 0.45,
     throw: 0.5,
+    // Phase 16: thủ môn
+    diveLow: 1.15,
+    diveMid: 1.15,
+    diveHigh: 1.15,
+    catch: 0.6,
+    catchHigh: 0.6,
+    scoop: 0.6,
+    gkThrow: 0.55,
+    punt: 0.6,
 }
 
 // Các trạng thái khóa di chuyển (cầu thủ không tự chạy được).
-const LOCKED_STATES = new Set(['slide', 'fallen', 'stumble'])
+const LOCKED_STATES = new Set([
+    'slide', 'fallen', 'stumble', 'diveLow', 'diveMid', 'diveHigh',
+])
 
 const ACTION_STATES = new Set(Object.keys(ACTION_DURATIONS))
 
@@ -55,11 +66,14 @@ export function getPlayerState(state, playerId) {
     return ensureEntry(state, playerId)
 }
 
-export function setPlayerAction(state, playerId, action, duration) {
+// options.side: hướng (±1, theo trục local +X của cầu thủ) cho clip có thể lật
+// trái/phải (bay người của thủ môn).
+export function setPlayerAction(state, playerId, action, duration, options = {}) {
     const entry = ensureEntry(state, playerId)
     const length = duration ?? ACTION_DURATIONS[action] ?? 0.3
 
     entry.state = action
+    entry.side = options.side ?? 1
     entry.time = length
     entry.duration = length
     entry.elapsed = 0
@@ -110,6 +124,8 @@ export function updatePlayerStates(ctx, dt) {
 
         if (state.possession === item.id) {
             next = 'dribble'
+            if (state.keeperHands === item.id) next = 'hold'
+            if (state.shieldingId === item.id) next = 'shield'
         } else if (state.pendingPass?.receiverId === item.id) {
             next = 'receive'
         } else if (speed > 6.5) {

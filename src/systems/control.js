@@ -14,6 +14,12 @@ import {
 import { clampPlayer } from './movement'
 import { ownGoalSign } from './matchState'
 import { recordPlayer, recordTeam } from './matchStats'
+import {
+    CLEAN_TACKLE_RATE,
+    duelSpeedFactor,
+    isShielding,
+    pokeBallLoose,
+} from './duels'
 
 const SLIDE_LUNGE_TIME = 0.32
 const SLIDE_LUNGE_SPEED = 10
@@ -22,6 +28,9 @@ const RUN_SPEED = 5.2
 const SPRINT_SPEED = 8.2
 // Rê bóng chậm hơn chạy không bóng một chút.
 const DRIBBLE_SPEED_FACTOR = 0.92
+
+// Che bóng (giữ C): đi chậm, lưng quay về phía đối thủ.
+const SHIELD_SPEED = 3
 
 const CONTAIN_SPEED = 6
 const CONTAIN_GAP = 1.5
@@ -83,6 +92,15 @@ export function updateControlledPlayer(ctx, dt) {
     const sprinting = Boolean(pressed.KeyE || pressed.ShiftLeft || pressed.ShiftRight)
     const hasBall = state.possession === ctx.selectedId
 
+    // Thủ môn ôm bóng: đứng yên, chỉ xoay người theo hướng định phát bóng.
+    if (state.keeperHands === ctx.selectedId) {
+        if (direction) {
+            controlled.rotation.y = Math.atan2(direction.x, direction.z)
+        }
+
+        return
+    }
+
     // Đang ném biên: chỉ xoay người chọn hướng ném (không quay ra ngoài sân).
     if (state.restart?.playerId === ctx.selectedId) {
         if (direction) {
@@ -98,14 +116,34 @@ export function updateControlledPlayer(ctx, dt) {
         return
     }
 
+    // Đang che bóng: nhích chậm theo phím mũi tên, vẫn quay lưng về phía
+    // đối thủ (hướng mặt do duels.js → updateShield đặt).
+    if (isShielding(state, ctx.selectedId)) {
+        if (direction) {
+            controlled.position.x += direction.x * SHIELD_SPEED * dt
+            controlled.position.z += direction.z * SHIELD_SPEED * dt
+
+            // Không có ai để che: quay mặt theo hướng đi như bình thường.
+            if (!state.shieldThreat) {
+                controlled.rotation.y = Math.atan2(direction.x, direction.z)
+            }
+
+            clampPlayer(controlled)
+        }
+
+        return
+    }
+
     if (!direction) {
         updateContain(ctx, controlled, sprinting, dt)
         return
     }
 
+    // Bị đối thủ tì vai thì chậm lại (duels.js).
     const speed =
         (sprinting ? SPRINT_SPEED : RUN_SPEED) *
-        (hasBall ? DRIBBLE_SPEED_FACTOR : 1)
+        (hasBall ? DRIBBLE_SPEED_FACTOR : 1) *
+        duelSpeedFactor(state, ctx.selectedId)
 
     state.dribble.x = direction.x
     state.dribble.z = direction.z
@@ -212,6 +250,12 @@ export function performTackle(ctx, type) {
     const ballPosition = ball.translation()
     const ballDistance = getBallDistance(ctx, player)
 
+    // Không được tranh bóng khi thủ môn đã ôm bóng trong tay.
+    if (ownerId && state.keeperHands === ownerId) {
+        ctx.onActionMessage("CAN'T CHALLENGE THE GOALKEEPER")
+        return
+    }
+
     if (ownerItem?.teamId === 'blue') {
         ctx.onActionMessage('YOUR TEAM HAS THE BALL')
         return
@@ -233,6 +277,8 @@ export function performTackle(ctx, type) {
     setPlayerAction(state, selectedId, isSlide ? 'slide' : 'tackle')
 
     let successChance = 1
+    // Người cầm bóng đang che bóng và mình đứng sau lưng họ.
+    let shieldedFromBehind = false
 
     if (ownerItem && ownerObject) {
         const ownStrength =
@@ -267,6 +313,13 @@ export function performTackle(ctx, type) {
             0.1,
             0.9,
         )
+
+        // Che bóng: từ sau lưng gần như không với tới bóng, phải vòng sang
+        // phía có bóng (trước mặt người cầm bóng).
+        if (isShielding(state, ownerId) && frontDot < 0.35) {
+            shieldedFromBehind = true
+            successChance = clamp(successChance - (isSlide ? 0.22 : 0.3), 0.04, 0.9)
+        }
     }
 
     if (Math.random() >= successChance) {
@@ -274,7 +327,13 @@ export function performTackle(ctx, type) {
             setPlayerAction(state, selectedId, 'stumble')
         }
 
-        ctx.onActionMessage(isSlide ? 'SLIDE TACKLE MISSED' : 'TACKLE MISSED')
+        ctx.onActionMessage(
+            shieldedFromBehind
+                ? 'SHIELDED! GO AROUND TO THE BALL SIDE'
+                : isSlide
+                    ? 'SLIDE TACKLE MISSED'
+                    : 'TACKLE MISSED',
+        )
         return
     }
 
@@ -306,6 +365,16 @@ export function performTackle(ctx, type) {
 
     if (ownerId) {
         state.pickupLocks[ownerId] = 0.4
+    }
+
+    // Không phải lần nào cũng đoạt được bóng gọn: đôi khi chỉ chọc được bóng
+    // văng ra (bóng tự do, ai nhanh hơn thì lấy).
+    if (ownerId && Math.random() > CLEAN_TACKLE_RATE) {
+        pokeBallLoose(ctx, player, ownerId, selectedId, 'blue')
+        recordTeam(state, 'blue', 'tackles')
+        recordPlayer(state, selectedId, 'tackles')
+        ctx.onActionMessage('BALL POKED LOOSE!')
+        return
     }
 
     attachBallToPlayer(ctx, player, selectedId)

@@ -51,6 +51,12 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
     state.pendingPass = null
     state.charge = null
     state.windup = null
+    state.keeperHands = null
+    state.keeperPlans = {}
+    state.shieldingId = null
+    state.shieldAi = null
+    state.duel = { key: null, time: 0, cooldown: 0 }
+    state.duelSlow = {}
     state.restart = null
 
     // BLUE giao bóng: người chơi điều khiển luôn cầu thủ giao bóng.
@@ -129,6 +135,12 @@ export function restartAtSpot(ctx, teamId, restartType, x, z) {
     state.pendingPass = null
     state.charge = null
     state.windup = null
+    state.keeperHands = null
+    state.keeperPlans = {}
+    state.shieldingId = null
+    state.shieldAi = null
+    state.duel = { key: null, time: 0, cooldown: 0 }
+    state.duelSlow = {}
     state.restart =
         restartType === 'throw-in'
             ? { type: 'throw-in', teamId, playerId: kicker.id }

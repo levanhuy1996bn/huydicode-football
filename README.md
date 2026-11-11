@@ -136,7 +136,10 @@ npm run preview
 | D (hold, defending) | Contain: stay goal-side of the ball carrier about 1.5 m away, facing the ball |
 | D + E (hold, defending) | Aggressive press: sprint straight at the ball |
 | A (hold, defending) | Call the nearest teammate to press the ball carrier |
+| C (hold, with the ball) | Shield the ball: turn your back to the nearest opponent and keep the ball on the far side; arrows move slowly |
 | S / A at a throw-in | Short / long throw (arrows choose the direction) |
+| S / W (keeper holding the ball) | Goalkeeper throw (hold to charge, arrows aim) |
+| A / D (keeper holding the ball) | Goalkeeper punt / long kick (hold to charge, arrows aim) |
 | Space | Standing tackle |
 | Ctrl | Sliding tackle |
 | SUBS button | Open the drag-and-drop substitution board (pauses the match) |
@@ -221,7 +224,8 @@ ultimate-football-manager-3d/
     │   ├── ball.js           # possession, kicks, pass targeting, dribble, pickup
     │   ├── control.js        # user input: movement, pass/switch, kicks, tackles
     │   ├── teamAI.js         # positioning, receiver runs, carrier AI, AI steals
-    │   ├── goalkeeper.js     # keeper positioning and saves
+    │   ├── goalkeeper.js     # keeper positioning, save plans, catching
+    │   ├── duels.js          # shielding, shoulder duels, poked tackles
     │   ├── movement.js       # AI movement, collisions, velocity tracking
     │   ├── rules.js          # goals, out of play, kick-off and restarts
     │   ├── matchStats.js     # match statistics, ratings, summary
@@ -371,10 +375,48 @@ The app now has four screens, controlled by `GameScene.jsx`:
   - Logic is in `updateWindup` / `releaseKick` (`systems/ball.js`), and the timings are in `KICK_WINDUP`.
 - **Fix:** an older React render could overwrite the player the engine had just selected (on receiving the ball, at kick-off, or with S/Q). `ctx.selectedId` is now only synced from React when the prop actually changes.
 
+### Phase 16 — Goalkeeper diving, catching and distribution ✅ (2026-11-10)
+
+- **Save plan per shot** (`systems/goalkeeper.js`): when an opponent's shot or fast ball heads for goal, the keeper plans once per kick (`state.keeperPlans[team]`). He predicts where and how high the ball crosses his position, checks whether it is on target, and rolls the save once based on reach, reaction time (keeper rating), ball speed and height.
+  - Balls going wide are left alone.
+  - Balls straight at the keeper are stood up and caught (saves 65–97%). Balls out of standing reach need a dive: low, mid or high, to the left or right.
+  - After the reaction time the keeper dives sideways toward the ball. A failed save dives late and falls short (sometimes the wrong way on very fast shots).
+- **Result when the ball reaches the keeper:**
+  - **Catch** if the ball is slow enough for the save type. The keeper holds the ball at his chest and cannot be tackled.
+  - **Parry** to the side and away from goal.
+  - **Tip over the bar** for high shots.
+  - Saves and shots on target are recorded as before. The keeper still claims the ball from a nearby attacker and picks up slow balls, but no longer stops shots with his feet through the first-touch logic.
+- **Distribution from the hands:**
+  - **Throw** (`gkThrow`): low and accurate to a teammate, or into space.
+  - **Punt** (`punt`): a high, long volley.
+  - Both use the wind-up (0.3 s), so the ball leaves the hand or foot on the animation's contact frame.
+  - The AI keeper throws to an unmarked teammate 8–30 m away and otherwise punts long.
+  - When the Manchester United keeper catches the ball you take control of him: S/W throw, A/D punt, and the arrow keys turn him and aim. If you do nothing for 5 s (1.5 s if you switched to another player), the AI distributes for you. After the release, control passes to the receiver.
+- **Animations** (`animation/clips.js`): `diveLow`, `diveMid`, `diveHigh`, `catch`, `catchHigh`, `scoop`, `gkThrow`, `punt`, and a pose for holding the ball. Dive clips are authored to one side and mirrored automatically (`mirrorPose` in `animation/rig.js`, using `entry.side` from `setPlayerAction`). Players don't turn their head while diving.
+
+### Phase 17 — Physical duels, shielding and ball recovery ✅ (2026-11-10)
+
+New system: `systems/duels.js`.
+
+- **Shielding (hold C with the ball).** The carrier turns his back to the nearest opponent within 4.5 m, keeps the ball tight on the far side and moves slowly (3 m/s).
+  - A tackle from behind a shielding player almost never works (success −0.3 standing, −0.22 sliding); the defender has to go round to the ball side.
+  - A shielding player is very hard to push in a collision.
+  - AI carriers shield for 0.6–1.2 s when they are closed down and have no clean pass, then pass.
+  - When your player shields, the second AI presser also goes for the ball instead of holding his position.
+- **Shoulder duels.** When an opponent is in contact with the carrier (within 1.32 m), the carrier is slowed according to the difference in the PHY attribute (×0.72–0.97). Every 0.55 s of contact there is one strength contest:
+  - the carrier can be knocked off the ball (it runs loose and he stumbles) — about 8% for equal players, up to 30% against a much stronger defender, more when sprinting;
+  - or the defender bounces off and stumbles — about 6% for equal players, up to 30% for a much stronger carrier.
+  - Shielding lowers the first and raises the second.
+- **Strength in collisions.** When two opponents overlap, the stronger player is pushed less (25–75% split by PHY) instead of always 50/50.
+- **Tackle outcomes.** A successful standing tackle wins the ball cleanly 68% of the time; otherwise the ball is only poked loose and both sides chase it. The same applies to AI tackles.
+- **Ball recovery AI.**
+  - *Interception runs:* when an opponent's ground pass is on its way, the player who can reach the passing lane before the ball runs to cut it out (after a 0.2 s reaction).
+  - *Loose balls:* the nearest player runs to where the ball is going, not to where it is.
+- **Statistics:** interceptions and duels won are recorded per team and per player, shown on the post-match screen and counted in player ratings.
+- **Animation:** a low, wide-armed shielding stance (`SHIELD_POSE`) and arms-out jostling while a duel is on (`JOSTLE_OFFSET`).
+
 ### Later phases
 
-- **Phase 16:** Goalkeeper diving, catching and distribution.
-- **Phase 17:** Physical duels, shielding and advanced ball recovery.
 - **Phase 18:** Team tactics, pressing, defensive organisation and attacking strategies.
 - **Phase 19:** Stamina, fatigue and more detailed player attributes.
 - **Phase 19B:** Player progression: levels, XP and position-based attribute points (see below).
@@ -399,7 +441,7 @@ The app now has four screens, controlled by `GameScene.jsx`:
 
   | Position | Key attributes (1 point) | Secondary (2 points) |
   | --- | --- | --- |
-  | GK | diving, handling, reflexes, positioning (GK attributes come from Phase 16/19) | kicking, physical |
+  | GK | diving, handling, reflexes, positioning (GK attributes come from Phase 19) | kicking, physical |
   | CB | defending, physical, heading | pace, passing |
   | LB / RB / LWB / RWB | pace, defending, stamina | passing, dribbling |
   | CDM | defending, passing, physical | stamina, dribbling |

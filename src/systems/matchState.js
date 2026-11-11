@@ -26,11 +26,16 @@ export function createMatchState() {
             aiAttemptCooldown: 0,
             aiDecisionCooldown: 0,
             goalCooldown: 0,
+            shieldCooldown: 0,
         },
 
         // Mỗi cú đá tăng kickId để thủ môn chỉ phán quyết 1 lần/cú.
         kickId: 0,
-        keeperResolvedKick: { blue: -1, red: -1 },
+        // Phase 16: id thủ môn đang ôm bóng bằng tay, thời gian ôm bóng,
+        // kế hoạch cứu thua theo đội (xem goalkeeper.js).
+        keeperHands: null,
+        keeperHoldTime: 0,
+        keeperPlans: {},
 
         // Thời gian (giây) mỗi cầu thủ chưa được chạm/nhặt bóng:
         // người vừa đá bóng, thủ môn vừa đẩy bóng, người vừa bị xoạc...
@@ -44,6 +49,14 @@ export function createMatchState() {
 
         // Cầu thủ đang áp sát (giữ D) — va chạm không đẩy lùi được.
         containingId: null,
+
+        // Phase 17 (xem duels.js): ai đang che bóng, đối thủ đang bị che,
+        // AI che bóng theo thời gian, đấu sức đang diễn ra, hệ số chậm do tì vai.
+        shieldingId: null,
+        shieldThreat: null,
+        shieldAi: null,
+        duel: { key: null, time: 0, cooldown: 0 },
+        duelSlow: {},
 
         // Cú đá đang vung chân (xem ball.js → updateWindup).
         windup: null,

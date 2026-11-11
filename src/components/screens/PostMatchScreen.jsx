@@ -11,6 +11,8 @@ const STAT_ROWS = [
     ['Shots on target', (s) => s.teams.blue.onTarget || 0, (s) => s.teams.red.onTarget || 0],
     ['Passes', (s) => s.teams.blue.passes || 0, (s) => s.teams.red.passes || 0],
     ['Tackles won', (s) => s.teams.blue.tackles || 0, (s) => s.teams.red.tackles || 0],
+    ['Interceptions', (s) => s.teams.blue.interceptions || 0, (s) => s.teams.red.interceptions || 0],
+    ['Duels won', (s) => s.teams.blue.duels || 0, (s) => s.teams.red.duels || 0],
     ['Saves', (s) => s.teams.blue.saves || 0, (s) => s.teams.red.saves || 0],
 ]
 

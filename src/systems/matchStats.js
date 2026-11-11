@@ -2,7 +2,15 @@ import { clamp } from './constants'
 
 // Thống kê trận đấu, ghi trong state.stats bởi các system của engine.
 export function createMatchStats() {
-    const team = () => ({ shots: 0, onTarget: 0, passes: 0, tackles: 0, saves: 0 })
+    const team = () => ({
+        shots: 0,
+        onTarget: 0,
+        passes: 0,
+        tackles: 0,
+        saves: 0,
+        interceptions: 0,
+        duels: 0,
+    })
 
     return {
         possession: { blue: 0, red: 0 },
@@ -22,6 +30,8 @@ function playerEntry(stats, playerId) {
             passes: 0,
             tackles: 0,
             saves: 0,
+            interceptions: 0,
+            duels: 0,
         }
     }
 
@@ -70,6 +80,8 @@ export function ratePlayer(player, line, { goalsFor, goalsAgainst }) {
     rating += Math.min(line.passes, 30) * 0.025
     rating += line.tackles * (role === 'DF' || role === 'MF' ? 0.3 : 0.2)
     rating += line.saves * 0.35
+    rating += (line.interceptions || 0) * 0.25
+    rating += Math.min(line.duels || 0, 6) * 0.1
 
     if (role === 'GK' || role === 'DF') {
         rating += goalsAgainst === 0 ? 0.6 : -Math.min(goalsAgainst, 4) * 0.25
@@ -101,6 +113,8 @@ export function buildMatchSummary({
         passes: 0,
         tackles: 0,
         saves: 0,
+        interceptions: 0,
+        duels: 0,
         ...(stats?.players?.[id] || {}),
     })
 

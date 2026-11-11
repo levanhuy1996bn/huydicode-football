@@ -6,6 +6,7 @@ import {
 import { attackDir, homePosition } from './matchState'
 import {
     attachBallToPlayer,
+    findPassTarget,
     getPlayer,
     kickFromPlayer,
     placeBall,
@@ -14,6 +15,7 @@ import {
 import { moveAIPlayer } from './movement'
 import { isPlayerLocked, setPlayerAction } from './playerState'
 import { recordPlayer, recordTeam } from './matchStats'
+import { CLEAN_TACKLE_RATE, isShielding, pokeBallLoose, startAiShield } from './duels'
 
 // AI di chuyển theo vai trò và chiến thuật (không gồm thủ môn).
 // `snapshot` = { ballPoint, ownerId, ownerItem } chụp ở đầu bước logic.
@@ -62,6 +64,21 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
             : null
 
     const carrier = teamHasBall ? objects[ownerId] : null
+
+    // Phase 17: người cầm bóng đối phương đang che bóng → người áp sát thứ
+    // hai cũng lao vào, vòng sang phía có bóng.
+    const carrierShielding = enemyHasBall && isShielding(state, ownerId)
+
+    // Phase 17: thu hồi bóng. Đường chuyền của đối phương đang bay → một
+    // người chạy cắt đường chuyền. Bóng tự do → người gần nhất chạy đón đầu.
+    const ball = ctx.ballRef.current
+    const ballVelocity = ball ? ball.linvel() : { x: 0, y: 0, z: 0 }
+    const ballSpeed = Math.hypot(ballVelocity.x, ballVelocity.z)
+    const intercept =
+        !ownerItem && state.pendingPass && state.lastTouchTeam !== teamId
+            ? findInterceptor(ctx, teamList, isUserControlled, ballPoint, ballSpeed)
+            : null
+    const chaseId = !ownerItem && pressers[0] ? pressers[0].id : null
 
     teamList.forEach((item) => {
         if (isUserControlled(item)) return
@@ -129,6 +146,10 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
                 targetX = ballPoint.x
                 targetZ = ballPoint.z
                 speedScale = teamPressCalled ? 1.3 : 1.15
+            } else if (carrierShielding && pressingIds.has(item.id)) {
+                targetX = ballPoint.x
+                targetZ = ballPoint.z
+                speedScale = 1.2
             } else if (pressingIds.has(item.id)) {
                 targetX += (ballPoint.x - targetX) * tactic.press * 0.72
                 targetZ += (ballPoint.z - targetZ) * tactic.press * 0.72
@@ -136,6 +157,17 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
             } else {
                 speedScale = 1.05
             }
+        } else if (intercept && intercept.id === item.id) {
+            targetX = intercept.x
+            targetZ = intercept.z
+            speedScale = INTERCEPT_SPEED
+        } else if (item.id === chaseId) {
+            // Đón đầu bóng đang lăn thay vì chạy theo sau nó.
+            const lead = clamp(distance2D(object.position, ballPoint) / 9, 0, 0.8)
+
+            targetX = ballPoint.x + ballVelocity.x * lead
+            targetZ = ballPoint.z + ballVelocity.z * lead
+            speedScale = 1.32
         } else if (pressingIds.has(item.id)) {
             targetX = ballPoint.x
             targetZ = ballPoint.z
@@ -150,6 +182,64 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
 
         moveAIPlayer(ctx, item, { x: targetX, z: targetZ }, speedScale, dt)
     })
+}
+
+const INTERCEPT_SPEED = 1.25
+
+// Chọn cầu thủ có thể cắt đường chuyền của đối phương: điểm trên đường
+// bóng (từ bóng tới điểm nhận) mà cầu thủ tới kịp trước hoặc gần bằng bóng.
+function findInterceptor(ctx, teamList, isUserControlled, ballPoint, ballSpeed) {
+    const { state, objects } = ctx
+    const pass = state.pendingPass
+
+    // Bóng bổng thì không cắt giữa đường được. Cần một nhịp phản xạ để đọc
+    // đường chuyền.
+    if (!pass || pass.action === 'lob' || ballSpeed < 4 || pass.elapsed < 0.2) return null
+
+    const lineX = pass.targetX - ballPoint.x
+    const lineZ = pass.targetZ - ballPoint.z
+    const length = Math.hypot(lineX, lineZ)
+
+    if (length < 3) return null
+
+    let best = null
+
+    teamList.forEach((item) => {
+        if (isUserControlled(item) || item.role === 'GK') return
+        if (isPlayerLocked(state, item.id)) return
+
+        const object = objects[item.id]
+        if (!object) return
+
+        // Điểm gần cầu thủ nhất trên đường chuyền (bỏ đoạn sát chân người chuyền).
+        const projection = clamp(
+            ((object.position.x - ballPoint.x) * lineX +
+                (object.position.z - ballPoint.z) * lineZ) /
+            (length * length),
+            0.15,
+            1,
+        )
+        const pointX = ballPoint.x + lineX * projection
+        const pointZ = ballPoint.z + lineZ * projection
+        const runDistance = Math.hypot(
+            pointX - object.position.x,
+            pointZ - object.position.z,
+        )
+
+        if (runDistance > 6) return
+
+        // Chỉ chạy cắt khi tới điểm chặn trước bóng.
+        const pace = 5.2 + ((item.pace || 72) / 80) * 2.2
+        const playerTime = Math.max(0, runDistance - 0.6) / (pace * INTERCEPT_SPEED)
+        const ballTime = (length * projection) / ballSpeed
+        const margin = playerTime - ballTime
+
+        if (margin < 0 && (!best || margin < best.margin)) {
+            best = { id: item.id, x: pointX, z: pointZ, margin }
+        }
+    })
+
+    return best
 }
 
 // Đồng đội chạy đến vị trí dự kiến nhận đường chuyền.
@@ -227,12 +317,24 @@ export function updateCarrierAI(ctx, dt) {
     const owner = ownerId ? objects[ownerId] : null
     const ownerItem = ownerId ? getPlayer(ctx, ownerId) : null
 
-    if (
-        !owner ||
-        !ownerItem ||
-        ownerId === ctx.selectedId ||
-        state.timers.aiDecisionCooldown > 0
-    ) {
+    if (!owner || !ownerItem || state.timers.aiDecisionCooldown > 0) return
+
+    const keeperHolding = state.keeperHands === ownerId
+
+    // Người chơi điều khiển: AI không quyết định thay, trừ khi thủ môn BLUE
+    // ôm bóng quá lâu (người chơi không bấm phát bóng) → tự phát bóng.
+    if (ownerId === ctx.selectedId && !keeperHolding) return
+
+    if (keeperHolding) {
+        // Thủ môn BLUE: chờ người chơi phát bóng (5s), hoặc 1.5s nếu người chơi
+        // đã chuyển sang điều khiển cầu thủ khác.
+        if (ownerItem.teamId === 'blue') {
+            const wait = ownerId === ctx.selectedId ? 5 : 1.5
+
+            if ((state.keeperHoldTime || 0) < wait) return
+        }
+
+        distributeFromHands(ctx, ownerId)
         return
     }
 
@@ -304,8 +406,21 @@ export function updateCarrierAI(ctx, dt) {
         kickFromPlayer(ctx, ownerId, 'shoot', true)
         state.timers.aiDecisionCooldown = 1.7
     } else if (nearbyOpponent) {
-        kickFromPlayer(ctx, ownerId, 'pass', true)
-        state.timers.aiDecisionCooldown = 1.2
+        // Bị áp sát mà chưa có đường chuyền thoáng: che bóng một nhịp chờ
+        // đồng đội di chuyển, rồi mới chuyền (Phase 17).
+        const option = findPassTarget(ctx, ownerId, 'pass')
+        const poorOption =
+            !option || option.blockedLane >= 1 || option.nearestOpponent < 2.5
+
+        if (poorOption && state.timers.shieldCooldown <= 0 && Math.random() < 0.7) {
+            const time = 0.6 + Math.random() * 0.6
+
+            startAiShield(state, ownerId, time)
+            state.timers.aiDecisionCooldown = time
+        } else {
+            kickFromPlayer(ctx, ownerId, 'pass', true)
+            state.timers.aiDecisionCooldown = 1.2
+        }
     } else {
         moveAIPlayer(
             ctx,
@@ -334,6 +449,7 @@ export function updateAISteal(ctx) {
         !owner ||
         !ball ||
         state.restart ||
+        state.keeperHands === ownerId ||
         state.timers.aiAttemptCooldown > 0
     ) {
         return
@@ -378,10 +494,36 @@ export function updateAISteal(ctx) {
     setPlayerAction(state, nearestRed.item.id, 'tackle')
 
     if (Math.random() < chance) {
-        state.pickupLocks[ownerId] = 0.4
-        attachBallToPlayer(ctx, nearestRed.object, nearestRed.item.id)
         recordTeam(state, 'red', 'tackles')
         recordPlayer(state, nearestRed.item.id, 'tackles')
+
+        // Đoạt bóng gọn, hoặc chỉ chọc được bóng văng ra.
+        if (Math.random() > CLEAN_TACKLE_RATE) {
+            pokeBallLoose(ctx, nearestRed.object, ownerId, nearestRed.item.id, 'red')
+            ctx.onActionMessage(`${ctx.opponentName} POKED THE BALL LOOSE`)
+            return
+        }
+
+        state.pickupLocks[ownerId] = 0.4
+        attachBallToPlayer(ctx, nearestRed.object, nearestRed.item.id)
         ctx.onActionMessage(`${ctx.opponentName} WON THE BALL`)
     }
+}
+
+// Thủ môn AI phát bóng sau khi bắt được: ném tay cho đồng đội trống ở
+// khoảng 8–30m, không có thì phát bóng dài bằng chân.
+function distributeFromHands(ctx, keeperId) {
+    const { state } = ctx
+    const target = findPassTarget(ctx, keeperId, 'pass')
+    const open =
+        target &&
+        target.item.role !== 'GK' &&
+        target.distance >= 8 &&
+        target.distance <= 30 &&
+        target.nearestOpponent > 4 &&
+        target.blockedLane < 1
+
+    const kicked = kickFromPlayer(ctx, keeperId, open ? 'pass' : 'lob', true)
+
+    state.timers.aiDecisionCooldown = kicked ? 1.5 : 0.5
 }

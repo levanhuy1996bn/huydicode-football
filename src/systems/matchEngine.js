@@ -11,6 +11,7 @@ import { updateGoalkeeper } from './goalkeeper'
 import { resolvePlayerCollisions, trackVelocities } from './movement'
 import { updatePlayerStates } from './playerState'
 import { recordPossession } from './matchStats'
+import { updateDuels, updateShield } from './duels'
 
 function tickTimers(state, dt) {
     Object.keys(state.timers).forEach((key) => {
@@ -47,7 +48,8 @@ export function stepMatch(ctx, dt) {
 
     recordPossession(state, snapshot.ownerItem?.teamId, dt)
 
-    // 2. Cầu thủ người chơi điều khiển + thanh lực.
+    // 2. Che bóng (giữ C / AI), cầu thủ người chơi điều khiển + thanh lực.
+    updateShield(ctx, dt)
     updateControlledPlayer(ctx, dt)
     updateCharge(ctx, dt)
     updateWindup(ctx, dt)
@@ -66,6 +68,7 @@ export function stepMatch(ctx, dt) {
 
     // 6. Va chạm giữa các cầu thủ.
     resolvePlayerCollisions(ctx)
+    updateDuels(ctx, dt)
 
     // 7. Đối thủ cướp bóng, nhận bóng tự do, rê bóng.
     updateAISteal(ctx)

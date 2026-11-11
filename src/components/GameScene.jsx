@@ -1297,7 +1297,8 @@ export default function GameScene() {
 
             <div className="canvas-hint">
                 Arrows move/aim · E sprint · Hold S/W/A/D for power, release
-                to pass/through/lob/shoot · Defending: S/Q switch, hold D
+                to pass/through/lob/shoot · Hold C shield the ball ·
+                Defending: S/Q switch, hold D
                 contain, D+E press, A teammate press · Space tackle · Ctrl
                 slide · Throw-in: S short, A long
             </div>

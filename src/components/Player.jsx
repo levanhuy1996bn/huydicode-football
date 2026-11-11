@@ -20,6 +20,9 @@ const SOCK = '#f4f4f0'
 // xoay quanh eo — để động tác đá không làm nghiêng cả người và ngược lại.
 const HIP_HEIGHT = 0.6
 
+// Đang nằm/bay người: không xoay đầu nhìn bóng.
+const BUSY_STATES = new Set(['slide', 'fallen', 'diveLow', 'diveMid', 'diveHigh'])
+
 const clamp = (value, min, max) =>
     Math.max(min, Math.min(max, value))
 
@@ -167,6 +170,11 @@ export default function Player({
         const holding =
             matchState?.restart?.type === 'throw-in' &&
             matchState.restart.playerId === player.id
+        const keeperHolding = matchState?.keeperHands === player.id
+        const shielding = matchState?.shieldingId === player.id
+        const jostling = Boolean(
+            matchState?.duel?.key && matchState.duel.key.split('|').includes(player.id),
+        )
 
         const pose = poses.current
 
@@ -185,6 +193,9 @@ export default function Player({
         targetPose({
             entry,
             holding,
+            keeperHolding,
+            shielding,
+            jostling,
             locomotion: pose.locomotion,
             scratch: pose.scratch,
             out: pose.target,
@@ -192,7 +203,7 @@ export default function Player({
 
         // Quay đầu nhìn bóng (trừ khi đang nằm/xoạc).
         const ball = matchState?.ballPosition
-        const busy = entry && entry.time > 0 && ['slide', 'fallen'].includes(entry.state)
+        const busy = entry && entry.time > 0 && BUSY_STATES.has(entry.state)
 
         if (ball && !busy) {
             const worldAngle = Math.atan2(ball.x - p.x, ball.z - p.z)

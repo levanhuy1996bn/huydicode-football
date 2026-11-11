@@ -1,5 +1,6 @@
 import { FIELD, clamp } from './constants'
 import { isPlayerLocked } from './playerState'
+import { duelSpeedFactor, pushShare } from './duels'
 
 export function clampPlayer(object) {
     object.position.x = clamp(object.position.x, FIELD.minX, FIELD.maxX)
@@ -23,7 +24,8 @@ export function moveAIPlayer(ctx, item, target, speedScale, dt) {
 
     const pace = (item.pace || 72) / 80
     const baseSpeed = item.role === 'GK' ? 4.8 : 5.2 + pace * 2.2
-    const speed = baseSpeed * ctx.tactic.speed * speedScale
+    const speed =
+        baseSpeed * ctx.tactic.speed * speedScale * duelSpeedFactor(ctx.state, item.id)
     const step = Math.min(distance, speed * dt)
 
     object.position.x += (dx / distance) * step
@@ -36,7 +38,7 @@ export function moveAIPlayer(ctx, item, target, speedScale, dt) {
 // Đẩy các cầu thủ chồng lên nhau ra xa.
 export function resolvePlayerCollisions(ctx) {
     const entries = ctx.players
-        .map((item) => ({ id: item.id, object: ctx.objects[item.id] }))
+        .map((item) => ({ id: item.id, item, object: ctx.objects[item.id] }))
         .filter((entry) => entry.object)
 
     // Người đang áp sát (giữ D) không bị đẩy lùi — người rê bóng phải đi vòng.
@@ -57,7 +59,12 @@ export function resolvePlayerCollisions(ctx) {
 
             if (distance > 0 && distance < minDistance) {
                 const overlap = minDistance - distance
-                const shareA = aAnchored ? 0 : bAnchored ? 1 : 0.5
+                // Người khỏe hơn (PHY) bị đẩy ít hơn; người che bóng đứng vững.
+                const shareA = aAnchored
+                    ? 0
+                    : bAnchored
+                        ? 1
+                        : pushShare(ctx, entries[i].item, entries[j].item)
                 const shareB = 1 - shareA
                 const nx = dx / distance
                 const nz = dz / distance

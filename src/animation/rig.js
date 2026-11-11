@@ -1,4 +1,11 @@
-import { CLIPS, KEEPER_READY_POSE, THROW_HOLD_POSE } from './clips'
+import {
+    CLIPS,
+    GK_HOLD_POSE,
+    JOSTLE_OFFSET,
+    KEEPER_READY_POSE,
+    SHIELD_POSE,
+    THROW_HOLD_POSE,
+} from './clips'
 
 // Các khớp của rig cầu thủ (xem quy ước góc trong clips.js).
 export const JOINTS = [
@@ -90,12 +97,44 @@ export function locomotionPose(
     return out
 }
 
+// Lật tư thế trái ↔ phải (dùng cho bay người sang hướng −X).
+const MIRROR_PAIRS = [
+    ['lShoulderX', 'rShoulderX'], ['lElbow', 'rElbow'],
+    ['lHipX', 'rHipX'], ['lKnee', 'rKnee'],
+]
+const MIRROR_Z_PAIRS = [['lShoulderZ', 'rShoulderZ'], ['lHipZ', 'rHipZ']]
+const MIRROR_NEGATE = ['rootRoll', 'torsoRoll', 'torsoYaw', 'headYaw']
+
+export function mirrorPose(pose) {
+    MIRROR_PAIRS.forEach(([a, b]) => {
+        const value = pose[a]
+        pose[a] = pose[b]
+        pose[b] = value
+    })
+
+    MIRROR_Z_PAIRS.forEach(([a, b]) => {
+        const value = pose[a]
+        pose[a] = -pose[b]
+        pose[b] = -value
+    })
+
+    MIRROR_NEGATE.forEach((joint) => { pose[joint] = -pose[joint] })
+
+    return pose
+}
+
 // Tính tư thế mục tiêu cho một frame.
 //   entry   : state machine của cầu thủ (state, time, duration, elapsed)
 //   holding : đang giơ bóng chờ ném biên
+//   keeperHolding : thủ môn ôm bóng trước ngực
+//   shielding : đang che bóng (vẫn giữ một phần nhịp bước chân)
+//   jostling  : đang tì vai với đối thủ
 export function targetPose({
     entry,
     holding,
+    keeperHolding,
+    shielding,
+    jostling,
     locomotion,
     scratch,
     out,
@@ -110,13 +149,31 @@ export function targetPose({
         return out
     }
 
+    if (keeperHolding && !clip) {
+        JOINTS.forEach((joint) => {
+            out[joint] = GK_HOLD_POSE[joint] ?? locomotion[joint] * 0.3
+        })
+        return out
+    }
+
+    if (shielding && !clip) {
+        JOINTS.forEach((joint) => {
+            out[joint] = (SHIELD_POSE[joint] ?? 0) + locomotion[joint] * 0.4
+        })
+        return out
+    }
+
     if (!clip) {
-        JOINTS.forEach((joint) => { out[joint] = locomotion[joint] })
+        JOINTS.forEach((joint) => {
+            out[joint] = locomotion[joint] + (jostling ? JOSTLE_OFFSET[joint] ?? 0 : 0)
+        })
         return out
     }
 
     const u = entry.duration > 0 ? entry.elapsed / entry.duration : 1
     sampleClip(clip, u, scratch)
+
+    if (entry.side === -1) mirrorPose(scratch)
 
     // Hòa trộn vào/ra để không giật khi bắt đầu/kết thúc hành động.
     const blendIn = clamp(entry.elapsed / 0.05, 0, 1)

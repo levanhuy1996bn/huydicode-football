@@ -63,6 +63,8 @@ export function attachBallToPlayer(ctx, object, playerId) {
     state.possession = playerId
     state.pendingPass = null
     state.lastToucherId = playerId
+    // Người khác chạm bóng: thủ môn không còn ôm bóng (keeperCatch đặt lại sau).
+    state.keeperHands = null
 
     if (item) {
         state.lastTouchTeam = item.teamId
@@ -256,6 +258,8 @@ export function findPassTarget(ctx, playerId, action, aim = null) {
                 },
                 score,
                 outOfAim,
+                nearestOpponent,
+                blockedLane,
             }
         })
         .sort((a, b) => a.score - b.score)
@@ -292,6 +296,11 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
     if (isThrowIn && action === 'through') {
         action = 'pass'
+    }
+
+    // Thủ môn đang ôm bóng: ném tay (S/W) hoặc phát bóng bằng chân (A/D).
+    if (state.keeperHands === playerId) {
+        return startKeeperDistribution(ctx, playerId, item, player, action, isAI, options)
     }
 
     const attackDirection = attackDir(state, item.teamId)
@@ -459,14 +468,6 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         message = action === 'lob' ? 'LONG THROW-IN' : 'THROW-IN'
     }
 
-    // Quay người về hướng đá để animation đúng hướng.
-    player.rotation.y = Math.atan2(direction.x, direction.z)
-
-    // ---- Nhịp vung chân (wind-up) ----
-    // Bóng chưa rời chân ngay: cầu thủ vung chân trong WINDUP giây rồi mới
-    // chạm bóng (xem releaseKick). Animation trong Player.jsx chạm bóng đúng
-    // thời điểm này. Trong lúc vung chân, cầu thủ đứng yên và vẫn có thể bị
-    // tắc mất bóng.
     const animation = isThrowIn
         ? 'throw'
         : action === 'shoot'
@@ -475,6 +476,132 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                 ? 'cross'
                 : 'pass'
 
+    return beginWindup(ctx, {
+        playerId,
+        item,
+        player,
+        action,
+        animation,
+        isThrowIn,
+        isAI,
+        message,
+        direction,
+        power,
+        lift,
+        passTarget,
+        spaceReceiver,
+    })
+}
+
+// ---- Phase 16: thủ môn phát bóng ----
+// gkThrow: ném tay, bóng đi căng sệt/hơi bổng, chính xác (S/W).
+// punt: thả bóng rồi đá vô-lê lên cao, đi xa (A/D).
+function startKeeperDistribution(ctx, playerId, item, player, action, isAI, options) {
+    const { state } = ctx
+    const attackDirection = attackDir(state, item.teamId)
+    const charge = options.power
+    const isCharged = typeof charge === 'number'
+    const aimInput = options.aimInput || null
+    const isThrow = action === 'pass' || action === 'through'
+
+    const aim = isCharged
+        ? {
+            direction: aimInput
+                ? aimInput.clone().normalize()
+                : facingVector(player.rotation.y),
+            power: charge,
+        }
+        : null
+
+    let passTarget = findPassTarget(ctx, playerId, isThrow ? 'pass' : 'lob', aim)
+
+    if (passTarget?.outOfAim) passTarget = null
+
+    // Phát bóng bằng chân là để đi xa: đồng đội quá gần thì phát dài lên trên.
+    if (!isThrow && passTarget && passTarget.distance < 22) passTarget = null
+
+    const direction = new THREE.Vector3(0, 0, attackDirection)
+    let distance
+
+    if (passTarget) {
+        const target = passTarget.targetPosition
+
+        direction.set(target.x - player.position.x, 0, target.z - player.position.z).normalize()
+        distance = passTarget.distance
+    } else {
+        if (aim) direction.copy(aim.direction)
+
+        // Không phát bóng ngược về phía khung thành nhà.
+        if (direction.z * attackDirection < 0.25) {
+            direction.z = attackDirection * 0.5
+            direction.normalize()
+        }
+
+        distance = isThrow
+            ? (aim ? 8 + charge * 18 : 16)
+            : (aim ? 28 + charge * 26 : 42)
+    }
+
+    let power
+    let lift
+    let message
+
+    if (isThrow) {
+        power = clamp(9 + distance * 0.35, 10, 17)
+        lift = clamp(1 + distance * 0.04, 1.2, 2.2)
+        message = 'GOALKEEPER THROW'
+    } else {
+        lift = clamp(6 + distance * 0.08, 7, 11)
+        const flight = (2 * lift) / 9.81
+        power = clamp((distance / flight) * 0.85, 14, 26)
+        message = 'GOALKEEPER PUNT'
+    }
+
+    return beginWindup(ctx, {
+        playerId,
+        item,
+        player,
+        action: isThrow ? 'pass' : 'lob',
+        animation: isThrow ? 'gkThrow' : 'punt',
+        isThrowIn: false,
+        isAI,
+        message,
+        direction,
+        power,
+        lift,
+        passTarget,
+        spaceReceiver: null,
+    })
+}
+
+// Vị trí bóng trong tay/chân trong lúc vung (offset theo hướng đá, độ cao)
+// và lúc rời tay/chân.
+const HOLD_SPOT = {
+    throw: { offset: 0.12, y: 2.15, releaseOffset: 0.4, releaseY: 2.1 },
+    gkThrow: { offset: 0.2, y: 1.75, releaseOffset: 0.6, releaseY: 1.85 },
+    punt: { offset: 0.5, y: 0.85, releaseOffset: 0.9, releaseY: 0.7 },
+    default: { offset: 0.7, y: 0.39, releaseOffset: 0.95, releaseY: 0.48 },
+}
+
+function holdSpot(animation) {
+    return HOLD_SPOT[animation] || HOLD_SPOT.default
+}
+
+function beginWindup(ctx, params) {
+    const { state } = ctx
+    const {
+        playerId, item, player, action, animation, isThrowIn, isAI, message,
+        direction, power, lift, passTarget, spaceReceiver,
+    } = params
+
+    // Quay người về hướng đá để animation đúng hướng.
+    player.rotation.y = Math.atan2(direction.x, direction.z)
+
+    // ---- Nhịp vung chân (wind-up) ----
+    // Bóng chưa rời chân ngay: cầu thủ vung chân trong WINDUP giây rồi mới
+    // chạm bóng (xem releaseKick). Animation trong Player.jsx chạm bóng đúng
+    // thời điểm này. Trong lúc vung chân, cầu thủ đứng yên và vẫn có thể bị
+    // tắc mất bóng.
     state.windup = {
         playerId,
         teamId: item.teamId,
@@ -515,6 +642,8 @@ export const KICK_WINDUP = {
     cross: 0.16,
     shoot: 0.18,
     throw: 0.22,
+    gkThrow: 0.3,
+    punt: 0.3,
 }
 
 // Gọi mỗi bước logic: giữ bóng trước chân trong lúc vung, rồi sút/chuyền.
@@ -536,13 +665,13 @@ export function updateWindup(ctx, dt) {
     windup.time -= dt
 
     if (windup.time > 0) {
-        const offset = windup.isThrowIn ? 0.12 : 0.7
+        const spot = holdSpot(windup.animation)
 
         placeBall(
             ctx,
-            player.position.x + windup.direction.x * offset,
-            player.position.z + windup.direction.z * offset,
-            windup.isThrowIn ? 2.15 : 0.39,
+            player.position.x + windup.direction.x * spot.offset,
+            player.position.z + windup.direction.z * spot.offset,
+            spot.y,
         )
         return
     }
@@ -559,11 +688,14 @@ function releaseKick(ctx, windup) {
     const playerId = windup.playerId
     let message = windup.message
 
+    const spot = holdSpot(windup.animation)
+    const isKeeperRelease = windup.animation === 'gkThrow' || windup.animation === 'punt'
+
     ball.setTranslation(
         {
-            x: player.position.x + direction.x * (isThrowIn ? 0.4 : 0.95),
-            y: isThrowIn ? 2.1 : 0.48,
-            z: player.position.z + direction.z * (isThrowIn ? 0.4 : 0.95),
+            x: player.position.x + direction.x * spot.releaseOffset,
+            y: spot.releaseY,
+            z: player.position.z + direction.z * spot.releaseOffset,
         },
         true,
     )
@@ -597,7 +729,11 @@ function releaseKick(ctx, windup) {
     // Người vừa đá không được "đỡ" lại chính cú đá của mình. Trước đây
     // bóng vừa rời chân (cách ~1m) bị chính người đá khống chế lại ngay,
     // nên thủ môn cầm bóng mãi và đường chuyền có thể bật về chân người chuyền.
-    state.pickupLocks[playerId] = isThrowIn ? 1 : 0.4
+    state.pickupLocks[playerId] = isThrowIn || isKeeperRelease ? 1 : 0.4
+
+    if (isKeeperRelease) {
+        state.keeperHands = null
+    }
 
     if (isThrowIn) {
         state.restart = null
@@ -623,6 +759,32 @@ function releaseKick(ctx, windup) {
         message = 'PASS INTO SPACE'
     } else {
         state.pendingPass = null
+    }
+
+    // Thủ môn BLUE vừa phát bóng: chuyển điều khiển sang người nhận
+    // (hoặc cầu thủ gần điểm rơi nhất).
+    if (isKeeperRelease && teamId === 'blue') {
+        let nextId = state.pendingPass?.receiverId || null
+
+        if (!nextId) {
+            const spot = {
+                x: player.position.x + direction.x * 20,
+                z: player.position.z + direction.z * 20,
+            }
+
+            nextId = teamPlayers(ctx, 'blue')
+                .filter((mate) => mate.role !== 'GK' && objects[mate.id])
+                .sort(
+                    (a, b) =>
+                        distance2D(objects[a.id].position, spot) -
+                        distance2D(objects[b.id].position, spot),
+                )[0]?.id || null
+        }
+
+        if (nextId) {
+            ctx.onSelect(nextId)
+            ctx.selectedId = nextId
+        }
     }
 
     if (!isAI) {
@@ -656,6 +818,18 @@ export function updateLooseBallPickup(ctx) {
         if (distance > 1.5) return
 
         if (state.pickupLocks[item.id] > 0) return
+
+        // Thủ môn đang xử lý cú sút bằng tay (goalkeeper.js): không đỡ bằng chân.
+        const plan = state.keeperPlans?.[item.teamId]
+
+        if (
+            item.role === 'GK' &&
+            plan &&
+            !plan.resolved &&
+            plan.kickId === state.kickId
+        ) {
+            return
+        }
 
         // Đang xoạc hoặc nằm sân thì không khống chế được.
         const entry = state.playerStates[item.id]
@@ -700,8 +874,20 @@ export function updateLooseBallPickup(ctx) {
         return
     }
 
+    // Cắt đường chuyền của đối phương (Phase 17).
+    const intendedReceiver = state.pendingPass
+        ? getPlayer(ctx, state.pendingPass.receiverId)
+        : null
+    const intercepted =
+        Boolean(intendedReceiver) && intendedReceiver.teamId !== best.item.teamId
+
     // Bóng đã đủ chậm: cầu thủ khống chế và nhận quyền sở hữu.
     attachBallToPlayer(ctx, best.object, best.item.id)
+
+    if (intercepted) {
+        recordTeam(state, best.item.teamId, 'interceptions')
+        recordPlayer(state, best.item.id, 'interceptions')
+    }
 
     // Như FO4: cầu thủ BLUE nhận bóng được chọn điều khiển ngay
     // (thủ môn vẫn để AI phát bóng).
@@ -710,11 +896,9 @@ export function updateLooseBallPickup(ctx) {
         ctx.selectedId = best.item.id
     }
 
-    ctx.onActionMessage(
-        best.item.teamId === 'blue'
-            ? `${ctx.userTeamName} FIRST TOUCH`
-            : `${ctx.opponentName} FIRST TOUCH`,
-    )
+    const label = best.item.teamId === 'blue' ? ctx.userTeamName : ctx.opponentName
+
+    ctx.onActionMessage(intercepted ? `${label} INTERCEPTION!` : `${label} FIRST TOUCH`)
 }
 
 // ---- Rê bóng bằng nhịp chạm ----
@@ -741,6 +925,49 @@ export function updateDribble(ctx, dt) {
 
     // Đang vung chân: updateWindup giữ bóng.
     if (state.windup?.playerId === ownerId) return
+
+    // Thủ môn ôm bóng trước ngực.
+    if (state.keeperHands === ownerId) {
+        const facing = facingVector(owner.rotation.y)
+
+        ball.setTranslation(
+            {
+                x: owner.position.x + facing.x * 0.38,
+                y: 1.15,
+                z: owner.position.z + facing.z * 0.38,
+            },
+            true,
+        )
+        ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
+        return
+    }
+
+    // Che bóng (Phase 17): bóng nằm sát chân ở phía xa đối thủ, không có
+    // nhịp chạm nên không bị "lộ" bóng. Bóng trượt dần về vị trí che.
+    if (state.shieldingId === ownerId) {
+        const facing = facingVector(owner.rotation.y)
+        const current = ball.translation()
+        const targetX = owner.position.x + facing.x * 0.62
+        const targetZ = owner.position.z + facing.z * 0.62
+        const gapX = targetX - current.x
+        const gapZ = targetZ - current.z
+        const gap = Math.hypot(gapX, gapZ)
+        const step = Math.min(gap, 7 * dt)
+
+        ball.setTranslation(
+            {
+                x: gap > 0.001 ? current.x + (gapX / gap) * step : targetX,
+                y: 0.39,
+                z: gap > 0.001 ? current.z + (gapZ / gap) * step : targetZ,
+            },
+            true,
+        )
+        ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
+        state.dribble.touchTimer = 0
+        return
+    }
 
     // Đang chờ ném biên: bóng nằm trong hai tay, trên đầu.
     if (state.restart?.type === 'throw-in' && state.restart.playerId === ownerId) {

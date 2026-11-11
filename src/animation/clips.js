@@ -22,6 +22,12 @@
 //   cross 0.16s / 0.48s = 0.33
 //   shoot 0.18s / 0.55s = 0.33
 //   throw 0.22s / 0.50s = 0.44
+//   gkThrow 0.30s / 0.55s = 0.55
+//   punt  0.30s / 0.60s = 0.50
+//
+// Clip bay người của thủ môn được dựng cho hướng local +X (rootRoll âm =
+// nghiêng phần trên sang +X). Hướng ngược lại được lật tự động trong
+// rig.targetPose (entry.side === -1).
 
 export const CLIPS = {
     pass: [
@@ -263,6 +269,303 @@ export const CLIPS = {
         },
         { t: 1, pose: {} },
     ],
+
+    // ---- Phase 16: thủ môn ----
+
+    // Bay người bóng sệt: đổ người nhanh, nằm sát đất, hai tay vươn theo thân.
+    diveLow: [
+        { t: 0, pose: {} },
+        {
+            t: 0.1,
+            pose: {
+                rootY: -0.2, rootRoll: -0.35, lKnee: 0.9, rKnee: 0.5, lHipX: -0.3,
+                lShoulderZ: -1.2, rShoulderZ: 1.4, lElbow: -0.4, rElbow: -0.3,
+                torsoPitch: 0.25,
+            },
+        },
+        {
+            t: 0.3,
+            pose: {
+                rootY: -0.4, rootRoll: -1.42, torsoRoll: -0.15, torsoPitch: 0.15,
+                lShoulderX: -0.3, rShoulderX: -0.3,
+                lShoulderZ: -3.1, rShoulderZ: 2.75, lElbow: -0.1, rElbow: -0.1,
+                lHipZ: -0.25, rHipZ: 0.05, lKnee: 0.25, rKnee: 0.55, headPitch: 0.1,
+            },
+        },
+        {
+            t: 0.78,
+            pose: {
+                rootY: -0.42, rootRoll: -1.45, torsoRoll: -0.1, torsoPitch: 0.25,
+                lShoulderX: -0.6, rShoulderX: -0.5,
+                lShoulderZ: -2.7, rShoulderZ: 2.5, lElbow: -1.2, rElbow: -1.1,
+                lHipZ: -0.2, lKnee: 0.5, rKnee: 0.8,
+            },
+        },
+        {
+            t: 0.9,
+            pose: {
+                rootY: -0.3, rootRoll: -0.6, torsoPitch: 0.5,
+                lHipX: -1.1, lKnee: 1.5, rHipX: -0.6, rKnee: 1.3,
+                lShoulderX: -0.5, rShoulderX: -0.5, lElbow: -0.8, rElbow: -0.8,
+            },
+        },
+        { t: 1, pose: {} },
+    ],
+
+    // Bay người tầm trung: bật người, thân gần ngang, rơi xuống nằm nghiêng.
+    diveMid: [
+        { t: 0, pose: {} },
+        {
+            t: 0.1,
+            pose: {
+                rootY: -0.15, rootRoll: -0.3, lKnee: 1, rKnee: 0.4, lHipX: -0.35,
+                lShoulderZ: -1.4, rShoulderZ: 1.6, lElbow: -0.4, rElbow: -0.3,
+                torsoPitch: 0.2,
+            },
+        },
+        {
+            t: 0.3,
+            pose: {
+                rootY: 0.15, rootRoll: -1.15, torsoRoll: -0.2, torsoPitch: 0.05,
+                lShoulderZ: -3.15, rShoulderZ: 2.85, lElbow: -0.1, rElbow: -0.1,
+                lHipZ: -0.3, rHipZ: 0.05, lKnee: 0.2, rKnee: 0.6, headPitch: -0.05,
+            },
+        },
+        {
+            t: 0.52,
+            pose: {
+                rootY: -0.42, rootRoll: -1.45, torsoRoll: -0.1, torsoPitch: 0.2,
+                lShoulderX: -0.5, rShoulderX: -0.5,
+                lShoulderZ: -2.7, rShoulderZ: 2.5, lElbow: -1.1, rElbow: -1.1,
+                lHipZ: -0.2, lKnee: 0.4, rKnee: 0.8,
+            },
+        },
+        {
+            t: 0.78,
+            pose: {
+                rootY: -0.42, rootRoll: -1.42, torsoPitch: 0.3,
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: -2.4, rShoulderZ: 2.2, lElbow: -1.5, rElbow: -1.5,
+                lKnee: 0.6, rKnee: 0.9,
+            },
+        },
+        {
+            t: 0.9,
+            pose: {
+                rootY: -0.3, rootRoll: -0.6, torsoPitch: 0.5,
+                lHipX: -1.1, lKnee: 1.5, rHipX: -0.6, rKnee: 1.3,
+                lShoulderX: -0.5, rShoulderX: -0.5, lElbow: -0.8, rElbow: -0.8,
+            },
+        },
+        { t: 1, pose: {} },
+    ],
+
+    // Bay người bóng cao: bật cao, hai tay vươn lên góc xa, rơi xuống.
+    diveHigh: [
+        { t: 0, pose: {} },
+        {
+            t: 0.1,
+            pose: {
+                rootY: -0.18, rootRoll: -0.2, lKnee: 1.1, rKnee: 0.5, lHipX: -0.4,
+                lShoulderX: -0.8, rShoulderX: -0.8, lElbow: -0.5, rElbow: -0.5,
+                torsoPitch: 0.15,
+            },
+        },
+        {
+            t: 0.3,
+            pose: {
+                rootY: 0.5, rootRoll: -0.85, torsoRoll: -0.25, torsoPitch: -0.1,
+                lShoulderZ: -3.2, rShoulderZ: 2.95, lElbow: -0.05, rElbow: -0.05,
+                lHipZ: -0.35, lKnee: 0.3, rKnee: 0.8, headPitch: -0.3,
+            },
+        },
+        {
+            t: 0.55,
+            pose: {
+                rootY: -0.4, rootRoll: -1.42, torsoRoll: -0.1, torsoPitch: 0.15,
+                lShoulderX: -0.4, rShoulderX: -0.4,
+                lShoulderZ: -2.8, rShoulderZ: 2.6, lElbow: -0.8, rElbow: -0.8,
+                lHipZ: -0.2, lKnee: 0.4, rKnee: 0.8,
+            },
+        },
+        {
+            t: 0.78,
+            pose: {
+                rootY: -0.42, rootRoll: -1.42, torsoPitch: 0.3,
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: -2.4, rShoulderZ: 2.2, lElbow: -1.5, rElbow: -1.5,
+                lKnee: 0.6, rKnee: 0.9,
+            },
+        },
+        {
+            t: 0.9,
+            pose: {
+                rootY: -0.3, rootRoll: -0.6, torsoPitch: 0.5,
+                lHipX: -1.1, lKnee: 1.5, rHipX: -0.6, rKnee: 1.3,
+                lShoulderX: -0.5, rShoulderX: -0.5, lElbow: -0.8, rElbow: -0.8,
+            },
+        },
+        { t: 1, pose: {} },
+    ],
+
+    // Đứng bắt bóng ngang ngực: đưa tay ra đón rồi ôm vào ngực.
+    catch: [
+        { t: 0, pose: {} },
+        {
+            t: 0.3,
+            pose: {
+                rootY: -0.08, lKnee: 0.35, rKnee: 0.35, lHipX: -0.2, rHipX: -0.2,
+                torsoPitch: 0.15, lShoulderX: -1.45, rShoulderX: -1.45,
+                lShoulderZ: 0.15, rShoulderZ: -0.15, lElbow: -0.5, rElbow: -0.5,
+            },
+        },
+        {
+            t: 0.65,
+            pose: {
+                rootY: -0.06, lKnee: 0.3, rKnee: 0.3, torsoPitch: 0.2,
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: 0.2, rShoulderZ: -0.2, lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+        {
+            t: 1,
+            pose: {
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: 0.15, rShoulderZ: -0.15, lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+    ],
+
+    // Bắt bóng bổng: bật lên, hai tay giơ cao rồi ôm bóng xuống.
+    catchHigh: [
+        { t: 0, pose: {} },
+        {
+            t: 0.12,
+            pose: { rootY: -0.12, lKnee: 0.7, rKnee: 0.7, lHipX: -0.4, rHipX: -0.4, torsoPitch: 0.15 },
+        },
+        {
+            t: 0.38,
+            pose: {
+                rootY: 0.3, lKnee: 0.9, rKnee: 0.2, lHipX: -0.7, torsoPitch: -0.1,
+                lShoulderX: -2.85, rShoulderX: -2.85, lShoulderZ: 0.1, rShoulderZ: -0.1,
+                lElbow: -0.25, rElbow: -0.25, headPitch: -0.4,
+            },
+        },
+        {
+            t: 0.75,
+            pose: {
+                rootY: -0.05, lKnee: 0.3, rKnee: 0.3, torsoPitch: 0.15,
+                lShoulderX: -0.8, rShoulderX: -0.8,
+                lShoulderZ: 0.2, rShoulderZ: -0.2, lElbow: -1.8, rElbow: -1.8,
+            },
+        },
+        {
+            t: 1,
+            pose: {
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: 0.15, rShoulderZ: -0.15, lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+    ],
+
+    // Hốt bóng sệt: khuỵu gối, cúi người, hai tay úp xuống cỏ rồi ôm lên.
+    scoop: [
+        { t: 0, pose: {} },
+        {
+            t: 0.35,
+            pose: {
+                rootY: -0.22, lHipX: -0.9, lKnee: 1.3, rHipX: 0.1, rKnee: 1.6,
+                torsoPitch: 0.75, headPitch: 0.4,
+                lShoulderX: -0.7, rShoulderX: -0.7, lShoulderZ: 0.12, rShoulderZ: -0.12,
+                lElbow: -0.2, rElbow: -0.2,
+            },
+        },
+        {
+            t: 0.7,
+            pose: {
+                rootY: -0.1, lHipX: -0.4, lKnee: 0.6, rKnee: 0.6, torsoPitch: 0.3,
+                lShoulderX: -0.7, rShoulderX: -0.7, lShoulderZ: 0.2, rShoulderZ: -0.2,
+                lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+        {
+            t: 1,
+            pose: {
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: 0.15, rShoulderZ: -0.15, lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+    ],
+
+    // Ném tay: tay phải vung vòng qua đầu, bước chân trái lên.
+    gkThrow: [
+        {
+            t: 0,
+            pose: {
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: 0.15, rShoulderZ: -0.15, lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+        {
+            t: 0.3,
+            pose: {
+                rShoulderX: 0.9, rShoulderZ: 0.35, rElbow: -0.6,
+                lShoulderX: -1.4, lElbow: -0.3, torsoYaw: 0.45, torsoPitch: -0.15,
+                rHipX: 0.25, lHipX: -0.2, rKnee: 0.3,
+            },
+        },
+        {
+            t: 0.55,
+            pose: {
+                rShoulderX: -2.6, rShoulderZ: 0.2, rElbow: -0.25,
+                lShoulderX: -0.4, lShoulderZ: -0.4, lElbow: -0.5,
+                torsoYaw: -0.25, torsoPitch: 0.15,
+                lHipX: -0.5, lKnee: 0.25, rHipX: 0.35, rKnee: 0.3,
+            },
+        },
+        {
+            t: 0.78,
+            pose: {
+                rShoulderX: -1.2, rElbow: -0.2, lShoulderX: 0.2, lShoulderZ: -0.4,
+                torsoYaw: -0.35, torsoPitch: 0.3, lHipX: -0.4, lKnee: 0.3, rHipX: 0.3,
+            },
+        },
+        { t: 1, pose: {} },
+    ],
+
+    // Phát bóng bằng chân (vô-lê): thả bóng trước người rồi vung chân phải lên cao.
+    punt: [
+        {
+            t: 0,
+            pose: {
+                lShoulderX: -0.7, rShoulderX: -0.7,
+                lShoulderZ: 0.15, rShoulderZ: -0.15, lElbow: -1.9, rElbow: -1.9,
+            },
+        },
+        {
+            t: 0.3,
+            pose: {
+                lShoulderX: -1.2, rShoulderX: -1.2, lElbow: -0.3, rElbow: -0.3,
+                rHipX: 0.65, rKnee: 1.25, lKnee: 0.3, torsoPitch: 0.1, headPitch: 0.3,
+            },
+        },
+        {
+            t: 0.5,
+            pose: {
+                rHipX: -1.35, rKnee: 0.15, lKnee: 0.15, torsoPitch: -0.3, rootPitch: -0.05,
+                lShoulderX: -0.6, lShoulderZ: -1, rShoulderX: 0.3, rShoulderZ: 0.9,
+                lElbow: -0.3, rElbow: -0.3, headPitch: 0.1,
+            },
+        },
+        {
+            t: 0.72,
+            pose: {
+                rHipX: -1.75, rKnee: 0.1, lKnee: 0.1, torsoPitch: -0.35, rootY: 0.05,
+                lShoulderX: -0.8, lShoulderZ: -1.1, rShoulderX: 0.4, rShoulderZ: 1,
+            },
+        },
+        { t: 1, pose: {} },
+    ],
 }
 
 // Tư thế tĩnh: giữ bóng trên đầu chờ ném biên.
@@ -277,4 +580,25 @@ export const KEEPER_READY_POSE = {
     lHipZ: -0.12, rHipZ: 0.12, torsoPitch: 0.25, headPitch: -0.15,
     lShoulderX: -0.6, rShoulderX: -0.6, lShoulderZ: -0.45, rShoulderZ: 0.45,
     lElbow: -0.7, rElbow: -0.7,
+}
+
+// Thủ môn ôm bóng trước ngực chờ phát bóng.
+export const GK_HOLD_POSE = {
+    lShoulderX: -0.7, rShoulderX: -0.7, lShoulderZ: 0.15, rShoulderZ: -0.15,
+    lElbow: -1.9, rElbow: -1.9, torsoPitch: 0.06, headPitch: -0.05,
+    lKnee: 0.08, rKnee: 0.08,
+}
+
+// Che bóng (Phase 17): hạ thấp trọng tâm, dang tay giữ khoảng cách, cúi nhìn bóng.
+export const SHIELD_POSE = {
+    rootY: -0.13, lKnee: 0.65, rKnee: 0.65, lHipX: -0.4, rHipX: -0.4,
+    lHipZ: -0.16, rHipZ: 0.16, torsoPitch: 0.32, headPitch: 0.2,
+    lShoulderX: 0.3, rShoulderX: 0.3, lShoulderZ: -0.95, rShoulderZ: 0.95,
+    lElbow: -0.55, rElbow: -0.55,
+}
+
+// Tì vai (Phase 17): cộng thêm vào dáng chạy khi đang đấu sức.
+export const JOSTLE_OFFSET = {
+    lShoulderZ: -0.45, rShoulderZ: 0.45, lElbow: -0.3, rElbow: -0.3,
+    torsoPitch: 0.1, rootY: -0.03,
 }

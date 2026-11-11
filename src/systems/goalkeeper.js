@@ -1,35 +1,327 @@
-import { clamp, distance2D } from './constants'
+import { FIELD, clamp, distance2D } from './constants'
 import { facingFor, ownGoalSign } from './matchState'
 import { attachBallToPlayer, teamPlayers } from './ball'
 import { moveAIPlayer } from './movement'
 import { recordPlayer, recordTeam } from './matchStats'
+import { isPlayerLocked, setPlayerAction } from './playerState'
 
-const KEEPER_REACH = 2.4
+// ---- Phase 16: thủ môn ----
+// Khi có cú sút/bóng nhanh hướng về khung thành, thủ môn lập "kế hoạch"
+// MỘT lần cho mỗi cú đá (state.keeperPlans[team]):
+//   - dự đoán điểm bóng cắt ngang vị trí thủ môn (x, độ cao, thời gian tới);
+//   - quyết định đứng bắt / cúi hốt / bay người (thấp, giữa, cao) sang trái/phải;
+//   - tung xúc xắc cứu thua ngay lúc đó (tầm với, phản xạ, tốc độ, độ cao, chỉ số);
+//   - sau thời gian phản xạ thì lao người (di chuyển ngang + animation bay người).
+// Khi bóng tới mặt phẳng thủ môn: thành công → bắt dính / đẩy ra / đẩy qua xà;
+// thất bại → thủ môn bay người hụt, không chạm được bóng.
+
+const STAND_REACH = 0.9        // với được bóng không cần bay người (m)
+const DIVE_BODY_REACH = 1.45   // từ hông tới đầu ngón tay khi nằm ngang (m)
+const DIVE_SPEED = 6.5         // tốc độ lao người ngang (m/s)
+const DIVE_PUSH_TIME = 0.32    // thời gian bật người (s)
+const SLOW_BALL = 12           // bóng chậm hơn thế thì bắt gọn kiểu thường
+
+const DIVE_DURATION = 1.15
+
+function keeperOf(ctx, teamId) {
+    const item = teamPlayers(ctx, teamId).find((player) => player.role === 'GK')
+
+    return item ? { item, object: ctx.objects[item.id] } : null
+}
+
+// Bắt bóng bằng tay: giữ bóng, chờ phát (throw/punt).
+function keeperCatch(ctx, keeper, keeperItem) {
+    const { state } = ctx
+
+    attachBallToPlayer(ctx, keeper, keeperItem.id)
+    state.keeperHands = keeperItem.id
+    state.keeperHoldTime = 0
+    state.charge = null
+    state.timers.aiDecisionCooldown = keeperItem.teamId === 'blue' ? 0 : 1.6
+
+    // Thủ môn BLUE bắt bóng: người chơi điều khiển việc phát bóng
+    // (S/W ném tay, A/D phát bóng dài). Quá 5 giây không bấm → AI tự phát.
+    if (keeperItem.teamId === 'blue') {
+        ctx.onSelect(keeperItem.id)
+        ctx.selectedId = keeperItem.id
+    }
+}
+
+// Dự đoán và lập kế hoạch cho cú đá hiện tại.
+function planSave(ctx, teamId, keeper, keeperItem) {
+    const { state } = ctx
+    const ball = ctx.ballRef.current
+    const position = ball.translation()
+    const velocity = ball.linvel()
+    const goalSign = ownGoalSign(state, teamId)
+
+    // Chỉ cứu bóng do đối phương đá (không bắt bóng đồng đội chuyền về).
+    if (state.lastTouchTeam === teamId) return null
+
+    // Bóng phải đang bay về phía khung thành nhà.
+    if (velocity.z * goalSign < 4) return null
+
+    const timeToKeeper = (keeper.position.z - position.z) / velocity.z
+    const timeToGoal = (goalSign * FIELD.lineZ - position.z) / velocity.z
+
+    if (timeToKeeper <= 0 || timeToKeeper > 2.5) return null
+
+    const crossX = position.x + velocity.x * timeToKeeper
+    const crossY = Math.max(
+        0.2,
+        position.y + velocity.y * timeToKeeper - 4.9 * timeToKeeper * timeToKeeper,
+    )
+    const goalX = position.x + velocity.x * timeToGoal
+    const goalY = position.y + velocity.y * timeToGoal - 4.9 * timeToGoal * timeToGoal
+    const onTarget =
+        Math.abs(goalX) <= FIELD.goalHalfWidth + 0.2 && goalY < FIELD.goalHeight + 0.1
+
+    const lateral = crossX - keeper.position.x
+    const distance = Math.abs(lateral)
+
+    // Bóng đi ra ngoài và cách xa thủ môn: để bóng đi.
+    if (!onTarget && distance > STAND_REACH) {
+        return { kickId: state.kickId, type: 'leave', resolved: true }
+    }
+
+    const rating = keeperItem.overall || 75
+    const reaction = clamp(0.24 - (rating - 70) * 0.006, 0.1, 0.3)
+    const speed = Math.hypot(velocity.x, velocity.y, velocity.z)
+    const timeToDive = timeToKeeper - reaction
+    const maxReach =
+        STAND_REACH + DIVE_SPEED * clamp(timeToDive, 0, DIVE_PUSH_TIME) + 0.55 +
+        (rating - 70) * 0.02
+
+    const standing = distance <= STAND_REACH
+    // Đang nằm sân sau pha bay người trước: không kịp phản ứng.
+    const recovering = isPlayerLocked(state, keeperItem.id)
+    const reachable =
+        !recovering && (standing || (distance <= maxReach && timeToDive > 0.04))
+
+    let chance = 0
+
+    if (reachable && standing) {
+        // Bóng đi thẳng vào người: gần như chắc chắn cản được.
+        chance = clamp(
+            0.9 + (rating - 70) * 0.005 - Math.max(0, speed - 26) * 0.02,
+            0.65,
+            0.97,
+        )
+    } else if (reachable) {
+        chance = clamp(
+            0.55 +
+            (rating - 70) * 0.012 +
+            (1.2 - distance) * 0.22 -
+            (speed - 20) * 0.02 -
+            Math.max(0, crossY - 1.9) * 0.25 -
+            (timeToDive < 0.18 ? 0.18 : 0),
+            0.08,
+            0.93,
+        )
+    }
+
+    const success = Math.random() < chance
+    const side = Math.sign(lateral) || 1
+    const height = crossY < 0.6 ? 'low' : crossY > 1.65 ? 'high' : 'mid'
+
+    let type
+    if (standing) {
+        type = height === 'low' ? 'scoop' : height === 'high' ? 'catchHigh' : 'catch'
+    } else {
+        type = height === 'low' ? 'diveLow' : height === 'high' ? 'diveHigh' : 'diveMid'
+    }
+
+    // Điểm hông thủ môn cần tới: thành công → tay chạm bóng,
+    // thất bại → bay người hụt (thiếu 0.4–1.0m) hoặc, nếu bóng quá nhanh
+    // với thủ môn kém, đôi khi đoán sai hướng.
+    let targetX = keeper.position.x
+
+    if (!standing) {
+        const travel = Math.max(0, distance - DIVE_BODY_REACH)
+        const shortfall = success ? 0 : 0.4 + Math.random() * 0.6
+
+        targetX = keeper.position.x + side * Math.max(0, travel - shortfall)
+    }
+
+    const wrongWay =
+        !success && !standing && speed > 24 && Math.random() < clamp(0.25 - (rating - 70) * 0.015, 0.03, 0.25)
+
+    return {
+        kickId: state.kickId,
+        type,
+        side: wrongWay ? -side : side,
+        targetX: wrongWay ? keeper.position.x - side * 0.8 : targetX,
+        success,
+        onTarget,
+        speed,
+        crossY,
+        // Cứu thua thất bại: phản xạ chậm hơn một nhịp (bay người muộn).
+        startAt: success ? reaction : reaction + 0.12,
+        elapsed: 0,
+        expires: timeToKeeper + 0.8,
+        started: false,
+        resolved: false,
+    }
+}
+
+// Thực hiện cứu thua khi bóng tới mặt phẳng thủ môn.
+function resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel) {
+    const { state } = ctx
+    const ball = ctx.ballRef.current
+    const velocity = ball.linvel()
+    const position = ball.translation()
+    const enemyTeamId = teamId === 'blue' ? 'red' : 'blue'
+    const goalSign = ownGoalSign(state, teamId)
+
+    plan.resolved = true
+
+    // Bóng đổi hướng giữa đường (chạm người khác) và ra khỏi tầm với.
+    const reachNow = distance2D(position, keeper.position)
+
+    if (!plan.success || reachNow > 3.4) {
+        // Bay người hụt: không cho thủ môn "phanh" bóng bằng logic đỡ bóng.
+        state.pickupLocks[keeperItem.id] = 0.8
+        return
+    }
+
+    recordTeam(state, enemyTeamId, 'onTarget')
+    recordTeam(state, teamId, 'saves')
+    recordPlayer(state, keeperItem.id, 'saves')
+
+    const standing = ['catch', 'catchHigh', 'scoop'].includes(plan.type)
+    const canHold =
+        (standing && plan.speed < 25) ||
+        (plan.type === 'diveMid' && plan.speed < 17) ||
+        (plan.type === 'diveLow' && plan.speed < 14)
+
+    if (canHold) {
+        keeperCatch(ctx, keeper, keeperItem)
+        ctx.onActionMessage(
+            teamId === 'blue'
+                ? `${saveLabel} SAVE! · S/W THROW · A/D KICK`
+                : `${saveLabel} SAVE!`,
+        )
+        return
+    }
+
+    state.lastTouchTeam = teamId
+    state.lastToucherId = keeperItem.id
+    state.pendingPass = null
+    state.kickId += 1
+    state.pickupLocks[keeperItem.id] = 0.6
+
+    // Bóng cao: đẩy qua xà ngang (ra phạt góc).
+    if (plan.type === 'diveHigh' || plan.type === 'catchHigh') {
+        if (Math.random() < 0.6) {
+            ball.setLinvel(
+                { x: velocity.x * 0.3, y: 6.5, z: velocity.z * 0.45 },
+                true,
+            )
+            ctx.onActionMessage(`${saveLabel} TIPS IT OVER!`)
+            return
+        }
+    }
+
+    // Đẩy bóng ra hai bên, bật ngược ra khỏi khung thành.
+    const side = plan.side || Math.sign(position.x - keeper.position.x) || 1
+
+    ball.setLinvel(
+        {
+            x: side * (5 + Math.random() * 4),
+            y: 1.5 + Math.random() * 2.5,
+            z: -goalSign * (2 + Math.random() * 3),
+        },
+        true,
+    )
+
+    ctx.onActionMessage(`${saveLabel} PARRIES IT!`)
+}
 
 // `snapshot` = { ownerId, ownerItem } chụp ở đầu bước logic.
 export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
     const { state, objects } = ctx
     const ball = ctx.ballRef.current
-    const keeperItem = teamPlayers(ctx, teamId).find((item) => item.role === 'GK')
+    const found = keeperOf(ctx, teamId)
 
-    if (!ball || !keeperItem) return
+    if (!ball || !found?.object) return
 
-    const keeper = objects[keeperItem.id]
-
-    if (!keeper) return
+    const keeperItem = found.item
+    const keeper = found.object
 
     // Thủ môn đang giữ bóng thì đứng yên chờ phát bóng.
-    if (state.possession === keeperItem.id) return
+    if (state.possession === keeperItem.id) {
+        if (state.keeperHands === keeperItem.id) {
+            state.keeperHoldTime = (state.keeperHoldTime || 0) + dt
+        }
+
+        return
+    }
 
     const enemyTeamId = teamId === 'blue' ? 'red' : 'blue'
     const goalSign = ownGoalSign(state, teamId)
     const goalZ = goalSign * 50.5
+    const saveLabel = teamId === 'blue'
+        ? `${ctx.userTeamName} GOALKEEPER`
+        : `${ctx.opponentName} GOALKEEPER`
 
+    if (!state.keeperPlans) state.keeperPlans = {}
+
+    // ---- Kế hoạch cứu thua cho cú đá mới ----
+    let plan = state.keeperPlans[teamId]
+
+    if (!state.possession && (!plan || plan.kickId !== state.kickId)) {
+        const next = planSave(ctx, teamId, keeper, keeperItem)
+
+        if (next) {
+            state.keeperPlans[teamId] = next
+            plan = next
+        }
+    }
+
+    // Có người khống chế được bóng (cản phá, cắt bóng) → bỏ kế hoạch.
+    if (plan && !plan.resolved && state.possession) plan.resolved = true
+
+    if (plan && !plan.resolved && plan.kickId === state.kickId) {
+        plan.elapsed += dt
+
+        // Hết phản xạ: bắt đầu bay người / bắt bóng.
+        if (!plan.started && plan.elapsed >= plan.startAt) {
+            plan.started = true
+
+            const duration = plan.type.startsWith('dive') ? DIVE_DURATION : 0.6
+            setPlayerAction(state, keeperItem.id, plan.type, duration, {
+                side: localSide(keeper, plan.side),
+            })
+        }
+
+        // Lao người ngang về điểm dự tính.
+        if (plan.started && plan.type.startsWith('dive')) {
+            const remaining = plan.targetX - keeper.position.x
+
+            if (Math.abs(remaining) > 0.02) {
+                const step = Math.min(Math.abs(remaining), DIVE_SPEED * dt)
+                keeper.position.x += Math.sign(remaining) * step
+            }
+        }
+
+        // Bóng tới mặt phẳng thủ môn → phân xử.
+        const current = ball.translation()
+        const reached = (current.z - keeper.position.z) * goalSign >= -0.5
+
+        if (reached && current.y < 3.2) {
+            resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel)
+        } else if (plan.elapsed > plan.expires) {
+            plan.resolved = true
+        }
+
+        return
+    }
+
+    // ---- Chọn vị trí ----
     const ballPosition = ball.translation()
     const velocity = ball.linvel()
     const movingTowardGoal = velocity.z * goalSign > 0.5
 
-    // Dự đoán điểm bóng tới khung thành.
     let predictedX = ballPosition.x
 
     if (movingTowardGoal) {
@@ -40,7 +332,8 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         }
     }
 
-    let targetX = clamp(predictedX, -7.2, 7.2)
+    // Đứng trên đường phân giác giữa bóng và tâm khung thành.
+    let targetX = clamp(predictedX * 0.75, -3.2, 3.2)
     let targetZ =
         goalZ - goalSign * clamp((goalZ - ballPosition.z) * goalSign * 0.2, 0, 5)
 
@@ -56,7 +349,7 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
 
         if (distanceToGoal < 19 && distanceToKeeper < 23) {
             rushingOut = true
-            targetX = clamp(enemyCarrier.position.x, -8, 8)
+            targetX = clamp(enemyCarrier.position.x * 0.8, -6, 6)
             targetZ = goalSign > 0
                 ? Math.min(goalZ - 1, enemyCarrier.position.z + 4)
                 : Math.max(goalZ + 1, enemyCarrier.position.z - 4)
@@ -75,111 +368,42 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         dt,
     )
 
-    // ---- Cứu thua / bắt bóng ----
-    const currentBall = ball.translation()
-    const distanceToBall = distance2D(keeper.position, currentBall)
-    const ballHeight = currentBall.y
-    const insideKeeperArea = currentBall.z * goalSign > 39
+    // ---- Bóng chậm / bóng trong chân tiền đạo ----
+    const current = ball.translation()
+    const distanceToBall = distance2D(keeper.position, current)
+    const insideKeeperArea = current.z * goalSign > 39
     const ballSpeed = Math.hypot(velocity.x, velocity.y, velocity.z)
     const enemyOwnsBall = state.possession
         ? ctx.byId.get(state.possession)?.teamId === enemyTeamId
         : false
 
-    const keeperRating = keeperItem.overall || 75
-    const saveLabel = teamId === 'blue'
-        ? `${ctx.userTeamName} GOALKEEPER`
-        : `${ctx.opponentName} GOALKEEPER`
-
-    if (!insideKeeperArea || ballHeight >= 2.8) return
-
-    // Thủ môn vừa phát/đẩy bóng thì chưa được bắt lại.
+    if (!insideKeeperArea || current.y >= 2.8) return
     if (state.pickupLocks[keeperItem.id] > 0) return
+    if (isPlayerLocked(state, keeperItem.id)) return
 
     if (enemyOwnsBall && distanceToBall < 1.6) {
-        // Thủ môn lao ra cướp bóng trong chân tiền đạo.
-        attachBallToPlayer(ctx, keeper, keeperItem.id)
-        state.timers.aiDecisionCooldown = 1.5
+        // Lao ra ôm bóng trong chân tiền đạo.
+        setPlayerAction(state, keeperItem.id, 'diveLow', 0.9, {
+            side: localSide(keeper, Math.sign(current.x - keeper.position.x) || 1),
+        })
+        keeperCatch(ctx, keeper, keeperItem)
         ctx.onActionMessage(`${saveLabel} CLAIMS IT!`)
         return
     }
 
-    if (state.possession || distanceToBall >= KEEPER_REACH) return
-
-    // Chỉ bắt/cứu bóng do ĐỐI THỦ chạm cuối. Bóng của đồng đội (chuyền về,
-    // bóng bật ra) thì thủ môn xử lý bằng chân như cầu thủ thường.
-    if (state.lastTouchTeam !== enemyTeamId) return
-
-    if (ballSpeed < 12) {
-        // Bóng chậm: bắt gọn.
-        attachBallToPlayer(ctx, keeper, keeperItem.id)
-        state.timers.aiDecisionCooldown = 1.5
-        return
+    if (
+        !state.possession &&
+        distanceToBall < 2 &&
+        ballSpeed < SLOW_BALL &&
+        state.lastTouchTeam === enemyTeamId
+    ) {
+        setPlayerAction(state, keeperItem.id, current.y < 0.6 ? 'scoop' : 'catch', 0.6)
+        keeperCatch(ctx, keeper, keeperItem)
     }
+}
 
-    // Bóng nhanh: tung xúc xắc MỘT lần cho mỗi cú đá.
-    if (state.keeperResolvedKick[teamId] === state.kickId) return
-
-    state.keeperResolvedKick[teamId] = state.kickId
-
-    // Khoảng cách NGANG từ thủ môn tới đường bóng (điểm bóng cắt ngang vị
-    // trí thủ môn), không phải khoảng cách lúc bóng vừa vào tầm với —
-    // giá trị đó lúc nào cũng ~2.3m nên không phân biệt được cú sút hiểm.
-    const timeToKeeper =
-        Math.abs(velocity.z) > 0.5
-            ? clamp((keeper.position.z - currentBall.z) / velocity.z, 0, 1)
-            : 0
-    const crossingX = currentBall.x + velocity.x * timeToKeeper
-    const lateral = Math.abs(crossingX - keeper.position.x)
-
-    const saveChance = clamp(
-        0.5 +
-        (keeperRating - 70) * 0.012 +
-        (1.2 - lateral) * 0.25 -
-        (ballSpeed - 20) * 0.02 -
-        Math.max(0, ballHeight - 1.8) * 0.2,
-        0.08,
-        0.9,
-    )
-
-    if (Math.random() >= saveChance) {
-        // Thủ môn đã bị đánh bại: không được "phanh" bóng bằng chân nữa
-        // (trước đây hàm khống chế bóng tự do làm bóng chậm lại rồi
-        // thủ môn bắt gọn, nên gần như không thể ghi bàn).
-        state.pickupLocks[keeperItem.id] = 0.6
-        return
-    }
-
-    // Cứu thua thành công: tính sút trúng đích cho đội sút, cứu thua cho thủ môn.
-    recordTeam(state, enemyTeamId, 'onTarget')
-    recordTeam(state, teamId, 'saves')
-    recordPlayer(state, keeperItem.id, 'saves')
-
-    if (ballSpeed < 20) {
-        attachBallToPlayer(ctx, keeper, keeperItem.id)
-        state.timers.aiDecisionCooldown = 1.5
-        ctx.onActionMessage(`${saveLabel} SAVE!`)
-        return
-    }
-
-    // Đẩy bóng ra: bật ngược và lệch sang một bên.
-    const side =
-        Math.sign(currentBall.x - keeper.position.x) ||
-        (Math.random() < 0.5 ? -1 : 1)
-
-    ball.setLinvel(
-        {
-            x: side * (4 + Math.random() * 4),
-            y: 2 + Math.random() * 2,
-            z: -velocity.z * 0.3,
-        },
-        true,
-    )
-
-    state.lastTouchTeam = teamId
-    state.lastToucherId = keeperItem.id
-    state.pendingPass = null
-    state.kickId += 1
-    state.pickupLocks[keeperItem.id] = 0.5
-
-    ctx.onActionMessage(`${saveLabel} PARRIES IT!`)
+// Hướng bay người theo hệ trục của thủ môn (+1 = sang phải theo trục local +X).
+function localSide(keeper, worldSide) {
+    // Trục local +X của object quay rotation.y = θ là (cos θ, 0, −sin θ).
+    return Math.sign(Math.cos(keeper.rotation.y) * worldSide) || 1
 }
