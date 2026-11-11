@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Phase 10 — Passing and Receiving System, plus Steps 1–6 (bug fixes, engine refactor, FIFA Online-style controls, match flow, in-match HUD, menus and match screens) (2026-11-10).** Phases 11–14 were planned but not yet delivered as distinct features (see Development roadmap). The project has evolved from a basic 3D football prototype into an 11v11 football game with player AI, goalkeeper behaviour, match rules, squad management, club management, league competitions and an improved passing and receiving system.
+> **Current delivery: Steps 1–6 and Phases 15–20 — all done ✅ (2026-11-11).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression (levels, XP, attribute points), fouls, cards, offside and set pieces, and FIFA Online-style skill shots and passes (Z+D, Q+D, C+D…). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 21 (match statistics and presentation). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -121,6 +121,19 @@ npm run preview
 - Improved ball control and first-touch foundations.
 - Pass target marker to show the intended receiving position.
 
+### Phases 15–20 — FIFA Online-style match (2026-11-10 → 2026-11-11) ✅
+
+- **Phase 15:** specialised animations (pass, shot, tackle, slide, keeper dives, celebrations).
+- **Phase 16:** goalkeeper diving, catching, throwing and punting.
+- **Phase 17:** physical duels, shielding and ball recovery.
+- **Phase 18:** team tactics and ball-carrier AI.
+- **Phase 19:** stamina, fatigue, condition between matches and detailed attributes.
+- **Phase 19B:** player levels, XP, attribute points by position and potential.
+- **Phase 20:** fouls, yellow and red cards, sending off, offside, free kicks with a wall, penalties, and proper goal kicks, corners and throw-ins.
+- **Skill shots and passes:** finesse (Z+D), chip (Q+D), trivela (C+D), low driven shot (D, D), driven pass (Z+S), lobbed through ball (Q+W), whipped cross (Z+A).
+
+Details and test results for each phase are in the Development roadmap below.
+
 ## Controls
 
 | **Key** | **Action** |
@@ -129,7 +142,7 @@ npm run preview
 | E / Shift | Sprint (hold) |
 | S (with the ball) | Pass: hold to charge, release to pass |
 | S (without the ball) | Switch to the player nearest the ball |
-| Q | Cycle through the 4 players nearest the ball |
+| Q (without the ball) | Cycle through the 4 players nearest the ball (with the ball Q is a modifier: Q + D, Q + W) |
 | W | Through ball (hold to charge) |
 | A | Lofted pass / cross (hold to charge) |
 | D | Shoot (hold to charge, arrows to aim the corner) |
@@ -139,6 +152,15 @@ npm run preview
 | A (defending) | Sliding tackle |
 | C (hold, with the ball) | Shield the ball: turn your back to the nearest opponent and keep the ball on the far side; arrows move slowly |
 | S / A at a throw-in | Short / long throw (arrows choose the direction) |
+| Z + D | Finesse shot (inside of the foot): curls into the far corner, more accurate, slower |
+| Q + D | Chip shot over the keeper |
+| C + D | Trivela (outside of the foot): bends away from the keeper |
+| D, then D again right after the shot | Low driven shot |
+| Z + S / Z + W | Driven pass / driven through ball (faster, harder to control) |
+| Q + W | Lobbed through ball over the defence |
+| Z + A / A then A again | Whipped cross / low cross |
+| D at a free kick | Shoot over the wall (about 40–80% power clears it; arrows aim). S / W / A pass or cross |
+| Arrows + D at a penalty | Aim and shoot (penalties allow shots only) |
 | Arrows (keeper holding the ball) | Walk with the ball inside your penalty area (after 6 s the keeper distributes automatically) |
 | S / W (keeper holding the ball) | Goalkeeper throw (hold to charge, arrows aim) |
 | A / D (keeper holding the ball) | Goalkeeper punt / long kick (hold to charge, arrows aim) |
@@ -187,11 +209,10 @@ The game includes management systems alongside the 3D match gameplay.
 ## Current prototype limitations
 
 - Player models still use procedural geometry rather than professional rigged footballer models.
-- Player animations are procedural and still need more specialised actions.
-- Passing, receiving and first-touch behaviour need further refinement.
-- Goalkeeper distribution and decision-making still need improvement.
-- AI positioning and tactical decisions are simplified.
-- Not every real-world football rule and set-piece situation is fully implemented.
+- Player animations are procedural (specialised actions exist since Phase 15, but no motion capture).
+- AI positioning and tactical decisions are simplified; AI through balls and lobs are still cut out fairly often.
+- Only your club levels up; AI clubs do not progress during the season.
+- No advantage rule, no handball, and players have no physical collision with the ball (the free-kick wall uses a simple block check).
 - Advanced player animations, stadium atmosphere and sound effects are not yet complete.
 - LocalStorage saves are browser-specific and are not synchronised between devices.
 - Multiplayer and online career modes are not currently included.
@@ -235,8 +256,9 @@ ultimate-football-manager-3d/
     │   ├── stamina.js        # in-match stamina, fatigue effects, condition between matches
     │   ├── progression.js    # XP, levels, attribute points by position, potential, OVR
     │   ├── whistle.js        # end of half / match: wait for a dead ball, whistle, animations
+    │   ├── referee.js        # fouls, cards, sending off, offside, free-kick wall
     │   ├── movement.js       # top speed / acceleration, AI movement, collisions, velocities
-    │   ├── rules.js          # goals, out of play, kick-off and restarts
+    │   ├── rules.js          # goals, out of play, kick-off, set pieces and spacing
     │   ├── matchStats.js     # match statistics, ratings, summary
     │   └── matchEngine.js    # fixed-step loop calling the systems in order
     ├── animation/
@@ -282,6 +304,24 @@ The project currently uses browser LocalStorage for local game progress.
 - Cloud saves, user accounts and multiplayer are outside the current project scope.
 
 ## Development roadmap
+
+### Status at a glance (2026-11-11)
+
+| Phase | Content | Status |
+| --- | --- | --- |
+| 1–10 | 3D foundation, ball, duels, AI, keeper, rules, squad, club, league, passing | ✅ Done |
+| Steps 1–6 | Bug fixes, engine refactor, FO4 controls, match flow, HUD, menus (replaced 11–14) | ✅ Done |
+| 15 | Specialised animations | ✅ Done |
+| 16 | Goalkeeper diving, catching and distribution | ✅ Done |
+| 17 | Physical duels, shielding and ball recovery | ✅ Done |
+| 18 | Team tactics and ball-carrier AI | ✅ Done |
+| 19 | Stamina, fatigue and detailed attributes | ✅ Done |
+| 19B | Player progression: levels and attribute points | ✅ Done |
+| 20 | Fouls, cards, offside and set pieces (+ playtest notes 3) | ✅ Done |
+| Extra | FO4 skill shots and passes (Z+D, Q+D, C+D…) | ✅ Done |
+| 21 | Match statistics and presentation | ⏳ Next |
+| 22 | Visual polish, sound, performance, release preparation | 🔜 Planned |
+| 23 | Club selection and club crests | 🔜 Planned |
 
 ### Status check (2026-11-09)
 
@@ -540,7 +580,7 @@ Reported after playing Phase 18; all four are fixed (see "Fixed" under each item
   - Physical: strength, stamina, aggression.
 - Goalkeepers also have diving, handling, reflexes, positioning and kicking.
 - Detailed attributes are **derived** from the six main stats, plus a position bias (strikers +finishing, centre-backs +strength/marking, wingers +acceleration…) and a fixed −4…+4 offset per player. Old saves, transfer-market players and generated opponents all get them without a data migration.
-- `player.attributes.<key>`, when present, overrides the derived value. This is the hook for Phase 19B levelling.
+- `player.attributes.<key>`, when present, overrides the derived value. Phase 19B levelling writes upgraded attributes here.
 - **Main stats now depend on position** (`POSITION_PROFILES` in `data/teams.js`). Before, every stat was ≈ overall, so strikers tackled like centre-backs and keepers shot like strikers. Default players in old saves are migrated automatically (only when their six stats are still "flat"); bought players keep their own stats.
 - **Where they are used:**
 
@@ -656,11 +696,78 @@ New: `systems/progression.js`, `screens/DevelopmentScreen.jsx` (**SQUAD** tab).
   - The SQUAD screen shows every player's level, OVR / potential and unspent points. The player detail has XP, all attribute groups with their cost and a "+" button.
   - The Home screen shows how many points are waiting. The match profile shows the level.
 - **Simulator check:** 38 matches × 90 XP takes a striker (OVR 85, potential 89) to level 13 and OVR 88.
-- Not done (optional in the plan): AI clubs levelling up during the season.
+- Left for later (optional in the plan): AI clubs levelling up during the season.
 
-### Later phases
+### Playtest notes 3 (2026-11-11) — fixed with Phase 20 ✅
 
-- **Phase 20:** Fouls, penalties, offside and full set pieces.
+1. **The power bar sometimes got stuck at full.** After pressing pass/shoot and then an arrow key, the bar filled up and stayed; the player could run but not pass or shoot.
+   - Likely cause: the key-up event never reached the game (for example the Vietnamese Telex/VNI input method handles S, W, A and D, or the window lost focus).
+   - Fixed: the kick is released when the key is no longer held, after 0.7 s at full power, and cancelled when the window loses focus.
+2. **Running past the ball when receiving.** The player ran exactly where the arrows pointed, slightly off the ball.
+   - Fixed: when you steer roughly toward a loose ball (within ~70°), the run is pulled toward the meeting point (or the landing spot of a high ball), and the player slows down to wait under a high ball.
+   - Test (rolling ball, arrow 35–50° off): 14/20 → 19/20 balls controlled.
+3. **Throw-in given to the wrong team.** A touch that only slowed the ball down (first-time block) was not recorded as the last touch, so a ball that then went out was awarded to the wrong side. Fixed.
+4. **Attribute upgrades applied instantly.** The SQUAD screen now builds a draft: pending points are highlighted, with UNDO LAST, UNDO ALL and CONFIRM. You can't leave the player or screen with unsaved upgrades.
+5. **W through balls went nowhere.** Fixed:
+   - Aiming at the teammate himself counts (before, only his run-on spot did, so nobody qualified and the ball was played into empty space).
+   - Without arrows, W picks the best forward runner within ~110° of where you face, instead of kicking along your facing direction.
+   - A through ball into empty space only happens when you aim forward.
+6. **Goal kicks were contested.** The keeper had the ball at his feet and opponents could challenge straight away. Goal kicks are now a proper set piece (see Phase 20).
+
+### Phase 20 — Fouls, cards, offside and set pieces ✅ (2026-11-11)
+
+- **One set-piece system** (`state.restart`) for throw-ins, corners, goal kicks, free kicks and penalties:
+  - The ball stays on the spot (throw-in: in the hands) and nobody can challenge until it is kicked.
+  - Spacing: opponents stay 9.15 m away (2 m at a throw-in). At a goal kick they leave the penalty area. At a penalty everyone except the taker and the keeper stands outside the box and the arc, and the keeper stays on his line.
+  - Players are no longer teleported back to their formation on every dead ball; only the taker goes to the spot.
+  - The AI takes set pieces after a short pause: throw-ins, corners (mostly crosses), goal kicks (short to a free defender, otherwise long), free kicks and penalties.
+- **Fouls** (`referee.js`): every tackle and slide (yours or the AI's) is judged.
+  - More likely: slides, challenges from behind, and missed tackles that still hit the carrier.
+  - Less likely with good tackling; more likely with high Aggression.
+  - A foul inside the defending team's box is a penalty, otherwise a free kick on the spot after a short whistle pause.
+  - The AI avoids sliding in from behind.
+- **Cards:** yellows mostly for slides from behind. Direct reds are rare (higher for denying a clear goal-scoring chance as the last man). Two yellows make a red.
+  - A sent-off player leaves the pitch and the team plays a man down; he can't be replaced.
+  - Cards appear next to the scorers in the half-time, full-time and post-match lists.
+- **Free kicks:** the best long-shot taker steps up within shooting range.
+  - A wall of 2–4 defenders stands 9.15 m from the ball and blocks low shots.
+  - Shots from a free kick are dipping shots; too little power hits the wall, too much goes over.
+- **Penalties:** the best finisher takes them. The keeper guesses a side as the ball is struck and can only save it if he guesses right; shots into the corners are harder to save.
+- **Offside:** when the ball is played, teammates beyond both the ball and the second-last opponent in the opposition half are recorded.
+  - If one of them touches the ball before an opponent does, it is offside and the defending team gets an indirect free kick.
+  - Not checked for throw-ins, goal kicks and corners.
+  - AI forwards now hold the line instead of standing beyond it, and the AI never passes to an offside teammate.
+- **Statistics:** corners, fouls, offsides, yellow and red cards in the post-match screen.
+- **Simulator** (24 matches × 6 min, AI v AI), per team per match:
+  - About 1.8 fouls, 0.5 yellow cards, 0.04 red cards and 0.4–0.6 offsides.
+  - Goals 1.1–1.5, pass completion 83–85%.
+- **Set-piece tests:**
+  - Penalties: 70% scored.
+  - Direct free kicks from 22 m: 12% scored, 17% blocked by the wall, about half saved.
+  - Goal kicks: 20/20 taken, never contested, no opponent left in the box.
+
+### Skill shots and passes — FIFA Online 4 key combos ✅ (2026-11-11)
+
+Hold a modifier, then press or charge the action key. The modifier also counts if you press it while charging. Set pieces always use the plain kick.
+
+| Combo | Effect | How it is modelled |
+| --- | --- | --- |
+| Z + D | Finesse shot | Aimed a little outside the target and bends back along a circular arc onto it. 40% less aim error, 15–24 m/s. The keeper allows for the curl but has 15% less chance to save it |
+| Q + D | Chip shot | High lob (6.5–9.5 m/s upward, ±7% error). Unreachable for a keeper standing off his line; can drop over the bar or short |
+| C + D | Trivela | Aimed inside and bends outward onto the target; slightly less accurate than finesse |
+| D, D | Low driven shot | Press D again during the kick wind-up (or up to 0.15 s after) |
+| Z + S / Z + W | Driven pass / through ball | 20% faster and flat — harder for the receiver to control cleanly |
+| Q + W | Lobbed through ball | Over the defence (about 4 m/s upward, 28% slower) |
+| Z + A / A, A | Whipped / low cross | Flatter, faster cross / a cross capped at knee-to-waist height |
+
+- Q with the ball is now a modifier only. Without the ball it still cycles players.
+- Shot tests from 18 m (30 shots each, keeper on his line): normal 16 goals, finesse 17, trivela 19, low driven 16. A chip from 22 m beat a keeper standing 8 m off his line every time.
+- The combos follow the standard FO4 keyboard layout (web search was not available to double-check). The AI does not use them yet.
+
+### Later phases (not started)
+
+Everything up to and including Phase 20 is done (see the status table above). Still to do:
+
 - **Phase 21:** Match statistics and presentation.
 - **Phase 22:** Visual polish, sound, performance optimisation and release preparation.
 
@@ -697,7 +804,7 @@ New: `systems/progression.js`, `screens/DevelopmentScreen.jsx` (**SQUAD** tab).
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Phase 10 + Steps 1–6 + Phase 15 (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–20 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

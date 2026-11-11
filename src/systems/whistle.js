@@ -22,7 +22,7 @@ const WALK_SPEED = 2.4
 
 // Bóng đã chết chưa (gọi ở đầu mỗi bước khi đang chờ còi).
 export function isDeadBall(state) {
-    return Boolean(state.deadBall || state.restart || state.keeperHands)
+    return Boolean(state.deadBall || state.restart || state.pendingRestart || state.keeperHands)
 }
 
 export function startWhistle(ctx, type) {

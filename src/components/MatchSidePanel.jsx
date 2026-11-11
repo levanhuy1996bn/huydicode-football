@@ -166,7 +166,51 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
 
         <div className="control-row">
           <kbd>Q</kbd>
-          <span>Cycle player (nearest to the ball)</span>
+          <span>Cycle player (nearest to the ball) when you don't have it</span>
+        </div>
+
+        <span className="eyebrow">SKILL SHOTS &amp; PASSES (FO4 STYLE)</span>
+
+        <div className="control-row">
+          <kbd>Z</kbd>
+          <kbd>D</kbd>
+          <span>Finesse shot: curls into the far corner, more accurate, a bit slower</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>Q</kbd>
+          <kbd>D</kbd>
+          <span>Chip shot over the keeper (best when he is off his line)</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>C</kbd>
+          <kbd>D</kbd>
+          <span>Trivela: outside-of-the-foot shot that bends away</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>D</kbd>
+          <kbd>D</kbd>
+          <span>Tap D again right after the shot: low driven shot</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>Z</kbd>
+          <kbd>S</kbd>
+          <span>Driven pass (Z + W: driven through ball)</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>Q</kbd>
+          <kbd>W</kbd>
+          <span>Lobbed through ball over the defence</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>Z</kbd>
+          <kbd>A</kbd>
+          <span>Whipped cross · A then A again: low cross</span>
         </div>
 
         <div className="control-row">
@@ -195,6 +239,18 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
           <span>Hold with the ball: shield</span>
         </div>
 
+        <div className="control-row">
+          <kbd>D</kbd>
+          <span>Free kick: shoot over the wall (about half power) · S/W/A pass</span>
+        </div>
+
+        <div className="control-row">
+          <kbd>←</kbd>
+          <kbd>→</kbd>
+          <kbd>D</kbd>
+          <span>Penalty: aim with the arrows, D to shoot</span>
+        </div>
+
         <p className="note">
           Passes and shots follow the arrow keys; the bar above your
           player shows the power. After a pass you control the receiver,
@@ -202,7 +258,10 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
           ball with a tackle (Space) or a slide (A) — or by cutting out a bad
           pass. Tackle from the front or side: from behind it rarely works,
           and a missed standing tackle costs you balance. If you don't press
-          a key for 10 seconds the AI plays for you. Sprinting drains stamina quickly — tired
+          a key for 10 seconds the AI plays for you. Careless tackles —
+          especially slides from behind — give away free kicks, penalties and
+          cards; two yellows is a red and your team plays a man down. Stay
+          level with the last defender or you will be caught offside. Sprinting drains stamina quickly — tired
           players are slower and less accurate, so rest them or substitute.
         </p>
       </aside>

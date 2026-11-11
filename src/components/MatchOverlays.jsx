@@ -3,6 +3,7 @@ import { TACTICS } from '../systems/constants'
 import { USER_TEAM } from '../data/leagueData'
 
 // Danh sách bàn thắng của một đội: "Tên 23'" (OG = phản lưới).
+// Phase 20: kèm thẻ vàng / đỏ (event.card) với biểu tượng thẻ.
 export function GoalList({ events, teamId, align }) {
     const goals = events.filter((event) => event.teamId === teamId)
 
@@ -13,7 +14,8 @@ export function GoalList({ events, teamId, align }) {
     return (
         <ul className={`goal-list goal-list--${align}`}>
             {goals.map((goal, index) => (
-                <li key={`${goal.minute}-${index}`}>
+                <li key={`${goal.minute}-${index}`} className={goal.card ? 'goal-list__card' : undefined}>
+                    {goal.card && <i className={`card-chip card-chip--${goal.card}`} aria-label={`${goal.card} card`} />}
                     {goal.name || 'Unknown'}
                     {goal.ownGoal ? ' (OG)' : ''} <b>{goal.minute}'</b>
                 </li>

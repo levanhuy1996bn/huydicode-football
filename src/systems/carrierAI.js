@@ -127,6 +127,9 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
         listPassCandidates(ctx, ownerId, kind).forEach((candidate) => {
             if (candidate.item.role === 'GK' && !(allowKeeper && kind === 'pass')) return
 
+            // Phase 20: không chuyền cho đồng đội đang việt vị.
+            if (candidate.offside) return
+
             const distance = candidate.distance
             const progress = candidate.forwardGap
             const open = candidate.nearestOpponent
@@ -342,14 +345,12 @@ export function updateCarrierAI(ctx, dt) {
         return
     }
 
-    // AI ném biên: ném cho đồng đội phù hợp, không có thì ném xa lên trên.
-    if (state.restart?.type === 'throw-in' && state.restart.playerId === ownerId) {
+    // AI thực hiện tình huống cố định (Phase 20): ném biên, phạt góc, phát
+    // bóng lên, đá phạt, phạt đền.
+    if (state.restart && state.restart.playerId === ownerId) {
         if (state.timers.aiDecisionCooldown > 0) return
 
-        if (!kickFromPlayer(ctx, ownerId, 'pass', true)) {
-            kickFromPlayer(ctx, ownerId, 'lob', true)
-        }
-
+        takeRestart(ctx, ownerId, ownerItem, owner, state.restart)
         state.timers.aiDecisionCooldown = 1.2
         return
     }
@@ -472,4 +473,51 @@ export function updateCarrierAI(ctx, dt) {
     carry.sprint = choice.score > 0.75 && (nearest > 7 || throughOnGoal)
 
     dribble(ctx, ownerItem, owner, carry, carry.sprint ? SPRINT_SCALE : CONTROL_SCALE, dt)
+}
+
+// ---- Phase 20: máy thực hiện tình huống cố định ----
+function takeRestart(ctx, ownerId, ownerItem, owner, restart) {
+    const { state } = ctx
+    const attempt = (action, options) => kickFromPlayer(ctx, ownerId, action, true, options)
+
+    if (restart.type === 'throw-in') {
+        if (!attempt('pass')) attempt('lob')
+        return
+    }
+
+    if (restart.type === 'penalty') {
+        attempt('shoot')
+        return
+    }
+
+    if (restart.type === 'corner') {
+        // Phần lớn tạt vào vòng cấm, thỉnh thoảng đá ngắn.
+        if (Math.random() < 0.2 && attempt('pass')) return
+        if (!attempt('lob')) attempt('pass')
+        return
+    }
+
+    if (restart.type === 'goal-kick') {
+        // Có hậu vệ trống ở gần thì chuyền ngắn, không thì phát dài.
+        const short = listPassCandidates(ctx, ownerId, 'pass')
+            .find((entry) => entry.item.role !== 'GK' && entry.distance < 28 && entry.laneSlack > 2 && entry.nearestOpponent > 6)
+
+        if (short && Math.random() < 0.6 && attempt('pass', { receiverId: short.item.id })) return
+        if (!attempt('lob')) attempt('lob', { clearance: true })
+        return
+    }
+
+    // Đá phạt: trong tầm (≤ 27m, không quá góc hẹp) thì sút, gần vòng cấm thì
+    // tạt, còn lại chuyền.
+    const direction = attackDir(state, ownerItem.teamId)
+    const goalZ = direction * FIELD.lineZ
+    const goalDistance = Math.hypot(owner.position.x, goalZ - owner.position.z)
+
+    if (!restart.indirect && goalDistance < 27 && Math.abs(owner.position.x) < 18 && Math.random() < 0.7) {
+        attempt('shoot')
+        return
+    }
+
+    if (goalDistance < 40 && Math.random() < 0.6 && attempt('lob')) return
+    if (!attempt('pass')) attempt('lob', { clearance: true })
 }

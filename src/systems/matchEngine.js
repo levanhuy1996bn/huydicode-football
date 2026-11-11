@@ -1,5 +1,6 @@
-import { getPlayer, updateDribble, updateLooseBallPickup, updateWindup } from './ball'
-import { checkGoalAndOut } from './rules'
+import { getPlayer, updateCurl, updateDribble, updateLooseBallPickup, updateWindup } from './ball'
+import { checkGoalAndOut, enforceRestartSpacing, restartAtSpot } from './rules'
+import { updateWallBlock } from './referee'
 import { updateCharge, updateControlledPlayer } from './control'
 import { updateAISteal, updateAiSlides, updateReceiverRun, updateTeamAI } from './teamAI'
 import { updateCarrierAI } from './carrierAI'
@@ -102,6 +103,27 @@ function stepPlay(ctx, dt) {
 
     tickTimers(state, dt)
 
+    // 0. Trọng tài vừa thổi phạt (phạm lỗi / việt vị): bóng chết một nhịp,
+    // mọi người đứng lại, rồi mới đặt bóng đá phạt / phạt đền (Phase 20).
+    if (state.pendingRestart) {
+        const pending = state.pendingRestart
+
+        pending.delay -= dt
+        ball.setLinvel({ x: 0, y: Math.min(0, ball.linvel().y), z: 0 }, true)
+        trackVelocities(ctx, dt)
+        updatePlayerStates(ctx, dt)
+        state.deadBall = true
+
+        if (pending.delay <= 0) {
+            state.pendingRestart = null
+            restartAtSpot(ctx, pending.teamId, pending.type, pending.x, pending.z, {
+                indirect: pending.indirect,
+            })
+        }
+
+        return
+    }
+
     // 1. Bàn thắng / bóng ra ngoài.
     if (checkGoalAndOut(ctx)) {
         state.deadBall = true
@@ -109,6 +131,8 @@ function stepPlay(ctx, dt) {
     }
 
     state.deadBall = false
+
+    updateCurl(ctx, dt)
 
     const ballPosition = ball.translation()
     const snapshot = {
@@ -140,11 +164,15 @@ function stepPlay(ctx, dt) {
     // 5. Cầu thủ AI đang giữ bóng.
     updateCarrierAI(ctx, dt)
 
+    // Tình huống cố định đang chờ: giữ cự ly 9.15m / ra khỏi vòng cấm.
+    if (state.restart) enforceRestartSpacing(ctx, dt)
+
     // 6. Va chạm giữa các cầu thủ.
     resolvePlayerCollisions(ctx)
     updateDuels(ctx, dt)
 
-    // 7. Đối thủ cướp bóng, nhận bóng tự do, rê bóng.
+    // 7. Hàng rào chặn cú đá phạt, đối thủ cướp bóng, nhận bóng tự do, rê bóng.
+    updateWallBlock(ctx)
     updateAISteal(ctx)
     updateLooseBallPickup(ctx)
     updateDribble(ctx, dt)

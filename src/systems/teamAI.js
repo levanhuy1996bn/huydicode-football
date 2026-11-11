@@ -3,6 +3,7 @@ import {
     clamp,
     distance2D,
 } from './constants'
+import { judgeChallenge } from './referee'
 import { attackDir, homePosition } from './matchState'
 import { attachBallToPlayer, findPassTarget, getPlayer, teamPlayers } from './ball'
 import { moveAIPlayer, topSpeedOf } from './movement'
@@ -133,8 +134,12 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
 
     const pressTargets = new Map()
 
-    // Thủ môn (của bất kỳ đội nào) đang ôm bóng trong tay.
-    const keeperHolding = Boolean(ownerId) && state.keeperHands === ownerId
+    // Thủ môn (của bất kỳ đội nào) đang ôm bóng trong tay — hoặc chờ phát bóng
+    // lên (Phase 20): đội đó dạt ra nhận bóng, đối phương lùi ra ngoài vòng cấm.
+    const keeperHolding =
+        Boolean(ownerId) &&
+        (state.keeperHands === ownerId ||
+            (state.restart?.type === 'goal-kick' && state.restart.playerId === ownerId))
 
     if (enemyHasBall && carrierObject && !state.restart && !keeperHolding) {
         const toGoalX = ownGoal.x - carrierObject.position.x
@@ -382,8 +387,10 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
                 // Người cầm bóng đang rảnh chân và trong tầm chuyền: chạy chỗ
                 // ra sau lưng hàng thủ để đón đường chọc khe (trừng phạt hàng
                 // thủ dâng cao).
+                // Phase 20: có luật việt vị → đứng sát vạch (không vượt), bứt
+                // tốc khi bóng được chọc khe (updateReceiverRun).
                 if (carrierFree && offsideA - ballA < 30) {
-                    targetA = offsideA + (wide ? 2 : 6)
+                    targetA = offsideA - 0.4
                     speedScale = 1.25
                 }
 
@@ -408,6 +415,12 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
                 }
 
                 speedScale = Math.max(speedScale, 1.18)
+            }
+
+            // Phase 20: tiền vệ / tiền đạo không đứng vượt vạch việt vị (trừ khi
+            // đứng sau bóng — bóng ở sát đường biên ngang khi phạt góc).
+            if (role !== 'DF') {
+                targetA = Math.min(targetA, Math.max(offsideA, ballA) - 0.5)
             }
 
             if (supporters.has(item.id) && carrierObject) {
@@ -894,7 +907,17 @@ export function updateAISteal(ctx) {
 
     setPlayerAction(state, tackler.item.id, 'tackle')
 
-    if (Math.random() >= chance) return
+    const ownerFacing = { x: Math.sin(owner.rotation.y), z: Math.cos(owner.rotation.y) }
+    const toTacklerX = tackler.object.position.x - owner.position.x
+    const toTacklerZ = tackler.object.position.z - owner.position.z
+    const toTacklerLength = Math.hypot(toTacklerX, toTacklerZ) || 1
+    const frontDot = (ownerFacing.x * toTacklerX + ownerFacing.z * toTacklerZ) / toTacklerLength
+    const won = Math.random() < chance
+
+    // Phase 20: trọng tài chấm pha vào bóng.
+    if (judgeChallenge(ctx, { tacklerId: tackler.item.id, carrierId: ownerId, type: 'standing', won, frontDot })) return
+
+    if (!won) return
 
     const label = tacklingTeam === 'blue' ? ctx.userTeamName : ctx.opponentName
 
@@ -929,7 +952,14 @@ function tryAiSlide(ctx, tackler, ownerItem, owner, ballPosition, tacklingTeam, 
     // Mỗi lần chỉ "cân nhắc" xoạc theo nhịp cooldown.
     state.timers[timerKey] = 0.5
 
-    const willingness = 0.08 + skill01(attr(tackler.item, 'aggression')) * 0.14
+    // Phase 20: máy ngại xoạc từ sau lưng (dễ phạm lỗi, ăn thẻ).
+    const ownerDir = { x: Math.sin(owner.rotation.y), z: Math.cos(owner.rotation.y) }
+    const fromX = tackler.object.position.x - owner.position.x
+    const fromZ = tackler.object.position.z - owner.position.z
+    const fromBehind = (ownerDir.x * fromX + ownerDir.z * fromZ) / (Math.hypot(fromX, fromZ) || 1) < -0.4
+
+    const willingness =
+        (0.08 + skill01(attr(tackler.item, 'aggression')) * 0.14) * (fromBehind ? 0.3 : 1)
 
     if (Math.random() >= willingness) return
 
@@ -964,7 +994,11 @@ function tryAiSlide(ctx, tackler, ownerItem, owner, ballPosition, tacklingTeam, 
         0.75,
     )
 
-    if (Math.random() >= chance) return
+    const won = Math.random() < chance
+
+    if (judgeChallenge(ctx, { tacklerId: tackler.item.id, carrierId: ownerItem.id, type: 'slide', won, frontDot })) return
+
+    if (!won) return
 
     const ball = ctx.ballRef.current
     const direction = {

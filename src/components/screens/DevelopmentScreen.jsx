@@ -53,8 +53,14 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
         return (withPoints || players[0])?.id || null
     })
     const [feedback, setFeedback] = useState(null)
+    // Playtest 3: cộng điểm vào bản nháp trước, bấm CONFIRM mới lưu.
+    // history = các bản nháp trước đó (để hoàn tác từng bước).
+    const [draft, setDraft] = useState(null)
+    const [history, setHistory] = useState([])
 
-    const selected = players.find((player) => player.id === selectedId) || players[0]
+    const saved = players.find((player) => player.id === selectedId) || players[0]
+    const pending = Boolean(draft && saved && draft.id === saved.id)
+    const selected = pending ? draft : saved
 
     if (!team || !selected) {
         return (
@@ -68,11 +74,19 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
     }
 
     const progress = progressOf(selected)
+    const savedValues = getAttributes(saved)
     const values = getAttributes(selected)
+    const spent = progressOf(saved).unspentPoints - progress.unspentPoints
     const groups = selected.position === 'GK'
         ? [GOALKEEPING_GROUP, ...ATTRIBUTE_GROUPS]
         : ATTRIBUTE_GROUPS
     const totalUnspent = players.reduce((sum, player) => sum + progressOf(player).unspentPoints, 0)
+
+    const pushDraft = (next) => {
+        setHistory((list) => [...list, pending ? draft : null])
+        setDraft(next)
+        setFeedback(null)
+    }
 
     const upgrade = (key) => {
         const result = upgradeAttribute(selected, key)
@@ -82,8 +96,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
             return
         }
 
-        setFeedback(null)
-        onUpdatePlayer(result.player)
+        pushDraft(result.player)
     }
 
     const recommended = () => {
@@ -94,14 +107,46 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
             return
         }
 
+        pushDraft(next)
+    }
+
+    const undoStep = () => {
+        const previous = history[history.length - 1] || null
+
+        setHistory((list) => list.slice(0, -1))
+        setDraft(previous)
         setFeedback(null)
-        onUpdatePlayer(next)
+    }
+
+    const discard = () => {
+        setDraft(null)
+        setHistory([])
+        setFeedback(null)
+    }
+
+    const confirm = () => {
+        if (!pending) return
+
+        onUpdatePlayer(draft)
+        setDraft(null)
+        setHistory([])
+        setFeedback(`Saved: ${spent} point${spent === 1 ? '' : 's'} spent on ${draft.name}.`)
+    }
+
+    // Còn thay đổi chưa lưu thì không cho rời cầu thủ / màn hình.
+    const guard = (action) => {
+        if (pending) {
+            setFeedback('You have unsaved upgrades - CONFIRM or UNDO them first.')
+            return
+        }
+
+        action()
     }
 
     return (
         <section className="screen development-screen">
             <div className="prematch-header">
-                <button type="button" className="link-btn" onClick={onBack}>← HOME</button>
+                <button type="button" className="link-btn" onClick={() => guard(onBack)}>← HOME</button>
                 <div>
                     <div className="home-hero__eyebrow">PLAYER DEVELOPMENT · {USER_TEAM.name}</div>
                     <h1>Level up your squad</h1>
@@ -125,8 +170,12 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                                 type="button"
                                 className={`dev-row${player.id === selected.id ? ' is-active' : ''}`}
                                 onClick={() => {
-                                    setSelectedId(player.id)
-                                    setFeedback(null)
+                                    if (player.id === saved.id) return
+
+                                    guard(() => {
+                                        setSelectedId(player.id)
+                                        setFeedback(null)
+                                    })
                                 }}
                             >
                                 <span className="lineup__number">{player.number}</span>
@@ -175,7 +224,26 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                         </button>
                     </div>
 
-                    {feedback && <p className="dev-feedback">{feedback}</p>}
+                    {pending && (
+                        <div className="dev-pending">
+                            <span>
+                                <b>{spent}</b> point{spent === 1 ? '' : 's'} pending · OVR {saved.overall} → <b>{selected.overall}</b>
+                            </span>
+                            <div className="dev-pending__actions">
+                                <button type="button" className="btn btn--small btn--ghost" onClick={undoStep}>
+                                    UNDO LAST
+                                </button>
+                                <button type="button" className="btn btn--small btn--ghost" onClick={discard}>
+                                    UNDO ALL
+                                </button>
+                                <button type="button" className="btn btn--small" onClick={confirm}>
+                                    CONFIRM
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {feedback && <p className={`dev-feedback${feedback.startsWith('Saved') ? ' is-ok' : ''}`}>{feedback}</p>}
 
                     <div className="dev-groups">
                         {groups.map((group) => (
@@ -186,15 +254,17 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                                     const cost = upgradeCost(selected.position, key)
                                     const base = selected.attributesBase?.[key]
                                     const gain = base != null ? values[key] - base : 0
+                                    const added = values[key] - savedValues[key]
 
                                     return (
-                                        <div className={`dev-attr dev-attr--${tier}`} key={key}>
+                                        <div className={`dev-attr dev-attr--${tier}${added > 0 ? ' is-pending' : ''}`} key={key}>
                                             <span title={`${TIER_LABEL[tier]} attribute for ${selected.position}`}>
                                                 {label}
                                             </span>
                                             <b>
                                                 {values[key]}
-                                                {gain > 0 && <em>+{gain}</em>}
+                                                {gain - added > 0 && <em>+{gain - added}</em>}
+                                                {added > 0 && <i className="dev-attr__new">+{added}</i>}
                                             </b>
                                             <button
                                                 type="button"

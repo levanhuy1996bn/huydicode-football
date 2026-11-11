@@ -14,6 +14,11 @@ const STAT_ROWS = [
     ['Interceptions', (s) => s.teams.blue.interceptions || 0, (s) => s.teams.red.interceptions || 0],
     ['Duels won', (s) => s.teams.blue.duels || 0, (s) => s.teams.red.duels || 0],
     ['Saves', (s) => s.teams.blue.saves || 0, (s) => s.teams.red.saves || 0],
+    ['Corners', (s) => s.teams.blue.corners || 0, (s) => s.teams.red.corners || 0],
+    ['Fouls', (s) => s.teams.blue.fouls || 0, (s) => s.teams.red.fouls || 0],
+    ['Offsides', (s) => s.teams.blue.offsides || 0, (s) => s.teams.red.offsides || 0],
+    ['Yellow cards', (s) => s.teams.blue.yellow || 0, (s) => s.teams.red.yellow || 0],
+    ['Red cards', (s) => s.teams.blue.red || 0, (s) => s.teams.red.red || 0],
 ]
 
 function ratingClass(rating) {
@@ -69,7 +74,7 @@ export default function PostMatchScreen({
                     awayName={opponentName}
                     homeScore={summary.blueScore}
                     awayScore={summary.redScore}
-                    events={summary.goalEvents}
+                    events={[...(summary.goalEvents || []), ...(summary.cardEvents || [])].sort((a, b) => a.minute - b.minute)}
                     size="large"
                 />
 

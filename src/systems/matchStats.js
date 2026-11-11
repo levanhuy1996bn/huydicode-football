@@ -10,6 +10,11 @@ export function createMatchStats() {
         saves: 0,
         interceptions: 0,
         duels: 0,
+        fouls: 0,
+        yellow: 0,
+        red: 0,
+        offsides: 0,
+        corners: 0,
     })
 
     return {
@@ -32,6 +37,7 @@ function playerEntry(stats, playerId) {
             saves: 0,
             interceptions: 0,
             duels: 0,
+            fouls: 0,
         }
     }
 

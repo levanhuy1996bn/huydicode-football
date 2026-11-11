@@ -1,6 +1,6 @@
 import { FIELD, clamp, distance2D } from './constants'
 import { facingFor, ownGoalSign } from './matchState'
-import { attachBallToPlayer, teamPlayers } from './ball'
+import { attachBallToPlayer, curlOffset, teamPlayers } from './ball'
 import { moveAIPlayer } from './movement'
 import { recordPlayer, recordTeam } from './matchStats'
 import { isPlayerLocked, setPlayerAction } from './playerState'
@@ -68,12 +68,18 @@ function planSave(ctx, teamId, keeper, keeperItem) {
 
     if (timeToKeeper <= 0 || timeToKeeper > 2.5) return null
 
-    const crossX = position.x + velocity.x * timeToKeeper
+    // Bóng xoáy (ZD / CD): cộng độ cong còn lại vào điểm dự đoán.
+    const curl = state.curl && state.curl.kickId === state.kickId ? state.curl : null
+    const horizontalSpeed = Math.hypot(velocity.x, velocity.z)
+    // Độ lệch thêm so với đường thẳng theo vận tốc hiện tại.
+    const bendAt = (t) => (curl ? curlOffset(curl, curl.travelled || 0, horizontalSpeed * t) : 0)
+
+    const crossX = position.x + velocity.x * timeToKeeper + bendAt(timeToKeeper)
     const crossY = Math.max(
         0.2,
         position.y + velocity.y * timeToKeeper - 4.9 * timeToKeeper * timeToKeeper,
     )
-    const goalX = position.x + velocity.x * timeToGoal
+    const goalX = position.x + velocity.x * timeToGoal + bendAt(timeToGoal)
     const goalY = position.y + velocity.y * timeToGoal - 4.9 * timeToGoal * timeToGoal
     const onTarget =
         Math.abs(goalX) <= FIELD.goalHalfWidth + 0.2 && goalY < FIELD.goalHeight + 0.1
@@ -102,8 +108,9 @@ function planSave(ctx, teamId, keeper, keeperItem) {
     const standing = distance <= STAND_REACH
     // Đang nằm sân sau pha bay người trước: không kịp phản ứng.
     const recovering = isPlayerLocked(state, keeperItem.id)
+    // Bóng bay cao hơn tầm với khi bật nhảy (~2.75m, ví dụ cú sút lốp) thì chịu.
     const reachable =
-        !recovering && (standing || (distance <= maxReach && timeToDive > 0.04))
+        !recovering && crossY < 2.75 && (standing || (distance <= maxReach && timeToDive > 0.04))
 
     let chance = 0
 
@@ -136,8 +143,29 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         )
     }
 
+    // Phase 20: phạt đền — thủ môn đoán hướng từ trước (trái / phải / đứng
+    // giữa). Đoán đúng mới có cơ hội cứu, sút sát góc / lên cao thì khó hơn.
+    const penalty = state.penaltyKick && state.penaltyKick.kickId === state.kickId
+    let penaltyGuess = null
+
+    if (penalty) {
+        const shotSide = distance < 0.9 ? 0 : Math.sign(lateral)
+
+        penaltyGuess = state.penaltyKick.guess
+        chance = penaltyGuess === shotSide
+            ? clamp(
+                0.6 + (rating - 70) * 0.01 - Math.max(0, distance - 2.2) * 0.35 - Math.max(0, crossY - 1.5) * 0.3,
+                0.08,
+                0.8,
+            )
+            : 0
+    }
+
+    // Bóng xoáy (ZD / CD) khó đọc hơn: đổi hướng sau khi thủ môn đã bật người.
+    if (curl && !penalty) chance = Math.max(0, chance - 0.15)
+
     const success = Math.random() < chance
-    const side = Math.sign(lateral) || 1
+    const side = penalty && penaltyGuess ? penaltyGuess : Math.sign(lateral) || 1
     const height = crossY < 0.6 ? 'low' : crossY > 1.65 ? 'high' : 'mid'
 
     let type
@@ -159,7 +187,13 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         targetX = keeper.position.x + side * Math.max(0, travel - shortfall)
     }
 
+    if (penalty && penaltyGuess !== null && penaltyGuess !== (distance < 0.9 ? 0 : Math.sign(lateral))) {
+        // Đoán sai: bay người hẳn sang hướng đã chọn (hoặc đứng yên).
+        targetX = keeper.position.x + penaltyGuess * 1.8
+    }
+
     const wrongWay =
+        !penalty &&
         !success && !standing && speed > 24 && Math.random() < clamp(0.25 - (rating - 70) * 0.015, 0.03, 0.25)
 
     return {

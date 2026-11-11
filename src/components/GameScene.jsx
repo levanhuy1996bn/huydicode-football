@@ -140,6 +140,10 @@ export default function GameScene() {
     // Luồng trận: hiệp hiện tại, danh sách bàn thắng, bỏ trận.
     const [half, setHalf] = useState(1)
     const [goalEvents, setGoalEvents] = useState([])
+    // Phase 20: thẻ phạt trong trận ({ teamId, name, minute, card }) và cầu
+    // thủ đội người chơi bị đuổi (không được thay ra / vào).
+    const [cardEvents, setCardEvents] = useState([])
+    const [sentOffIds, setSentOffIds] = useState([])
     const [forfeit, setForfeit] = useState(null) // null | 'league' | 'friendly'
     const [isQuitOpen, setIsQuitOpen] = useState(false)
 
@@ -164,6 +168,8 @@ export default function GameScene() {
         setAutoPilot(false)
         setHalf(1)
         setGoalEvents([])
+        setCardEvents([])
+        setSentOffIds([])
         setForfeit(null)
         setIsQuitOpen(false)
         setIsSubsOpen(false)
@@ -268,6 +274,27 @@ export default function GameScene() {
 
         setMatchStatus('goal')
     }, [])
+
+    const handleCard = useCallback((info) => {
+        const minute = Math.min(
+            90,
+            Math.floor((matchTimeRef.current / matchDurationRef.current) * 90) + 1,
+        )
+
+        setCardEvents((events) => [
+            ...events,
+            { teamId: info.teamId, name: info.name, minute, card: info.card },
+        ])
+
+        if (info.card === 'red' && info.teamId === 'blue') {
+            setSentOffIds((ids) => (ids.includes(info.id) ? ids : [...ids, info.id]))
+        }
+    }, [])
+
+    const matchEvents = useMemo(
+        () => [...goalEvents, ...cardEvents].sort((a, b) => a.minute - b.minute),
+        [goalEvents, cardEvents],
+    )
 
     const handleMatchEnd = useCallback(() => {
         setMatchStatus('fulltime')
@@ -431,7 +458,7 @@ export default function GameScene() {
             )
         }
 
-        setMatchSummary({ ...summary, progression: progressionReportRef.current || [] })
+        setMatchSummary({ ...summary, cardEvents, progression: progressionReportRef.current || [] })
         // Chỉ chụp một lần khi vừa hết trận.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchStatus, forfeit])
@@ -675,6 +702,10 @@ export default function GameScene() {
 
         if (!isPrematch && subbedOffIds.includes(playerInId)) {
             return fail('A player who has been substituted off cannot come back on.')
+        }
+
+        if (!isPrematch && sentOffIds.includes(playerOutId)) {
+            return fail('A sent-off player cannot be replaced.')
         }
 
         const blueTeam = roster.find((team) => team.id === 'blue')
@@ -1105,6 +1136,7 @@ export default function GameScene() {
                             isPlaying={isPlaying}
                             resetKey={resetKey}
                             onGoal={handleGoal}
+                            onCard={handleCard}
                         />
                     </Physics>
                 </Suspense>
@@ -1362,7 +1394,7 @@ export default function GameScene() {
                     opponentName={opponentTeam?.name || 'OPPONENT'}
                     blueScore={blueScore}
                     redScore={redScore}
-                    events={goalEvents}
+                    events={matchEvents}
                     tacticKey={tacticKey}
                     onTacticChange={changeTactic}
                     opponentTacticKey={statsRef.current?.aiTacticKey}
@@ -1383,7 +1415,7 @@ export default function GameScene() {
                     opponentName={opponentTeam?.name || 'OPPONENT'}
                     blueScore={blueScore}
                     redScore={redScore}
-                    events={goalEvents}
+                    events={matchEvents}
                     forfeit={forfeit}
                     fixture={activeFixture}
                     resultSaved={
@@ -1443,7 +1475,7 @@ export default function GameScene() {
                 to pass/through/lob/shoot · Hold C shield the ball ·
                 Defending: S/Q switch, hold D
                 contain, D+E press, hold W teammate press · Space tackle · A
-                (or Ctrl) slide · Throw-in: S short, A long
+                (or Ctrl) slide · Throw-in: S short, A long · Free kick / penalty: arrows aim, D shoot · ZD finesse, QD chip, CD trivela, DD low shot, ZS driven pass, QW lobbed through
             </div>
 
             <div className="action-indicator">

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { CHARGE_TIME, FIELD, clamp, distance2D, facingVector } from './constants'
 import {
+    applyLateTap,
     attachBallToPlayer,
     getBallDistance,
     getPlayer,
@@ -17,6 +18,7 @@ import { attr } from './attributes'
 import { fatiguePenalty } from './stamina'
 import { ownGoalSign } from './matchState'
 import { recordPlayer, recordTeam } from './matchStats'
+import { judgeChallenge } from './referee'
 import {
     CLEAN_TACKLE_RATE,
     duelSpeedFactor,
@@ -59,6 +61,40 @@ const CHARGE_KEYS = {
     KeyW: 'through',
     KeyA: 'lob',
     KeyD: 'shoot',
+}
+
+const ACTION_KEY = Object.fromEntries(Object.entries(CHARGE_KEYS).map(([key, action]) => [action, key]))
+
+// Playtest 3: thanh lực đầy mà vẫn giữ phím quá chừng này giây thì tự đá
+// (tránh "treo" thanh lực khi trình duyệt / bộ gõ tiếng Việt nuốt mất sự
+// kiện nhả phím — trước đây cầu thủ chỉ chạy được, không chuyền/sút được nữa).
+const FULL_CHARGE_HOLD = 0.7
+
+// ---- Tổ hợp phím kiểu FIFA Online 4 (Phần C) ----
+// Giữ phím bổ trợ rồi bấm phím đá (giữ trước hoặc trong lúc lấy lực):
+//   Z + D  sút xoáy (finesse, lòng trong, cong vào góc xa)
+//   Q + D  sút lốp (chip)
+//   C + D  sút má ngoài (trivela, cong ra ngoài)
+//   D, D   bấm D lần nữa ngay sau khi nhả (trong nhịp vung chân): sút chìm
+//   Z + S  chuyền căng (driven pass)      Z + W  chọc khe căng
+//   Q + W  chọc khe bổng (lobbed through) Z + A  tạt căng (whipped cross)
+//   A, A   bấm A lần nữa ngay sau khi nhả: tạt sệt
+const VARIANTS = {
+    shoot: { KeyZ: 'finesse', KeyQ: 'chip', KeyC: 'trivela' },
+    pass: { KeyZ: 'driven' },
+    through: { KeyZ: 'driven', KeyQ: 'lobbed' },
+    lob: { KeyZ: 'whipped' },
+}
+
+function heldModifier(ctx, action) {
+    const pressed = ctx.keys?.current || {}
+    const table = VARIANTS[action] || {}
+
+    return ['KeyZ', 'KeyQ', 'KeyC'].find((key) => pressed[key] && table[key]) || null
+}
+
+export function kickVariant(action, modifierKey) {
+    return modifierKey ? VARIANTS[action]?.[modifierKey] || null : null
 }
 
 // Hướng phím mũi tên đang bấm (đã chuẩn hóa) hoặc null.
@@ -156,10 +192,16 @@ export function updateControlledPlayer(ctx, dt) {
         return
     }
 
-    // Đang ném biên: chỉ xoay người chọn hướng ném (không quay ra ngoài sân).
+    // Đang chờ ném biên / đá phạt: chỉ xoay người chọn hướng ném (không quay ra ngoài sân).
     if (state.restart?.playerId === ctx.selectedId) {
         if (direction) {
             const inward = -Math.sign(controlled.position.x) || 1
+            const isThrow = state.restart.type === 'throw-in'
+
+            // Đá phạt / phạt góc / phạt đền: đứng yên sau bóng, phím mũi tên
+            // chỉ dùng để ngắm lúc đá.
+            if (!isThrow) return
+
             const aimX = direction.x * inward < 0 ? 0 : direction.x
             const aimZ = direction.z
 
@@ -194,14 +236,26 @@ export function updateControlledPlayer(ctx, dt) {
         return
     }
 
+    // Playtest 3: đón bóng — hướng chạy được "hút" nhẹ về điểm gặp bóng.
+    let assistCap = Infinity
+
+    if (!state.possession) {
+        const assist = receiveAssist(ctx, controlled, direction)
+
+        direction = assist.direction
+        assistCap = assist.speedCap
+    }
+
     // Tốc độ theo chỉ số Sprint speed + thể lực, tăng dần theo Acceleration
     // (Phase 19). Bị đối thủ tì vai thì chậm lại (duels.js).
     const controlledItem = getPlayer(ctx, ctx.selectedId)
     const topSpeed = topSpeedOf(ctx, controlledItem)
-    const desired =
+    const desired = Math.min(
+        assistCap,
         (sprinting ? topSpeed : Math.min(RUN_SPEED, topSpeed)) *
         (hasBall ? DRIBBLE_SPEED_FACTOR : 1) *
-        duelSpeedFactor(state, ctx.selectedId)
+        duelSpeedFactor(state, ctx.selectedId),
+    )
     const speed = rampSpeed(ctx, controlledItem, desired, direction.x, direction.z, dt)
 
     state.dribble.x = direction.x
@@ -214,6 +268,80 @@ export function updateControlledPlayer(ctx, dt) {
     controlled.rotation.y = Math.atan2(direction.x, direction.z)
 
     clampPlayer(controlled)
+}
+
+// ---- Hỗ trợ đón bóng (playtest 3) ----
+// Người chơi bấm hướng gần đúng về phía bóng tự do (≤ ~70°): hướng chạy được
+// kéo dần về điểm gặp bóng (bóng lăn: vị trí bóng sau một nhịp; bóng bổng:
+// điểm rơi), càng gần càng kéo mạnh. Trước đây cầu thủ chạy đúng theo phím,
+// lệch trọng tâm so với bóng nên hay chạy vượt qua quả bóng. Bóng bổng chưa
+// rơi tới thì giảm tốc khi đã đứng gần điểm rơi để chờ bóng.
+const GRAVITY = 9.81
+const ASSIST_RANGE = 10
+
+export function receiveAssist(ctx, controlled, direction) {
+    const ball = ctx.ballRef.current
+    const result = { direction, speedCap: Infinity }
+
+    if (!ball || !direction) return result
+
+    const position = ball.translation()
+    const velocity = ball.linvel()
+    const px = controlled.position.x
+    const pz = controlled.position.z
+    const distance = Math.hypot(position.x - px, position.z - pz)
+
+    if (distance > ASSIST_RANGE) return result
+
+    let targetX
+    let targetZ
+    let airborne = false
+
+    if (position.y > 0.9) {
+        // Bóng bổng: điểm rơi tới ngang hông (~0.9m).
+        const drop = position.y - 0.9
+        const time = (velocity.y + Math.sqrt(velocity.y * velocity.y + 2 * GRAVITY * drop)) / GRAVITY
+
+        targetX = position.x + velocity.x * time
+        targetZ = position.z + velocity.z * time
+        airborne = true
+    } else {
+        const lead = clamp(distance / 7, 0, 0.7)
+
+        targetX = position.x + velocity.x * lead * 0.8
+        targetZ = position.z + velocity.z * lead * 0.8
+    }
+
+    let dx = targetX - px
+    let dz = targetZ - pz
+    const gap = Math.hypot(dx, dz)
+
+    if (gap < 0.05) {
+        if (airborne) result.speedCap = 0.5
+        return result
+    }
+
+    dx /= gap
+    dz /= gap
+
+    const dot = direction.x * dx + direction.z * dz
+
+    if (dot < 0.34) return result
+
+    const strength = clamp(1.15 - gap / 8, 0.3, 1)
+    const blended = new THREE.Vector3(
+        direction.x * (1 - strength) + dx * strength,
+        0,
+        direction.z * (1 - strength) + dz * strength,
+    )
+
+    if (blended.lengthSq() < 0.0001) return result
+
+    result.direction = blended.normalize()
+
+    if (airborne && gap < 2.5) result.speedCap = Math.max(1.2, gap * 2.6)
+
+    return result
 }
 
 // ---- Áp sát / kèm người (giữ D khi đối thủ có bóng, không bấm mũi tên) ----
@@ -348,6 +476,7 @@ export function performTackle(ctx, type) {
 
     let successChance = 1
     let reason = null
+    let frontDot = 0
 
     if (ownerItem && ownerObject) {
         // Phase 19: chỉ số tắc bóng (đứng / xoạc) + sức mạnh của người tắc so
@@ -374,7 +503,7 @@ export function performTackle(ctx, type) {
         const toTacklerX = player.position.x - ownerObject.position.x
         const toTacklerZ = player.position.z - ownerObject.position.z
         const toTacklerLength = Math.hypot(toTacklerX, toTacklerZ) || 1
-        const frontDot =
+        frontDot =
             (ownerFacing.x * toTacklerX + ownerFacing.z * toTacklerZ) /
             toTacklerLength
 
@@ -404,7 +533,18 @@ export function performTackle(ctx, type) {
         successChance = clamp(successChance, 0.06, 0.88)
     }
 
-    if (Math.random() >= successChance) {
+    const won = Math.random() < successChance
+
+    // Phase 20: trọng tài chấm pha vào bóng (xoạc từ sau lưng dễ bị thổi
+    // phạt và nhận thẻ nhất).
+    if (
+        ownerId &&
+        judgeChallenge(ctx, { tacklerId: selectedId, carrierId: ownerId, type: isSlide ? 'slide' : 'standing', won, frontDot })
+    ) {
+        return
+    }
+
+    if (!won) {
         if (!isSlide) {
             setPlayerAction(state, selectedId, 'stumble')
         }
@@ -510,7 +650,15 @@ export function startCharge(ctx, action) {
         return
     }
 
-    state.charge = { action, playerId, power: 0 }
+    state.charge = {
+        action,
+        playerId,
+        power: 0,
+        key: ACTION_KEY[action],
+        full: 0,
+        keyMissing: 0,
+        modifier: heldModifier(ctx, action),
+    }
 }
 
 // Gọi mỗi bước logic: tăng lực, hủy nếu đã mất bóng.
@@ -534,6 +682,35 @@ export function updateCharge(ctx, dt) {
     }
 
     charge.power = Math.min(1, charge.power + dt / CHARGE_TIME)
+
+    // Bấm phím bổ trợ trong lúc đang lấy lực cũng được tính.
+    if (!charge.modifier) charge.modifier = heldModifier(ctx, charge.action)
+
+    // Phím lấy lực không còn được giữ (sự kiện nhả phím bị lỡ, ví dụ khi bộ gõ
+    // Telex/VNI xử lý S/W/A/D hoặc cửa sổ mất focus): đá luôn với lực hiện có.
+    const held = ctx.keys?.current?.[charge.key]
+
+    if (charge.key && held === false) {
+        charge.keyMissing += dt
+
+        if (charge.keyMissing >= 0.05) {
+            releaseCharge(ctx, charge.action)
+            return
+        }
+    } else {
+        charge.keyMissing = 0
+    }
+
+    if (charge.power >= 1) {
+        charge.full += dt
+
+        if (charge.full >= FULL_CHARGE_HOLD) releaseCharge(ctx, charge.action)
+    }
+}
+
+// Cửa sổ mất focus giữa chừng: bỏ cú đá đang lấy lực.
+export function cancelCharge(ctx) {
+    ctx.state.charge = null
 }
 
 export function releaseCharge(ctx, action) {
@@ -547,9 +724,13 @@ export function releaseCharge(ctx, action) {
     if (!canKick(ctx, charge.playerId)) return
 
     // Chạm nhanh để sút vẫn ra lực vừa phải (tối thiểu 35%); chuyền tối thiểu 12%.
+    // Tình huống cố định (đá phạt / phạt đền / phạt góc...) không dùng tổ hợp phím.
+    const modifier = state.restart ? null : charge.modifier || heldModifier(ctx, action)
+
     kickFromPlayer(ctx, charge.playerId, action, false, {
         power: Math.max(action === 'shoot' ? 0.35 : 0.12, charge.power),
         aimInput: inputDirection(ctx.keys),
+        variant: kickVariant(action, modifier),
     })
 }
 
@@ -609,6 +790,30 @@ export function handleKeyDown(ctx, event) {
 
     const action = CHARGE_KEYS[event.code]
 
+    // DD / AA: bấm lại phím đá trong nhịp vung chân của chính cú đá đó
+    // (hoặc ngay sau khi bóng vừa rời chân).
+    if (action && !ctx.state.windup && applyLateTap(ctx, action)) {
+        event.preventDefault()
+        return
+    }
+
+    const windup = ctx.state.windup
+
+    if (
+        action &&
+        windup &&
+        !windup.isAI &&
+        windup.playerId === ctx.selectedId &&
+        ((action === 'shoot' && windup.action === 'shoot') || (action === 'lob' && windup.action === 'lob' && !windup.isThrowIn))
+    ) {
+        event.preventDefault()
+
+        if (action === 'shoot') windup.lowShot = true
+        else windup.lowCross = true
+
+        return
+    }
+
     if (action) {
         event.preventDefault()
 
@@ -638,7 +843,9 @@ export function handleKeyDown(ctx, event) {
     switch (event.code) {
         case 'KeyQ':
             event.preventDefault()
-            switchPlayer(ctx, 'cycle')
+
+            // Có bóng: Q là phím bổ trợ (QD sút lốp, QW chọc khe bổng).
+            if (!blueCanKick(ctx)) switchPlayer(ctx, 'cycle')
             break
         case 'Space':
             event.preventDefault()

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Billboard, ContactShadows } from '@react-three/drei'
 import {
@@ -26,7 +26,7 @@ import {
 import { attachBallToPlayer } from '../systems/ball'
 import { resetPositions } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
-import { handleKeyDown, handleKeyUp } from '../systems/control'
+import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
 import { noteUserInput, stepMatch } from '../systems/matchEngine'
 import { USER_TEAM } from '../data/leagueData'
 
@@ -409,8 +409,12 @@ export default function MatchWorld({
     whistlePending = null,
     onWhistleDone,
     onAutoPilotChange,
+    onCard,
 }) {
     const keys = useKeyboard()
+
+    // Phase 20: cầu thủ bị thẻ đỏ (id) — không vẽ, không có trong ctx.
+    const [sentOff, setSentOff] = useState([])
 
     const ballRef = useRef(null)
     const playerRefs = useRef({})
@@ -432,13 +436,15 @@ export default function MatchWorld({
     const players = useMemo(
         () =>
             roster.flatMap((team) =>
-                team.players.map((player) => ({
-                    ...player,
-                    teamId: team.id,
-                    role: getRole(player),
-                })),
+                team.players
+                    .filter((player) => !sentOff.includes(player.id))
+                    .map((player) => ({
+                        ...player,
+                        teamId: team.id,
+                        role: getRole(player),
+                    })),
             ),
-        [roster],
+        [roster, sentOff],
     )
 
     const bluePlayers = useMemo(
@@ -490,6 +496,8 @@ export default function MatchWorld({
         onSelect,
         onActionMessage,
         onGoal,
+        onCard,
+        onSentOff: (id) => setSentOff((list) => (list.includes(id) ? list : [...list, id])),
     })
     // Người đang điều khiển: engine có thể tự đổi (nhận bóng, giao bóng, S/Q)
     // trước khi React kịp render lại. Chỉ đồng bộ từ prop khi prop THAY ĐỔI,
@@ -603,6 +611,9 @@ export default function MatchWorld({
 
         resetKeyRef.current = resetKey
 
+        setSentOff([])
+        state.sentOff = {}
+        state.cards = {}
         state.matchEnded = false
         state.sidesSwapped = false
         state.timers.goalCooldown = 1
@@ -634,12 +645,17 @@ export default function MatchWorld({
             handleKeyUp(ctx, event)
         }
 
+        // Mất focus (chuyển cửa sổ, bộ gõ bật popup...): bỏ cú đá đang lấy lực.
+        const onBlur = () => cancelCharge(ctx)
+
         window.addEventListener('keydown', onKeyDown)
         window.addEventListener('keyup', onKeyUp)
+        window.addEventListener('blur', onBlur)
 
         return () => {
             window.removeEventListener('keydown', onKeyDown)
             window.removeEventListener('keyup', onKeyUp)
+            window.removeEventListener('blur', onBlur)
         }
     }, [ctx])
 

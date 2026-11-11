@@ -55,6 +55,9 @@ export function moveAIPlayer(ctx, item, target, speedScale, dt) {
     // Người đang ném biên đứng yên tại vạch.
     if (ctx.state.restart?.playerId === item.id) return
 
+    // Đứng trong hàng rào đá phạt: giữ nguyên vị trí tới khi bóng được đá.
+    if (ctx.state.restart?.wall?.includes(item.id)) return
+
     const dx = target.x - object.position.x
     const dz = target.z - object.position.z
     const distance = Math.hypot(dx, dz)

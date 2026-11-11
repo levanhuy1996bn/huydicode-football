@@ -10,6 +10,7 @@ import { setPlayerAction } from './playerState'
 import { recordPlayer, recordTeam } from './matchStats'
 import { attr, skill01 } from './attributes'
 import { fatiguePenalty } from './stamina'
+import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
 
@@ -73,6 +74,7 @@ export function attachBallToPlayer(ctx, object, playerId) {
 
     state.possession = playerId
     state.pendingPass = null
+    state.deflection = null
     state.lastToucherId = playerId
     // Người khác chạm bóng: thủ môn không còn ôm bóng (keeperCatch đặt lại sau).
     state.keeperHands = null
@@ -126,6 +128,11 @@ export function listPassCandidates(ctx, playerId, action, aim = null) {
         item.teamId === 'blue' ? 'red' : 'blue',
     )
     const attackDirection = attackDir(state, item.teamId)
+
+    // Phase 20: vạch việt vị thật (người đứng thứ hai từ dưới lên của đối phương).
+    const ballNow = ctx.ballRef.current?.translation() || player.position
+    const realOffsideLine = offsideLine(ctx, item.teamId)
+    const ballDepth = ballNow.z * attackDirection
 
     // Hậu vệ đứng thấp nhất của đối phương (không tính thủ môn), theo trục tấn công.
     const lastLine = opponents.reduce((deepest, opponent) => {
@@ -199,11 +206,34 @@ export function listPassCandidates(ctx, playerId, action, aim = null) {
                 const dot =
                     ((targetX - player.position.x) / length) * aim.direction.x +
                     ((targetZ - player.position.z) / length) * aim.direction.z
-                const angle = Math.acos(clamp(dot, -1, 1))
+                let angle = Math.acos(clamp(dot, -1, 1))
                 const desired = desiredPassDistance(action, aim.power)
 
-                score = angle * 14 + Math.abs(distance - desired) * 0.5
-                outOfAim = angle > MAX_AIM_ANGLE
+                // Chọc khe (playtest 3): điểm đón bóng nằm trước mặt người nhận
+                // vài mét, nên ngắm thẳng vào người đồng đội cũng phải tính là
+                // "đúng hướng" (trước đây chỉ so với điểm đón → hay lệch góc,
+                // không ai hợp lệ, bóng bị chọc bừa vào khoảng trống).
+                if (action === 'through' && currentDistance > 0.1) {
+                    const mateDot = (dx / currentDistance) * aim.direction.x + (dz / currentDistance) * aim.direction.z
+
+                    angle = Math.min(angle, Math.acos(clamp(mateDot, -1, 1)))
+                }
+
+                // aim.loose: không bấm hướng → chỉ dựa vào hướng mặt, chọn rộng hơn.
+                const maxAngle = aim.loose ? 1.9 : MAX_AIM_ANGLE
+
+                score =
+                    angle * (aim.loose ? 6 : 14) +
+                    Math.abs(distance - desired) * (action === 'through' ? 0.3 : 0.5)
+
+                // Chọc khe ưu tiên người đang ở phía trên, chạy vào khoảng trống.
+                if (action === 'through') {
+                    score -= clamp(forwardGap, 0, 16) * (aim.loose ? 0.9 : 0.45)
+
+                    if (forwardGap < 2) score += (2 - forwardGap) * 3
+                }
+
+                outOfAim = angle > maxAngle
 
                 if (outOfAim) score += 1000
             } else {
@@ -317,6 +347,12 @@ export function listPassCandidates(ctx, playerId, action, aim = null) {
             // Tránh đường chuyền bị đối phương chắn.
             score += blockedLane * (action === 'lob' ? 3 : 9)
 
+            // Đồng đội đang ở vị trí việt vị: máy không chuyền cho (người chơi
+            // thì vẫn chuyền được — và bị thổi việt vị).
+            const offside = isOffsidePosition(ctx, entry.item, teammate, realOffsideLine, ballDepth)
+
+            if (offside && !aim) score += 80
+
             return {
                 ...entry,
                 distance,
@@ -326,6 +362,7 @@ export function listPassCandidates(ctx, playerId, action, aim = null) {
                 },
                 score,
                 outOfAim,
+                offside,
                 nearestOpponent,
                 blockedLane,
                 laneSlack,
@@ -368,6 +405,14 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         action = 'pass'
     }
 
+    // Phạt đền: chỉ được sút.
+    const restartType = state.restart?.playerId === playerId ? state.restart.type : null
+
+    if (restartType === 'penalty' && action !== 'shoot') {
+        if (!isAI) ctx.onActionMessage('PENALTY: AIM WITH ARROWS · D TO SHOOT')
+        return false
+    }
+
     // Thủ môn đang ôm bóng: ném tay (S/W) hoặc phát bóng bằng chân (A/D).
     if (state.keeperHands === playerId) {
         return startKeeperDistribution(ctx, playerId, item, player, action, isAI, options)
@@ -380,6 +425,10 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
     const charge = options.power
     const isCharged = typeof charge === 'number'
     const aimInput = options.aimInput || null
+    // FO4-style biến thể (tổ hợp phím, xem control.js → kickVariant):
+    // 'finesse' ZD, 'chip' QD, 'trivela' CD, 'driven' ZS/ZW, 'lobbed' QW, 'whipped' ZA.
+    const variant = options.variant || null
+    let curl = null
 
     let power = 8
     let lift = 0.22
@@ -395,6 +444,9 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                     ? aimInput.clone().normalize()
                     : facingVector(player.rotation.y),
                 power: charge,
+                // Chọc khe không bấm hướng: chọn người chạy chỗ tốt nhất phía trước
+                // (trong ~110° quanh hướng mặt) thay vì đá theo đúng hướng mặt.
+                loose: !aimInput && action === 'through',
             }
             : null
 
@@ -404,6 +456,19 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             : findPassTarget(ctx, playerId, action, aim, options.receiverId || null)
 
         let distance = passTarget?.distance || 10
+
+        // Chọc khe vào khoảng trống chỉ khi người chơi bấm hướng lên phía trên;
+        // không thì bỏ (trước đây W khi đang rê ngang/quay lưng thì bóng bị
+        // chọc theo hướng mặt, không về đâu cả).
+        const throughIntoSpaceOk =
+            action !== 'through' ||
+            (aimInput && aim.direction.z * attackDirection > 0.2)
+
+        if (aim && (!passTarget || passTarget.outOfAim) && !throughIntoSpaceOk) {
+            if (!isAI) ctx.onActionMessage('NO RUNNER FOR A THROUGH BALL')
+
+            return false
+        }
 
         if (aim && (!passTarget || passTarget.outOfAim)) {
             // Không có đồng đội theo hướng ngắm: chuyền vào khoảng trống,
@@ -486,6 +551,25 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
             if (action === 'lob') lift *= 0.9 + charge * 0.25
         }
+
+        if (passTarget || spaceReceiver) {
+            if (variant === 'driven') {
+                // ZS / ZW: chuyền căng sệt, nhanh hơn ~20% (khó khống chế hơn).
+                power = Math.min(power * 1.2, 29)
+                lift = 0
+                message = action === 'through' ? 'DRIVEN THROUGH BALL' : 'DRIVEN PASS'
+            } else if (variant === 'lobbed' && action === 'through') {
+                // QW: chọc khe bổng qua đầu hậu vệ.
+                power *= 0.72
+                lift = 3.4 + (isCharged ? charge : 0.5) * 1.6
+                message = 'LOBBED THROUGH BALL'
+            } else if (variant === 'whipped' && action === 'lob') {
+                // ZA: tạt căng, quỹ đạo thấp.
+                power = Math.min(power * 1.2, 24)
+                lift *= 0.62
+                message = 'WHIPPED CROSS'
+            }
+        }
     } else if (action === 'shoot') {
         const goalZ = attackDirection * FIELD.lineZ
 
@@ -511,14 +595,17 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         if (isCharged) {
             // Người chơi ngắm bằng phím: thành phần ngang (trục X) chọn góc.
             // Lực quá mạnh (>80%) hoặc sút quá xa thì dễ lệch.
-            targetX = (aimInput ? aimInput.x : 0) * 3.1
+            targetX = (aimInput ? aimInput.x : 0) * (variant === 'finesse' ? 2.95 : 3.1)
 
             const spread =
                 (1 - accuracy) * 1.6 +
                 Math.max(0, charge - 0.8) * 5 +
                 Math.max(0, distanceToGoal - 22) * 0.06
+            // Sút xoáy ZD chính xác hơn, sút má ngoài CD nhỉnh hơn sút thường.
+            const spreadScale =
+                variant === 'finesse' ? 0.6 : variant === 'trivela' ? 0.85 : variant === 'chip' ? 1.2 : 1
 
-            targetX += (Math.random() * 2 - 1) * spread
+            targetX += (Math.random() * 2 - 1) * spread * spreadScale
         } else {
             // AI: phần lớn cú sút đi vào khoảng giữa khung thành (trong tầm
             // thủ môn), chỉ thỉnh thoảng mới hiểm vào góc. Trước đây phân bố
@@ -543,6 +630,49 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                 distanceToGoal * 0.025 +
                 Math.max(0, charge - 0.9) * 10 * Math.random() * 3.5
             message = charge > 0.9 ? 'POWER SHOT!' : 'SHOT!'
+
+            if (variant === 'finesse') {
+                // ZD: sút xoáy bằng lòng trong — chậm hơn, ít bổng, cong vào góc xa.
+                power = 14 + charge * 9 + shotPower * 0.02
+                lift = 0.7 + charge * 1.5 + distanceToGoal * 0.02
+                message = 'FINESSE SHOT!'
+            } else if (variant === 'chip') {
+                // QD: sút lốp qua đầu thủ môn.
+                power = clamp(8 + distanceToGoal * 0.3 + charge * 3, 10, 19)
+                // Khó căn lực: lệch ±7% độ bổng → có quả vọt xà / rơi sớm.
+                lift = (6.5 + charge * 3) * (1 + (Math.random() - 0.5) * 0.14 * (1.3 - accuracy * 0.6))
+                message = 'CHIP SHOT!'
+            } else if (variant === 'trivela') {
+                // CD: sút má ngoài (trivela) — cong ra ngoài, lực gần như sút thường.
+                power *= 0.96
+                message = 'TRIVELA!'
+            }
+
+            // Bóng xoáy: nhắm lệch ra rồi cong về đúng điểm đã chọn (finesse
+            // cong từ ngoài vào, trivela cong từ trong ra). Thủ môn tính cả
+            // độ cong khi đoán điểm bóng tới (goalkeeper.js).
+            if (variant === 'finesse' || variant === 'trivela') {
+                // Đường cong là một cung tròn: hướng đá lệch θ ra ngoài, bóng
+                // quay dần 2θ theo quãng đường bay nên tới đúng điểm ngắm dù
+                // bóng chậm lại.
+                const side = Math.sign(targetX) || 1
+                const length = Math.hypot(targetX - player.position.x, goalZ - player.position.z)
+                const theta = clamp(Math.atan(clamp(length * 0.13, 1.2, 3.5) / length), 0.05, 0.2)
+                const outward = variant === 'finesse' ? side : -side
+                const baseX = (targetX - player.position.x) / length
+                const baseZ = (goalZ - player.position.z) / length
+                // Quay hướng đá theo chiều làm x lệch về phía `outward`.
+                const sign = outward * Math.sign(baseZ || 1)
+                const angle = -sign * theta
+
+                direction.set(
+                    baseX * Math.cos(angle) - baseZ * Math.sin(angle),
+                    0,
+                    baseX * Math.sin(angle) + baseZ * Math.cos(angle),
+                ).normalize()
+
+                curl = { kappa: (sign * 2 * theta) / length, distance: length * 1.05, lateral: -outward }
+            }
         } else {
             // AI: vận tốc thật 22–29 m/s, sút xa bổng hơn một chút.
             power = clamp(
@@ -553,6 +683,34 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
             lift = clamp(1.2 + distanceToGoal * 0.06, 1.2, 3.2)
             message = 'SHOT!'
+        }
+
+        if (restartType === 'free-kick') {
+            // Sút phạt trực tiếp: bóng vồng qua hàng rào (cao ~2.1m ở cự ly
+            // 9m) rồi đi xuống. Lực mạnh quá thì vọt xà.
+            const c = isCharged ? charge : 0.3 + Math.random() * 0.45
+
+            power = 17 + c * 7 + shotPower * 0.02
+            // Người chơi: lực thấp (< ~35%) thì bóng không qua nổi hàng rào.
+            // Máy: thỉnh thoảng đá thấp trúng hàng rào.
+            lift = isCharged
+                ? 4.9 + c * 2.1
+                : 5.6 + c * 1.2 - (Math.random() < 0.2 ? 1 : 0)
+            message = 'FREE KICK SHOT!'
+        } else if (restartType === 'penalty') {
+            // Phạt đền: sút căng, sát đất hoặc nửa tầm.
+            if (!isCharged) {
+                const corner = (Math.random() < 0.5 ? -1 : 1) * (1.6 + Math.random() * 1.7)
+
+                direction.set(corner - player.position.x, 0, goalZ - player.position.z).normalize()
+                power = 21 + Math.random() * 5
+                lift = 0.6 + Math.random() * 1.6
+            } else {
+                power = Math.min(power, 28)
+                lift = Math.min(lift, 0.4 + charge * 2.6)
+            }
+
+            message = 'PENALTY KICK!'
         }
     }
 
@@ -589,6 +747,8 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         lift,
         passTarget,
         spaceReceiver,
+        curl,
+        variant,
     })
 }
 
@@ -690,7 +850,7 @@ function beginWindup(ctx, params) {
     const { state } = ctx
     const {
         playerId, item, player, action, animation, isThrowIn, isAI, message,
-        direction, power, lift, passTarget, spaceReceiver,
+        direction, power, lift, passTarget, spaceReceiver, curl = null, variant = null,
     } = params
 
     // Phase 19: độ chính xác chuyền bóng theo chỉ số (chuyền ngắn / dài /
@@ -748,6 +908,8 @@ function beginWindup(ctx, params) {
             }
             : null,
         spaceReceiver,
+        curl,
+        variant,
         time: KICK_WINDUP[animation],
     }
 
@@ -811,9 +973,21 @@ function releaseKick(ctx, windup) {
     const { state, objects } = ctx
     const player = objects[windup.playerId]
     const ball = ctx.ballRef.current
-    const { direction, power, lift, isThrowIn, action, teamId, isAI } = windup
+    const { direction, isThrowIn, action, teamId, isAI } = windup
+    let { power, lift } = windup
     const playerId = windup.playerId
     let message = windup.message
+
+    // Bấm D lần nữa trong nhịp vung chân (DD): sút chìm căng sát đất.
+    // Bấm A lần nữa khi tạt (AA): tạt sệt.
+    if (windup.lowShot && action === 'shoot') {
+        lift = 0.2
+        power += 1.5
+        message = 'LOW DRIVEN SHOT!'
+    } else if (windup.lowCross && action === 'lob') {
+        lift = Math.min(lift, 1.1)
+        message = 'LOW CROSS'
+    }
 
     const spot = holdSpot(windup.animation)
     const isKeeperRelease = windup.animation === 'gkThrow' || windup.animation === 'punt'
@@ -835,6 +1009,12 @@ function releaseKick(ctx, windup) {
     }, true)
 
     state.kickId += 1
+    state.lastUserKick = !isAI
+        ? { kickId: state.kickId + 0, action, age: 0, low: Boolean(windup.lowShot || windup.lowCross) }
+        : null
+    state.curl = windup.curl && !windup.lowShot
+        ? { kickId: state.kickId, ...windup.curl, travelled: 0 }
+        : null
     state.possession = null
     state.lastTouchTeam = teamId
     state.lastToucherId = playerId
@@ -862,9 +1042,24 @@ function releaseKick(ctx, windup) {
         state.keeperHands = null
     }
 
-    if (isThrowIn) {
-        state.restart = null
+    // Phase 20: ghi lại ai đang việt vị lúc bóng rời chân (không tính ném
+    // biên, phát bóng lên, phạt góc), rồi kết thúc tình huống cố định.
+    const restartType = state.restart?.type || null
+
+    if (!isKeeperRelease && !['throw-in', 'goal-kick', 'corner'].includes(restartType)) {
+        snapshotOffside(ctx, playerId, teamId, ball.translation())
+    } else {
+        state.offside = null
     }
+
+    // Phạt đền: thủ môn đối phương "đoán" hướng ngay lúc bóng rời chân.
+    if (restartType === 'penalty') {
+        const roll = Math.random()
+
+        state.penaltyKick = { kickId: state.kickId, guess: roll < 0.42 ? -1 : roll < 0.84 ? 1 : 0 }
+    }
+
+    state.restart = null
 
     // Ghi nhớ đồng đội đang được chuyền bóng tới.
     if (windup.passTarget) {
@@ -956,6 +1151,12 @@ export function updateLooseBallPickup(ctx) {
     let best = null
     let bestScore = Infinity
 
+    // Đội "đang chuyền": vẫn là đội đá cú bóng này dù đối phương vừa chạm làm
+    // chậm bóng (lastTouchTeam lúc đó đổi sang đối phương để tính ném biên /
+    // phạt góc đúng, nhưng không được đổi lợi thế tầm đỡ bóng).
+    const reachTeam =
+        state.deflection?.kickId === state.kickId ? state.deflection.kickerTeam : state.lastTouchTeam
+
     ctx.players.forEach((item) => {
         const object = objects[item.id]
         if (!object) return
@@ -967,7 +1168,7 @@ export function updateLooseBallPickup(ctx) {
         // đứng đúng trên đường bóng (0.85m): trước đây chỉ cần ở cách 1.5m là
         // "hút" được bóng, nên người áp sát luôn cắt được đường chuyền ngay
         // khi bóng vừa rời chân.
-        const sameTeamAsKicker = item.teamId === state.lastTouchTeam
+        const sameTeamAsKicker = item.teamId === reachTeam
         // Interceptions (Phase 19) nới tầm chặn bóng thêm tối đa 0.15m.
         const reach =
             sameTeamAsKicker || horizontalSpeed < MOVING_BALL
@@ -1008,6 +1209,9 @@ export function updateLooseBallPickup(ctx) {
 
     if (!best) return
 
+    // Phase 20: người đang việt vị chạm bóng → thổi phạt.
+    if (checkOffside(ctx, best.item)) return
+
     // Người được chuyền tới (hoặc đồng đội của người chuyền) khống chế được
     // ngay đường chuyền có tốc độ vừa phải. Đối phương chặn bóng nhanh thì
     // bóng chỉ bật ra chậm lại, phải tranh tiếp mới có bóng (Phase 18).
@@ -1016,10 +1220,20 @@ export function updateLooseBallPickup(ctx) {
         CONTROL_SPEED - 4 +
         skill01(attr(best.item, 'ballControl') - fatiguePenalty(state, best.item.id)) * 8
     const cleanControl =
-        best.item.teamId === state.lastTouchTeam && ballSpeed <= controlSpeed
+        best.item.teamId === reachTeam && ballSpeed <= controlSpeed
 
     if (ballSpeed > 7.5 && !cleanControl) {
-        // Chạm bước một: giảm tốc bóng trước khi kiểm soát.
+        // Chạm bước một: giảm tốc bóng trước khi kiểm soát. Đây cũng là một
+        // lần chạm bóng (playtest 3: trước đây không ghi lại, nên bóng bật
+        // ra ngoài sau pha chặn này bị tính cho đội đá trước đó → ném biên
+        // / phát bóng sai đội).
+        if (state.deflection?.kickId !== state.kickId) {
+            state.deflection = { kickId: state.kickId, kickerTeam: reachTeam }
+        }
+
+        state.lastTouchTeam = best.item.teamId
+        state.lastToucherId = best.item.id
+
         ball.setLinvel(
             {
                 x: velocity.x * 0.48,
@@ -1135,6 +1349,14 @@ export function updateDribble(ctx, dt) {
         ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
         ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
         state.dribble.touchTimer = 0
+        return
+    }
+
+    // Đang chờ đá phạt / phạt góc / phát bóng / phạt đền: bóng nằm yên tại chỗ.
+    if (state.restart && state.restart.type !== 'throw-in' && state.restart.playerId === ownerId) {
+        ball.setTranslation({ x: state.restart.ballX, y: 0.39, z: state.restart.ballZ }, true)
+        ball.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        ball.setAngvel({ x: 0, y: 0, z: 0 }, true)
         return
     }
 
@@ -1301,4 +1523,76 @@ export function updateDribble(ctx, dt) {
 
     ball.setLinvel({ x: dirX * touchSpeed, y: 0, z: dirZ * touchSpeed }, true)
     state.dribble.touchTimer = DRIBBLE.touchInterval
+}
+
+// Bóng xoáy (ZD / CD): gia tốc ngang trong lúc bóng bay, tới khi có người chạm
+// bóng hoặc hết thời gian bay dự kiến. Gọi mỗi bước logic.
+export function updateCurl(ctx, dt) {
+    const { state } = ctx
+
+    if (state.lastUserKick) state.lastUserKick.age += dt
+
+    const curl = state.curl
+    const ball = ctx.ballRef.current
+
+    if (!curl || !ball) return
+
+    if (curl.kickId !== state.kickId || state.possession || curl.travelled >= curl.distance) {
+        state.curl = null
+        return
+    }
+
+    const velocity = ball.linvel()
+    const step = Math.hypot(velocity.x, velocity.z) * dt
+    const angle = curl.kappa * step
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+
+    curl.travelled += step
+
+    ball.setLinvel(
+        { x: velocity.x * cos - velocity.z * sin, y: velocity.y, z: velocity.x * sin + velocity.z * cos },
+        true,
+    )
+}
+
+// Độ lệch ngang (m, theo trục x) của bóng xoáy sau quãng đường d tính từ lúc
+// đá — thủ môn dùng để đoán điểm bóng tới.
+export function curlOffset(curl, travelledNow, extra) {
+    if (!curl) return 0
+
+    const kappa = Math.abs(curl.kappa)
+    const lateral = (d) => {
+        const inside = Math.min(d, curl.distance)
+
+        return kappa * inside * inside * 0.5 + kappa * curl.distance * Math.max(0, d - curl.distance)
+    }
+
+    return curl.lateral * (lateral(travelledNow + extra) - lateral(travelledNow) - kappa * Math.min(travelledNow, curl.distance) * extra)
+}
+
+// DD / AA bấm hơi muộn (ngay sau khi bóng rời chân, ≤ 0.15s): vẫn tính, chỉnh
+// lại quỹ đạo bóng vừa đá thành sút chìm / tạt sệt.
+export function applyLateTap(ctx, action) {
+    const { state } = ctx
+    const last = state.lastUserKick
+    const ball = ctx.ballRef.current
+
+    if (!last || !ball || last.low || last.age > 0.15 || last.kickId !== state.kickId || state.possession) return false
+    if (last.action !== action || (action !== 'shoot' && action !== 'lob')) return false
+
+    const velocity = ball.linvel()
+
+    last.low = true
+
+    if (action === 'shoot') {
+        ball.setLinvel({ x: velocity.x * 1.06, y: Math.min(velocity.y, 0.2), z: velocity.z * 1.06 }, true)
+        state.curl = null
+        ctx.onActionMessage('LOW DRIVEN SHOT!')
+    } else {
+        ball.setLinvel({ x: velocity.x, y: Math.min(velocity.y, 1.1), z: velocity.z }, true)
+        ctx.onActionMessage('LOW CROSS')
+    }
+
+    return true
 }
