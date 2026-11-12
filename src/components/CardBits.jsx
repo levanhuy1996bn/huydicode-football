@@ -45,7 +45,7 @@ export function PlayerCardView({ player, size = 'large', hideBadge = false }) {
             </div>
             <div className="player-card__name">{player.name}</div>
             <div className="player-card__meta">
-                {player.nationality || '—'}{player.age ? ` · ${player.age} yrs` : ''}
+                {player.nationality || player.club || '—'}{player.age ? ` · ${player.age} yrs` : ''}
             </div>
             <div className="player-card__stats">
                 {[

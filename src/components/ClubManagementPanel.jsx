@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
-import { TRANSFER_MARKET } from '../data/transferMarket'
+import { FREE_AGENT, TRANSFER_MARKET } from '../data/transferMarket'
+import { COUNTRIES, COUNTRY_BY_ID, INITIAL_DIVISIONS, LEAGUE_BY_ID, worldClub } from '../data/world'
 import {
     loadClub,
     saveClub,
@@ -108,6 +109,7 @@ export default function ClubManagementPanel({
                                                 club: controlledClub,
                                                 onClubChange,
                                                 initialSearch = '',
+                                                world = null,
                                             }) {
     const [internalClub, setInternalClub] = useState(loadClub)
     const club = controlledClub ?? internalClub
@@ -126,6 +128,27 @@ export default function ClubManagementPanel({
     const [sortBy, setSortBy] = useState('overall')
     const [rarityFilter, setRarityFilter] = useState('ALL')
     const [marketLimit, setMarketLimit] = useState(MARKET_PAGE)
+    // Phase 26A: lọc theo nước → giải (theo hạng hiện tại) → CLB.
+    const [countryFilter, setCountryFilter] = useState('ALL')
+    const [leagueFilter, setLeagueFilter] = useState('ALL')
+    const [clubFilter, setClubFilter] = useState('ALL')
+    const divisions = world?.divisions || INITIAL_DIVISIONS
+    const country = COUNTRY_BY_ID.get(countryFilter) || null
+    const leagueOptions = country ? [country.topLeagueId, country.secondLeagueId] : []
+    const clubOptions = useMemo(
+        () =>
+            leagueFilter !== 'ALL'
+                ? [...(divisions[leagueFilter] || [])]
+                    .map((id) => worldClub(id))
+                    .filter(Boolean)
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                : [],
+        [divisions, leagueFilter],
+    )
+    const leagueClubs = useMemo(
+        () => (leagueFilter !== 'ALL' ? new Set(divisions[leagueFilter] || []) : null),
+        [divisions, leagueFilter],
+    )
 
     const [selectedPlayer, setSelectedPlayer] = useState(null)
     // Phase 22: thông báo dạng toast (trước đây chỉ đổi chữ ở chân panel 3 giây).
@@ -156,17 +179,23 @@ export default function ClubManagementPanel({
     const availablePlayers = useMemo(() => {
         return TRANSFER_MARKET
             .filter((player) => {
-                const matchesSearch = player.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase())
+                const query = search.toLowerCase()
+                const matchesSearch =
+                    player.name.toLowerCase().includes(query) ||
+                    (query.length >= 3 && String(player.club || '').toLowerCase().includes(query))
 
                 const matchesPosition =
                     positionFilter === 'ALL' ||
                     getPositionGroup(player.position) === positionFilter
 
                 const matchesRarity = rarityFilter === 'ALL' || player.rarity === rarityFilter
+                const matchesCountry =
+                    countryFilter === 'ALL' ||
+                    (countryFilter === 'FREE' ? !player.clubId : player.countryId === countryFilter)
+                const matchesLeague = !leagueClubs || leagueClubs.has(player.clubId)
+                const matchesClub = clubFilter === 'ALL' || player.clubId === clubFilter
 
-                return matchesSearch && matchesPosition && matchesRarity
+                return matchesSearch && matchesPosition && matchesRarity && matchesCountry && matchesLeague && matchesClub
             })
             .sort((a, b) => {
                 if (sortBy === 'value') return a.value - b.value
@@ -174,12 +203,12 @@ export default function ClubManagementPanel({
 
                 return b.overall - a.overall
             })
-    }, [search, positionFilter, rarityFilter, sortBy])
+    }, [search, positionFilter, rarityFilter, sortBy, countryFilter, leagueClubs, clubFilter])
 
     // Đổi bộ lọc thì hiện lại từ trang đầu.
     useEffect(() => {
         setMarketLimit(MARKET_PAGE)
-    }, [search, positionFilter, rarityFilter, sortBy])
+    }, [search, positionFilter, rarityFilter, sortBy, countryFilter, leagueFilter, clubFilter])
 
     // Chỉ tự lưu khi panel tự giữ CLB (GameScene lưu bản được truyền vào).
     useEffect(() => {
@@ -661,6 +690,54 @@ export default function ClubManagementPanel({
                                         </select>
                                     </div>
 
+                                    <div className="market-world-filters">
+                                        <select
+                                            value={countryFilter}
+                                            onChange={(event) => {
+                                                setCountryFilter(event.target.value)
+                                                setLeagueFilter('ALL')
+                                                setClubFilter('ALL')
+                                            }}
+                                            style={inputStyle}
+                                            aria-label="Country"
+                                        >
+                                            <option value="ALL">ALL COUNTRIES</option>
+                                            {COUNTRIES.map((item) => (
+                                                <option key={item.id} value={item.id}>{item.name.toUpperCase()}</option>
+                                            ))}
+                                            <option value="FREE">{FREE_AGENT}S</option>
+                                        </select>
+
+                                        <select
+                                            value={leagueFilter}
+                                            onChange={(event) => {
+                                                setLeagueFilter(event.target.value)
+                                                setClubFilter('ALL')
+                                            }}
+                                            style={inputStyle}
+                                            aria-label="League"
+                                            disabled={!country}
+                                        >
+                                            <option value="ALL">ALL LEAGUES</option>
+                                            {leagueOptions.map((id) => (
+                                                <option key={id} value={id}>{LEAGUE_BY_ID.get(id)?.name.toUpperCase()}</option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            value={clubFilter}
+                                            onChange={(event) => setClubFilter(event.target.value)}
+                                            style={inputStyle}
+                                            aria-label="Club"
+                                            disabled={leagueFilter === 'ALL'}
+                                        >
+                                            <option value="ALL">ALL CLUBS</option>
+                                            {clubOptions.map((item) => (
+                                                <option key={item.id} value={item.id}>{item.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
                                     <div
                                         style={{
                                             display: 'grid',
@@ -705,7 +782,10 @@ export default function ClubManagementPanel({
                                                                 marginTop: 4,
                                                             }}
                                                         >
-                                                            {player.position} · {player.age} years · {player.nationality}
+                                                            {[player.position, `${player.age} years`, player.nationality].filter(Boolean).join(' · ')}
+                                                        </div>
+                                                        <div className="market-club-line" title={player.club}>
+                                                            {player.club || FREE_AGENT}
                                                         </div>
                                                         {ownedCounts.get(player.playerId) > 0 && (
                                                             <div className="owned-chip">
@@ -1130,7 +1210,7 @@ export default function ClubManagementPanel({
                                                 fontSize: 11,
                                             }}
                                         >
-                                            {selectedPlayer.position} · {selectedPlayer.age} years · {selectedPlayer.nationality}
+                                            {[selectedPlayer.position, `${selectedPlayer.age} years`, selectedPlayer.nationality, selectedPlayer.club].filter(Boolean).join(' · ')}
                                         </div>
                                     </div>
 

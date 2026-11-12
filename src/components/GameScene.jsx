@@ -36,15 +36,20 @@ import {
     PausedStats,
 } from './MatchOverlays'
 import {
-    loadLeague,
     saveLeague,
     getNextUserFixture,
     getLeagueStandings,
     getSeasonProgress,
     getTeamById,
     recordUserFixtureResult,
-    startNewSeason,
 } from '../services/leagueService'
+import {
+    advanceWorld,
+    createLeagueForWorld,
+    loadGameWorld,
+    saveWorld,
+    seasonOutcome,
+} from '../services/worldService'
 import {
     Suspense,
     useCallback,
@@ -217,14 +222,15 @@ export default function GameScene() {
     }, [])
 
     // LEAGUE STATE
-    const [league, setLeague] = useState(loadLeague)
+    // Phase 26A: thế giới 36 giải + giải của người chơi (bản lưu cũ được chuyển
+    // sang Premier League thật ngay lần nạp đầu tiên).
+    const [boot] = useState(loadGameWorld)
+    const [world, setWorld] = useState(boot.world)
+    const [league, setLeague] = useState(boot.league)
 
-    const [activeFixtureId, setActiveFixtureId] = useState(() => {
-        const initialLeague = loadLeague()
-        const nextFixture = getNextUserFixture(initialLeague.fixtures)
-
-        return nextFixture?.id || null
-    })
+    const [activeFixtureId, setActiveFixtureId] = useState(
+        () => getNextUserFixture(boot.league.fixtures)?.id || null,
+    )
 
     const [isLeagueOpen, setIsLeagueOpen] = useState(false)
 
@@ -257,7 +263,7 @@ export default function GameScene() {
                 fixture.awayTeamId,
                 kitChoice.fixtureId === fixture.id ? kitChoice.slots : null,
             )
-            : resolveMatchKits('blue', 'red')
+            : resolveMatchKits('blue', 'eng-manchester-city')
 
     const matchKits = kitsForFixture(activeFixture)
 
@@ -292,6 +298,17 @@ export default function GameScene() {
     useEffect(() => {
         saveLeague(league)
     }, [league])
+
+    useEffect(() => {
+        saveWorld(world)
+    }, [world])
+
+    // Thông báo một lần khi bản lưu cũ được chuyển sang thế giới mới.
+    useEffect(() => {
+        if (boot.migrated) {
+            setActionMessage(`NEW WORLD · SEASON ${boot.league.season} · PREMIER LEAGUE`)
+        }
+    }, [boot])
 
     const showActionMessage = useCallback((message) => {
         setActionMessage(message)
@@ -687,8 +704,13 @@ export default function GameScene() {
 
     // Bắt đầu mùa giải mới.
     const createNewSeason = useCallback(() => {
-        const nextLeague = startNewSeason(league)
+        // Phase 26A: tính bảng cuối 36 giải, lên / xuống hạng, rồi tạo giải mới
+        // cho người chơi (có thể là giải khác nếu MU lên / xuống hạng).
+        const nextWorld = advanceWorld(world, league)
+        const nextLeague = createLeagueForWorld(nextWorld)
+        const outcome = seasonOutcome(world, nextWorld)
 
+        setWorld(nextWorld)
         setLeague(nextLeague)
 
         // Mùa mới: cả đội hồi phục hoàn toàn (Phase 19).
@@ -731,8 +753,14 @@ export default function GameScene() {
         resetMatchFlow()
 
         setIsLeagueOpen(false)
-        setActionMessage('NEW SEASON STARTED')
-    }, [league])
+        setActionMessage(
+            outcome.movement === 'promoted'
+                ? `PROMOTED! NEW SEASON IN ${outcome.to?.name.toUpperCase()}`
+                : outcome.movement === 'relegated'
+                    ? `RELEGATED · NEW SEASON IN ${outcome.to?.name.toUpperCase()}`
+                    : 'NEW SEASON STARTED',
+        )
+    }, [league, world])
 
     const totalGameMinutes = Math.floor(
         (matchTime / matchDuration) * 90,
@@ -1853,6 +1881,7 @@ export default function GameScene() {
             {isLeagueOpen && (
                 <LeagueManagementPanel
                     league={league}
+                    world={world}
                     onClose={() => setIsLeagueOpen(false)}
                     onStartFixture={openPrematch}
                     onNewSeason={createNewSeason}
@@ -1863,6 +1892,7 @@ export default function GameScene() {
                 <div className="modal-host">
                     <ClubManagementPanel
                         roster={roster}
+                        world={world}
                         onRosterChange={setRoster}
                         club={club}
                         onClubChange={setClub}

@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6 and Phases 15–25 — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 26 (more leagues, club selection), 27 (mobile, graphics, sound, performance), 28 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25 and Phase 26A — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 26B (choose / change club), 27 (C1 / C2), 28 (mobile, graphics, sound, performance), 29 (card seasons, real data). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -188,11 +188,10 @@ The game includes management systems alongside the 3D match gameplay.
 
 ### Clubs (2026-11-10)
 
-- **You manage Manchester United** (red kit, `MUN`, strength 79). The former "RED UNITED" squad is now Manchester United.
-- **Manchester City** (sky blue kit, `MCI`, strength 81) is the former "BLUE FC" squad and is now an AI team in the league.
-- Club identity (name, short name, colour, strength) lives in `src/data/leagueData.js` (`USER_TEAM`, `LEAGUE_TEAMS`). All UI and in-match messages read the name from there instead of hard-coding "BLUE FC".
-  - Internally your team still uses the id `blue` (and the opponent slot uses `red`) so the engine and league saves keep working.
-  - Club selection is planned for Phase 26.
+- **You manage Manchester United** (red kit, `MUN`). Your squad (Huy Le, Salvatierra…) is your own; the real United stars exist as cards in the transfer market.
+- Since Phase 26A every club comes from the world data (`src/data/worldClubs.js` → `src/data/world.js`, 720 real clubs in 36 leagues). `USER_TEAM` in `src/data/leagueData.js` is read from there.
+  - Internally your team still uses the id `blue` and the engine's opponent slot is `red`; each match fills the `red` slot with the real club's name, kits and squad. Old data pointing at `red` means Manchester City.
+  - Club selection is planned for Phase 26B.
 - Accent colours in the UI follow your kit through the CSS variable `--user-color`. Opponent kit colours avoid red, so they never clash with United.
 - The roster save key moved to `ultimate-football-roster-save-v2`, so a saved lineup or transfers from the old Blue FC squad are reset once. League progress and club budget are kept.
 
@@ -206,12 +205,11 @@ The game includes management systems alongside the 3D match gameplay.
 
 ### League management
 
-- Participate in a 20-team league.
-- View fixtures, match results and league standings.
-- Play Manchester United matches directly.
-- Simulate other teams' matches.
-- Track season progress and league champions.
-- Start a new season after completing the current one.
+- 18 countries × 2 divisions = 36 leagues of 20 clubs (Phase 26A). You play in one of them (Premier League at the start).
+- View your fixtures, results, standings and season player stats; play Manchester United matches directly, the other matches of your league are simulated round by round.
+- Look at the table and latest round of any other league (country picker + division switch on the LEAGUE TABLE tab); those leagues move forward with your rounds.
+- Coloured bars on the table: C1 (top 4) and C2 (5–6) in top leagues, relegation (bottom 3), promotion (top 3 of second divisions).
+- At the end of the season the bottom 3 of every top league go down and the top 3 of every second division go up — including your club.
 
 ## Current prototype limitations
 
@@ -241,13 +239,18 @@ ultimate-football-manager-3d/
     ├── data/
     │   ├── teams.js
     │   ├── playerCatalog.js  # 500 fictional players (Phase 23): transfer market + packs
-    │   ├── kits.js           # fixed home / away / third + keeper kits per club, clash rules (Phase 24)
+    │   ├── kits.js           # fixed home / away / third + keeper kits per club, clash rules (Phase 24); kits from club colours (26A)
+    │   ├── worldClubs.js     # 18 countries × 2 divisions × 20 real clubs: colours + real-name stars (Phase 26A)
+    │   ├── world.js          # parses the world data: leagues, clubs, ids, strengths (Phase 26A)
+    │   ├── worldSquads.js    # deterministic 22-player squad per club (Phase 26A)
+    │   ├── namePools.js      # fictional first / last names per nationality (Phase 26A)
     │   └── ...
     ├── hooks/
     │   └── useKeyboard.js
     ├── services/
     │   ├── clubService.js
-    │   ├── leagueService.js
+    │   ├── leagueService.js  # your league: fixtures, results, standings, simulation
+    │   ├── worldService.js   # world save, virtual leagues, promotion / relegation, history (Phase 26A)
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
@@ -296,6 +299,7 @@ ultimate-football-manager-3d/
         ├── Pitch.jsx
         ├── ClubManagementPanel.jsx
         ├── LeagueManagementPanel.jsx
+        ├── ClubCrest.jsx         # generated SVG crest for every club (Phase 26A)
         └── ...
 ```
 
@@ -317,6 +321,8 @@ ultimate-football-manager-3d/
 The project currently uses browser LocalStorage for local game progress.
 
 - Club information and league progress are stored locally.
+- Keys: `ultimate-football-roster-save-v2` (squad and cards), `ultimate-football-club-save` (EP, level, inventory), `ultimate-football-league-save` (your league: clubs, fixtures, results, match stats), `ultimate-football-world-save` (Phase 26A: the 20 clubs of each of the 36 leagues + season history, ≈ 15–20 KB), `ufm-sound-muted`.
+- The ~15,800 world players and the 35 other leagues are not stored: they are generated from fixed seeds and always come out the same.
 - Data belongs to the current browser profile.
 - Clearing browser website data may remove saved progress.
 - Different browsers or devices do not automatically share saves.
@@ -324,7 +330,7 @@ The project currently uses browser LocalStorage for local game progress.
 
 ## Development roadmap
 
-### Status at a glance (2026-11-11)
+### Status at a glance (2026-11-12)
 
 | Phase | Content | Status |
 | --- | --- | --- |
@@ -343,9 +349,11 @@ The project currently uses browser LocalStorage for local game progress.
 | 23 | Club level and XP, match prize money, 500-player catalog (`playerId` / `cardId`), Cards tab with player packs and EP cards (+ shot rebound fix) | ✅ Done (2026-11-12) |
 | 24 | Club kits (home / away / third, fixed per club, picked before each match to avoid clashes) + shooting / passing accuracy by stats | ✅ Done (2026-11-12) |
 | 25 | Player card upgrades (+1 → +10, coloured + badge), player level max 100, stats above 99 with coloured numbers | ✅ Done (2026-11-12) |
-| 26 | More leagues and club selection (with crests) | ⏳ Next |
-| 27 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
-| 28 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
+| 26A | World of football: 18 countries × 2 divisions (36 leagues, 720 real clubs), virtual leagues, promotion / relegation, market with every player, crests | ✅ Done (2026-11-12) |
+| 26B | Choose / change club | ⏳ Next |
+| 27 | Champions League / Europa League (C1 / C2) | 🔜 Planned |
+| 28 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
+| 29 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
 | Backlog | Individual player skills / traits | 💤 Later |
 
 ### Status check (2026-11-09)
@@ -887,8 +895,8 @@ Plan (as agreed):
 
 - **Club level and XP:** the club earns XP after every match (win > draw > loss, bonus for a clean sheet and a big win). The XP needed per level grows level by level. The post-match screen shows XP gained, the level bar and a LEVEL UP message.
 - **Match prize money:** paid after every match into the club budget (EP), based on result, goal difference and opponent strength. End-of-season bonus by league position.
-- **Player catalog** (`src/data/playerCatalog.js`): **500 default players created by the project itself** (fictional names, no real-world data). Each has a `playerId`, name, nationality, age, position, the six main stats, rarity (Bronze / Silver / Gold) and value. The current transfer market players move into this catalog, and the transfer market draws from it. Real data comes later in Phase 28 with the same structure.
-- **Two ids per player:** `playerId` = the person; `cardId` = one card the club owns. Several cards can share a `playerId` (duplicates now, card seasons in Phase 28).
+- **Player catalog** (`src/data/playerCatalog.js`): **500 default players created by the project itself** (fictional names, no real-world data). Each has a `playerId`, name, nationality, age, position, the six main stats, rarity (Bronze / Silver / Gold) and value. The current transfer market players move into this catalog, and the transfer market draws from it. Real data comes later in Phase 29 with the same structure.
+- **Two ids per player:** `playerId` = the person; `cardId` = one card the club owns. Several cards can share a `playerId` (duplicates now, card seasons in Phase 29).
 - **No duplicates in the matchday squad:** the 20 starters and substitutes can never contain two cards with the same `playerId`. Duplicate cards stay in the reserves.
 - **Cards tab (new):** an inventory of unopened rewards. Everything is opened whenever the player wants:
   - **Player packs:** opening one gives a random player from the catalog (by pack rarity). Cards from packs are **+1** for now. The new card goes to the reserves.
@@ -1048,17 +1056,71 @@ Agreed after Phase 25 (the first version made stats above 99 change too little: 
   - Browser test: Huy Le without a duplicate → UPGRADE grey and disabled, success "–"; buy a copy → back on the screen the copy is selected automatically, success 100%, UPGRADE enabled → animation → SUCCESS +1 → +2.
 - **Browser test:** Huy Le (ST, no duplicate) → BUY A COPY ON THE MARKET → TRANSFERS searched "Huy Le" (1 result, OWNED ×1) → signed for 34,400,000 EP → back in UPGRADE CARDS Huy Le shows "1 dup"; no console errors.
 
-### Phase 26 — More leagues and club selection (next)
+### Phase 26 — World of football and club selection (26A ✅ 2026-11-12 · 26B next)
 
-- **More leagues:** add several leagues (fictional or generic names), each with its own clubs, squads (from the player catalog), fixtures, table and season stats. A league selector in the League screen.
-- **Club selection:** choose which club (and league) to manage when starting a career or a new season, and from a "Change club" option in Settings.
-  - Make the user team id configurable instead of the fixed `blue` slot.
-  - Keep a separate squad per club, and give every club its own full squad data instead of generated names only.
-  - Map fixtures, standings and stats to the chosen club, and migrate existing saves (roster, club budget, level, cards, league progress).
-  - Ask for confirmation before switching mid-season.
-- **Club crests:** a crest field per club, shown on the home, pre/post-match screens, scoreboard, league table, team panel and full-time card; fallback to the current coloured badge with the short name. Original crest designs or files you supply yourself (real crests are trademarks and are not included).
+Agreed on 2026-11-12.
 
-### Phase 27 — Mobile, graphics, performance, sound and release (planned)
+#### Phase 26A — 18 countries, 36 leagues, 720 clubs ✅ (2026-11-12)
+
+- **Countries and divisions:** the 18 countries of the top-league list below, each with its **top league + one second division**, **20 clubs per league** (38 rounds, one table — no conferences, no play-offs). England's second division is the EFL Championship and Italy's is Serie B.
+
+  | # | Top league | Country |
+  | --- | --- | --- |
+  | 1 | Premier League | England |
+  | 2 | Serie A | Italy |
+  | 3 | La Liga | Spain |
+  | 4 | Bundesliga | Germany |
+  | 5 | Ligue 1 | France |
+  | 6 | Belgian Pro League | Belgium |
+  | 7 | Primeira Liga | Portugal |
+  | 8 | Campeonato Brasileiro Série A | Brazil |
+  | 9 | Eredivisie | Netherlands |
+  | 10 | Liga Profesional de Fútbol | Argentina |
+  | 11 | Major League Soccer | USA / Canada |
+  | 12 | Liga MX | Mexico |
+  | 13 | J1 League | Japan |
+  | 14 | HNL | Croatia |
+  | 15 | Ekstraklasa | Poland |
+  | 16 | Superligaen | Denmark |
+  | 17 | Allsvenskan | Sweden |
+  | 18 | Süper Lig | Turkey |
+
+  Where a real league has more or fewer than 20 clubs (or groups), 20 representative clubs are used.
+- **Real club names** (looked up), each club with a strength (stronger leagues follow the order above; second divisions weaker; big clubs stronger), **three fixed kits** in the club's real colours + two keeper kits, and an **original crest** drawn automatically (shield in the kit colours + short name; no real logos).
+- **Players (~15,800):** about 22 per club, generated from a fixed seed (not stored). **3–5 well-known players per club in the 18 top leagues use their real names** (ratings are estimates, not EA ratings; squads as looked up, may be outdated); everybody else has a fictional name from the club's country.
+- **Transfer market = every player of every club** (FC Online-style card market): buying a card of an AI club's player gives you a copy, the player stays at his club, so copies can be bought for upgrades. Filters by **country, league and club** (+ position, rarity, price, search). Player packs draw from all players.
+- **Your league is stored in full** (fixtures, results, table, player stats). **The other 35 leagues are "virtual":** a random seed is drawn at the start of each season and every result of those leagues is computed from it when needed (random, different every season, always the same within a season, max 5 goals per team, home and strength advantage). Nothing of them is stored; the LEAGUE screen can show the table / fixtures of any country and division at the current round.
+- **End of season:** final tables of all 36 leagues are computed; **bottom 3 of each top league are relegated, top 3 of each second division are promoted**; the clubs qualified for next season's C1 / C2 (e.g. top 4 of each top league) are stored for Phase 27. Stored: division membership + a short season history.
+- **Storage:** ≈ 150–250 KB in total (club membership ≈ 10 KB, your league ≈ 25 KB, your match stats ≈ 60–160 KB, squad ≈ 50 KB, club ≈ 10 KB, history ≈ 1 KB per season; players and virtual leagues 0 KB) — about 3–5% of the 5 MB LocalStorage limit.
+- **Switching to the new world (option A):** a new season starts with the real Premier League as soon as the update is loaded. **Everything of yours is kept** — the Manchester United squad and all cards (Huy Le, Salvatierra, bought and upgraded cards), EP, club level and card inventory; only the results of the season in progress are dropped. AI opponents in 3D matches use the real club's name, kits and squad.
+
+**Done (2026-11-12) — how it was built:**
+
+- **Club data source:** web search was not available while building, so the 720 clubs, colours and stars come from the assistant's own knowledge up to the 2025-26 season (`src/data/worldClubs.js`, one line per club: `Name|SHORT|#primary|#secondary|Star:POS:OVR;…`, strongest first). Promotions / relegations and transfers of summer 2026 may be missing; leagues that really have fewer than 20 clubs (e.g. HNL) are filled with clubs from the division below. Lines ending in `?` are clubs I am not sure about (currently: Royal Francs Borains B, SC Cambuur Reserves, Achilles '29, NK Trnje). Edit the file to fix any club: ids are derived from the name (`eng-arsenal`), Manchester United is always `blue`.
+- **Strength:** top league 86 − (rank − 1) × 0.75 for the strongest club down to 72 − (rank − 1) × 0.6, second division from that minimum + 2 down 8 more, interpolated by the club's place in the list (+ a small fixed jitter). Example: Premier League 86–72, Championship 74–64, Süper Lig 2nd division 63–54.
+- **Squads:** 22 players per club (11 starters in the engine's 4-3-3 slots, 9 bench, 2 reserves), ids `clubId-p01…p22`, shirt numbers unique. 351 real-name stars (3–5 per club in the 18 top leagues, ratings are my estimates, not EA ratings); other players get fictional names from the club country's name pool (70% local, 30% foreign) — any match with a real person is accidental.
+- **Kits:** Premier League clubs that had hand-made kits keep them; every other club gets home (primary), away (secondary or white / black), third (a fallback colour that clashes with neither) and two keeper kits from its colours. If every away kit clashes, the home team switches kits. Checked: 0 clashes over all 13,680 league pairings.
+- **Crests:** `ClubCrest.jsx` draws a shield in the two club colours with one of five patterns (fixed per club) and the short name — no real logos. Shown on the league table, results and fixtures.
+- **Virtual leagues:** there is no stored seed — every result is seeded by season + league + fixture id, so each season is different and a season always replays the same. Goals use the existing score model (home advantage + strength difference, max 4 per team). Other leagues are shown "after round N" where N = your rounds played.
+- **End of season (START NEW SEASON):** final tables of all 36 leagues → bottom 3 / top 3 swap per country, champions, top 6 of every top league (for C1 / C2 in Phase 27) and your final position go into the world save history (last 30 seasons). If United go down you play the next season in the Championship; the message after starting the season says promoted / relegated.
+- **Transfer market:** 16,341 players (18 original United cards, ~15,800 world players, 500 catalog players as FREE AGENTS). New filters: country → league (current divisions) → club; search also matches the club name; cards show the player's club. Packs draw from the world players + free agents.
+- **3D matches:** the opponent is the real club with its squad (e.g. Liverpool: Alisson, Van Dijk, Wirtz, Isak, Salah…), name and kits.
+- **Old saves:** a league save from before Phase 26 is converted on first load: a new season in the real Premier League (next season number if a match had been played, so the season prize is not blocked). Squad, cards, EP, club level and inventory are untouched; a message "NEW WORLD · SEASON … · PREMIER LEAGUE" is shown once.
+- **Not done in 26A (by design):** season player stats only for your own league; second-division season prize money is the same as top league.
+
+#### Phase 26B — Choose and change club
+
+- Choose the club when starting a career, at the start of a new season, and from "Change club" in Settings (confirmation if the season is in progress).
+- **Changing club only changes the team:** name, kits, crest and league (a new season starts in that club's league). Your cards, squad, EP, club level and inventory stay exactly the same.
+- The former club (e.g. Manchester United) becomes an AI club with its own squad.
+- Remove the fixed `blue` user slot from the engine / saves and migrate old saves.
+- Crests shown on the home screen, pre- and post-match screens, scoreboard and league tables.
+
+### Phase 27 — Champions League / Europa League (planned)
+
+- C1 / C2 for the clubs qualified from the previous season (details to be agreed; uses the third kits for clashes).
+
+### Phase 28 — Mobile, graphics, performance, sound and release (planned)
 
 - **Mobile controls** (reference: FC Mobile layout), landscape and full screen:
   - Top left: compact score and clock. Top right: formation / tactics selector and a ☰ menu (Pause, Subs, Stats, Controls).
@@ -1077,7 +1139,7 @@ Agreed after Phase 25 (the first version made stats above 99 change too little: 
 - **Mobile performance:** lighter graphics preset (no shadows, lower pixel ratio), block page zoom and scroll, iOS Safari fixes.
 - **Visual polish, sound, performance optimisation and release preparation.**
 
-### Phase 28 — Card seasons and real player data (planned)
+### Phase 29 — Card seasons and real player data (planned)
 
 - **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
 - **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
@@ -1115,16 +1177,17 @@ Agreed after Phase 25 (the first version made stats above 99 change too little: 
 | Sút trúng cầu thủ đối phương (không phải thủ môn) thì bóng bật ra, không dính vào người | Phase 23 ✅ |
 | Mỗi đội 3 bộ áo cố định (sân nhà, sân khách, thứ 3), chọn màu áo cho cả hai đội trước trận để tránh trùng | Phase 24 ✅ |
 | Chỉ số sút / chuyền cao thì chuẩn xác hơn rõ rệt, chỉ số thấp thì kém rõ | Phase 24 ✅ |
-| Nâng cấp thẻ bằng 2 thẻ cùng cầu thủ (+1 → +10), thất bại từ +5 chỉ tụt 1 cấp | Phase 25 |
-| Thêm giải đấu khác, cho chọn CLB | Phase 26 |
-| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 27 |
-| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 28 |
+| Nâng cấp thẻ bằng 2 thẻ cùng cầu thủ (+1 → +10), thất bại từ +5 chỉ tụt 1 cấp | Phase 25 ✅ |
+| Thêm giải đấu khác (18 nước × 2 hạng, 720 CLB thật, lên / xuống hạng) | Phase 26A ✅ |
+| Cho chọn / đổi CLB | Phase 26B |
+| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 28 |
+| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 29 |
 | Skill riêng cho từng cầu thủ | Backlog |
 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–22 (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–26A (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

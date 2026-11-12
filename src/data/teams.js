@@ -1,4 +1,5 @@
-import { LEAGUE_TEAMS, USER_TEAM } from './leagueData'
+import { USER_TEAM } from './leagueData'
+import { worldClub } from './world'
 
 const clampStat = (value) => Math.max(1, Math.min(99, value))
 
@@ -239,7 +240,9 @@ export const FORMATIONS = {
   ],
 }
 
-const RIVAL_TEAM = LEAGUE_TEAMS.find((team) => team.id === 'red')
+// Ô đối thủ trong engine; mỗi trận được thay bằng đội hình CLB thật
+// (systems/roster.js → buildMatchRoster). Mặc định là Manchester City.
+const RIVAL_TEAM = worldClub('eng-manchester-city')
 
 export const TEAMS = [
   // Đội người chơi: Manchester United (trước đây là đội hình "RED UNITED").

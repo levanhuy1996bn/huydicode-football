@@ -1,11 +1,11 @@
-// Phase 22: thống kê cầu thủ cả mùa cho toàn giải (20 đội).
+// Phase 22: thống kê cầu thủ cả mùa cho toàn giải (20 đội của giải người chơi).
 //
 // - Trận của Manchester United: lấy số liệu thật từ engine lúc hết trận và lưu
 //   vào league.userMatchStats[fixtureId] (lưu cùng giải, mùa mới tự reset).
 // - Các trận AI được mô phỏng (chỉ có tỉ số): sinh người ghi bàn, kiến tạo,
 //   đường chuyền và điểm số một cách tất định theo từng trận (cùng seed thì
 //   luôn ra cùng kết quả), nên không cần lưu và luôn khớp với tỉ số.
-import { LEAGUE_TEAMS } from '../data/leagueData'
+import { worldClub } from '../data/world'
 import { buildMatchRoster, createInitialRoster, getRole } from '../systems/roster'
 import { clamp } from '../systems/constants'
 import { ratePlayer } from '../systems/matchStats'
@@ -56,7 +56,7 @@ const squadCache = new Map()
 export function clubSquad(clubId) {
     if (squadCache.has(clubId)) return squadCache.get(clubId)
 
-    const opponent = LEAGUE_TEAMS.find((team) => team.id === clubId) || null
+    const opponent = worldClub(clubId)
     const roster = buildMatchRoster(createInitialRoster(), opponent)
     const red = roster.find((team) => team.id === 'red')
     const squad = {

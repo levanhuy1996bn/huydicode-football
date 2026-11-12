@@ -1644,3 +1644,26 @@ nav button { position: relative; }
   background: #2a3a32 !important; border-color: #3a4d43 !important; color: #7b8f84 !important;
   cursor: not-allowed; box-shadow: none !important; opacity: 0.8;
 }
+
+/* ---- Phase 26A: thị trường lọc theo nước / giải / CLB ---- */
+.market-world-filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: -4px 0 12px;
+}
+
+.market-world-filters select:disabled {
+    opacity: .45;
+}
+
+.market-club-line {
+    margin-top: 3px;
+    color: #d8c58a;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

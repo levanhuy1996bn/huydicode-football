@@ -5,8 +5,17 @@
 // Phase 25: thêm toàn bộ cầu thủ Manchester United ban đầu (đá chính + dự bị,
 // data/teams.js) với đúng id cũ (blue-9, blue-sub-12…) làm playerId, để mua
 // được bản sao và đập thẻ cho đội hình gốc. Giá theo OVR như danh mục.
+//
+// Phase 26A: thêm toàn bộ cầu thủ của 720 CLB thế giới (data/worldSquads.js,
+// ~15.800 người; 3–5 ngôi sao tên thật mỗi CLB hạng nhất). Thị trường kiểu
+// thẻ FO4: mua thẻ cầu thủ bất kỳ, CLB của cầu thủ không mất người.
+// 500 cầu thủ danh mục cũ thành cầu thủ tự do (FREE AGENT).
 import { PLAYER_CATALOG } from './playerCatalog'
 import { TEAMS } from './teams'
+import { USER_CLUB_ID, worldClub } from './world'
+import { allWorldPlayers } from './worldSquads'
+
+export const FREE_AGENT = 'FREE AGENT'
 
 const rarityOf = (overall) => (overall >= 75 ? 'gold' : overall >= 65 ? 'silver' : 'bronze')
 const valueOf = (overall) => Math.max(100000, Math.round((1000000 * Math.pow(1.152, overall - 60)) / 100000) * 100000)
@@ -36,8 +45,15 @@ function clubPlayers() {
             wage: Math.max(2000, Math.round((value * 0.003) / 1000) * 1000),
             nationality: 'Manchester United',
             rarity: rarityOf(player.overall),
+            clubId: USER_CLUB_ID,
+            club: worldClub(USER_CLUB_ID)?.name || 'MANCHESTER UNITED',
+            countryId: 'eng',
         }
     })
 }
 
-export const TRANSFER_MARKET = [...clubPlayers(), ...PLAYER_CATALOG]
+const freeAgents = () =>
+    PLAYER_CATALOG.map((player) => ({ ...player, clubId: null, club: FREE_AGENT, countryId: null }))
+
+export const TRANSFER_MARKET = [...clubPlayers(), ...allWorldPlayers(), ...freeAgents()]
+export const MARKET_BY_PLAYER_ID = new Map(TRANSFER_MARKET.map((player) => [player.playerId, player]))

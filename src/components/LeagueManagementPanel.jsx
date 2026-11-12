@@ -8,7 +8,17 @@ import {
     getTeamById,
 } from '../services/leagueService'
 import { USER_TEAM } from '../data/leagueData'
+import { COUNTRIES, COUNTRY_BY_ID, LEAGUE_BY_ID } from '../data/world'
 import { buildSeasonPlayerStats } from '../services/seasonStats'
+import { leagueView, zoneOf } from '../services/worldService'
+import ClubCrest from './ClubCrest'
+
+const ZONE_LABELS = {
+    c1: 'Continental Cup (C1)',
+    c2: 'Second continental cup (C2)',
+    promotion: 'Promotion',
+    relegation: 'Relegation',
+}
 
 // Phase 22: bỏ OVERVIEW, bảng xếp hạng là tab đầu; thêm thống kê cầu thủ toàn
 // giải; FIXTURES chỉ còn các trận của đội mình, hiện hết một lượt.
@@ -51,6 +61,7 @@ function blueStatsPlayed(fixtures) {
 
 export default function LeagueManagementPanel({
                                                   league,
+                                                  world = null,
                                                   onClose,
                                                   onStartFixture,
                                                   onNewSeason,
@@ -60,11 +71,25 @@ export default function LeagueManagementPanel({
     const [clubFilter, setClubFilter] = useState('all') // 'all' | 'blue'
 
     const fixtures = league?.fixtures || []
+    const userLeagueId = league?.leagueId || 'eng1'
+    const [viewLeagueId, setViewLeagueId] = useState(userLeagueId)
+    const viewLeague = LEAGUE_BY_ID.get(viewLeagueId) || LEAGUE_BY_ID.get(userLeagueId)
+    const viewCountry = COUNTRY_BY_ID.get(viewLeague?.countryId)
+    const userLeague = LEAGUE_BY_ID.get(userLeagueId)
 
     const standings = useMemo(
-        () => getLeagueStandings(fixtures),
-        [fixtures],
+        () => getLeagueStandings(fixtures, league?.clubIds || null),
+        [fixtures, league?.clubIds],
     )
+
+    // Phase 26A: bảng của giải đang xem (giải người chơi hoặc giải ảo, chạy
+    // tới cùng vòng với giải người chơi).
+    const view = useMemo(
+        () => (world ? leagueView(world, league, viewLeague.id) : null),
+        [world, league, viewLeague.id],
+    )
+    const viewStandings = view?.standings || standings
+    const viewRounds = view?.isUserLeague === false ? view.rounds : null
 
     const progress = useMemo(
         () => getSeasonProgress(fixtures),
@@ -133,7 +158,7 @@ export default function LeagueManagementPanel({
                 <header className="league-header">
                     <div>
                         <div className="league-eyebrow">
-                            FOOTBALL LEAGUE
+                            {userLeague ? `${userLeague.country.toUpperCase()} · ${userLeague.name.toUpperCase()}` : 'FOOTBALL LEAGUE'}
                         </div>
                         <h2>LEAGUE MANAGEMENT</h2>
                         <p>SEASON {league?.season || 2026}</p>
@@ -196,11 +221,54 @@ export default function LeagueManagementPanel({
                             {champion && (
                                 <div className="league-champion-banner">
                                     LEAGUE CHAMPION · <strong>{champion.name}</strong>
+                                    {zoneOf(userLeagueId, bluePosition) === 'promotion' && <> · {USER_TEAM.shortName} PROMOTED</>}
+                                    {zoneOf(userLeagueId, bluePosition) === 'relegation' && <> · {USER_TEAM.shortName} RELEGATED</>}
+                                </div>
+                            )}
+
+                            {world && (
+                                <div className="league-picker">
+                                    <select
+                                        value={viewLeague.countryId}
+                                        onChange={(event) => {
+                                            const next = COUNTRY_BY_ID.get(event.target.value)
+                                            if (next) setViewLeagueId(next.topLeagueId)
+                                        }}
+                                        aria-label="Country"
+                                    >
+                                        {COUNTRIES.map((item) => (
+                                            <option key={item.id} value={item.id}>{item.name.toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                    <div className="segmented" role="radiogroup" aria-label="Division">
+                                        {[viewCountry?.topLeagueId, viewCountry?.secondLeagueId].filter(Boolean).map((id) => (
+                                            <button
+                                                key={id}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={viewLeague.id === id}
+                                                className={viewLeague.id === id ? 'segmented__btn active' : 'segmented__btn'}
+                                                onClick={() => setViewLeagueId(id)}
+                                            >
+                                                {LEAGUE_BY_ID.get(id)?.name.toUpperCase()}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {viewLeague.id !== userLeagueId && (
+                                        <button
+                                            type="button"
+                                            className="league-chip"
+                                            onClick={() => setViewLeagueId(userLeagueId)}
+                                        >
+                                            MY LEAGUE
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
                             <div className="league-section-title">
-                                LEAGUE STANDINGS
+                                {viewLeague ? viewLeague.name.toUpperCase() : 'LEAGUE'} STANDINGS
+                                {viewRounds != null && <small> · AFTER ROUND {viewRounds}/38</small>}
                             </div>
 
                             <div className="league-table-wrap">
@@ -219,18 +287,24 @@ export default function LeagueManagementPanel({
                                     </thead>
 
                                     <tbody>
-                                    {standings.map((team, index) => (
+                                    {viewStandings.map((team, index) => {
+                                        const zone = zoneOf(viewLeague.id, index + 1)
+
+                                        return (
                                         <tr
                                             key={team.teamId}
-                                            className={
-                                                team.teamId === 'blue'
-                                                    ? 'user-team-row'
-                                                    : ''
-                                            }
+                                            className={[
+                                                team.teamId === 'blue' ? 'user-team-row' : '',
+                                                zone ? `zone-${zone}` : '',
+                                            ].join(' ')}
+                                            title={zone ? ZONE_LABELS[zone] : undefined}
                                         >
-                                            <td>{index + 1}</td>
+                                            <td className="league-pos">{index + 1}</td>
                                             <td className="league-team-name">
-                                                {team.name}
+                                                <span className="league-team-cell">
+                                                    <ClubCrest clubId={team.teamId} size={18} />
+                                                    {team.name}
+                                                </span>
                                             </td>
                                             <td>{team.played}</td>
                                             <td>{team.won}</td>
@@ -245,13 +319,46 @@ export default function LeagueManagementPanel({
                                                 {team.points}
                                             </td>
                                         </tr>
-                                    ))}
+                                        )
+                                    })}
                                     </tbody>
                                 </table>
                             </div>
 
+                            {view?.rounds > 0 && (
+                                <>
+                                    <div className="league-section-title league-section-title--spaced">
+                                        ROUND {view.rounds} RESULTS
+                                    </div>
+                                    <div className="league-fixture-list league-fixture-list--compact">
+                                        {view.fixtures
+                                            .filter((fixture) => fixture.round === view.rounds)
+                                            .map((fixture) => (
+                                                <div key={fixture.id} className="league-fixture">
+                                                    <span className="league-fixture-team league-fixture-team--home">
+                                                        {getTeamById(fixture.homeTeamId)?.name}
+                                                        <ClubCrest clubId={fixture.homeTeamId} size={16} />
+                                                    </span>
+                                                    <strong className="league-fixture-score">{formatFixture(fixture)}</strong>
+                                                    <span className="league-fixture-team">
+                                                        <ClubCrest clubId={fixture.awayTeamId} size={16} />
+                                                        {getTeamById(fixture.awayTeamId)?.name}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="league-zone-legend">
+                                {(viewLeague?.tier === 2 ? ['promotion'] : ['c1', 'c2', 'relegation']).map((zone) => (
+                                    <span key={zone} className={`zone-key zone-key--${zone}`}>{ZONE_LABELS[zone]}</span>
+                                ))}
+                            </div>
+
                             <p className="league-table-note">
                                 P: Played · W: Won · D: Drawn · L: Lost · GD: Goal Difference · PTS: Points
+                                {viewRounds != null && ' · Other leagues are simulated and move forward with your matches.'}
                             </p>
                         </section>
                     )}
@@ -260,7 +367,7 @@ export default function LeagueManagementPanel({
                         <section>
                             <div className="league-fixture-toolbar">
                                 <div className="league-section-title">
-                                    SEASON PLAYER STATS · ALL 20 CLUBS
+                                    SEASON PLAYER STATS · {userLeague?.name.toUpperCase() || 'ALL 20 CLUBS'}
                                 </div>
 
                                 <div className="segmented" role="radiogroup" aria-label="Club filter">
@@ -378,6 +485,7 @@ export default function LeagueManagementPanel({
                                                 {isHome ? 'H' : 'A'}
                                             </span>
                                             <span className="league-fixture-team">
+                                                <ClubCrest clubId={opponent?.id} size={16} />
                                                 {opponent?.name || 'Unknown'}
                                             </span>
                                             <strong className="league-fixture-score">

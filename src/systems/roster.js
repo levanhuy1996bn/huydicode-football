@@ -1,6 +1,6 @@
-import { clamp } from './constants'
 import { TEAMS } from '../data/teams'
-import { LEAGUE_TEAMS } from '../data/leagueData'
+import { worldClub } from '../data/world'
+import { BENCH_COUNT, STARTER_COUNT, worldSquad } from '../data/worldSquads'
 import { ensureCardFields, playerIdOf } from '../services/cards'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
@@ -140,8 +140,6 @@ export function matchdayConflict(team, incoming, leavingIds = []) {
     ) || null
 }
 
-export const RED_BASE_STRENGTH = 79
-
 export const OPPONENT_COLORS = [
     // Tránh xanh lá (trùng màu cỏ) và đỏ (trùng áo Manchester United).
     '#2387ff', '#0d47a1', '#8e44ad', '#f1c40f', '#f5f5f5',
@@ -150,8 +148,8 @@ export const OPPONENT_COLORS = [
 ]
 
 export function getOpponentColor(teamId) {
-    const leagueColor = LEAGUE_TEAMS.find((team) => team.id === teamId)?.color
-    if (leagueColor) return leagueColor
+    const clubColor = worldClub(teamId)?.color
+    if (clubColor) return clubColor
     let hash = 0
     for (const char of String(teamId)) {
         hash = (hash * 31 + char.charCodeAt(0)) >>> 0
@@ -159,42 +157,56 @@ export function getOpponentColor(teamId) {
     return OPPONENT_COLORS[hash % OPPONENT_COLORS.length]
 }
 
-// Đội hình RED trong trận 3D được "đóng vai" đối thủ thật của vòng đấu:
-// đổi tên, màu áo và quy đổi chỉ số theo strength của đội đó.
+// Phase 26A: đội RED trong trận 3D "đóng vai" CLB thật của vòng đấu: dùng
+// đúng đội hình 22 người tất định của CLB đó (data/worldSquads.js): 11 người
+// đầu vào 11 ô sơ đồ của đội RED (giữ toạ độ ô), 9 người kế tiếp ngồi dự bị.
 export function buildMatchRoster(roster, opponent) {
     if (!opponent || opponent.id === 'red') return roster
 
-    const delta = (opponent.strength ?? RED_BASE_STRENGTH) - RED_BASE_STRENGTH
-    const statKeys = [
-        'overall', 'pace', 'shooting', 'passing',
-        'dribbling', 'defending', 'physical',
-    ]
+    const squad = worldSquad(opponent.id)
 
-    const mapPlayer = (player) => {
-        const next = { ...player }
+    if (!squad.length) return roster
 
-        statKeys.forEach((key) => {
-            if (typeof next[key] === 'number') {
-                next[key] = Math.round(clamp(next[key] + delta, 1, 99))
-            }
-        })
-
-        // Đối thủ khác Manchester City: mỗi đội một bộ tên riêng.
-        next.name = generatePlayerName(opponent.id, next.number)
-
-        return next
-    }
+    const toMatchPlayer = (template, player) => ({
+        ...template,
+        id: player.id,
+        playerId: player.playerId,
+        cardId: player.id,
+        name: player.name,
+        position: player.position,
+        number: player.number,
+        overall: player.overall,
+        pace: player.pace,
+        shooting: player.shooting,
+        passing: player.passing,
+        dribbling: player.dribbling,
+        defending: player.defending,
+        physical: player.physical,
+        age: player.age,
+        upgrade: 1,
+        rarity: player.rarity,
+        condition: 100,
+    })
 
     return roster.map((team) => {
         if (team.id !== 'red') return team
+
+        const starters = squad.slice(0, STARTER_COUNT)
+        const bench = squad.slice(STARTER_COUNT, STARTER_COUNT + BENCH_COUNT)
+        const benchTemplate = team.substitutes?.[0] || team.players[0]
 
         return {
             ...team,
             name: opponent.name,
             shortName: opponent.shortName,
             color: getOpponentColor(opponent.id),
-            players: team.players.map(mapPlayer),
-            substitutes: (team.substitutes || []).map(mapPlayer),
+            players: team.players.map((slot, index) =>
+                toMatchPlayer(slot, starters[index] || starters[starters.length - 1]),
+            ),
+            substitutes: bench.map((player, index) =>
+                toMatchPlayer({ ...benchTemplate, x: -28 + index * 7, z: -48 }, player),
+            ),
+            reserves: [],
         }
     })
 }

@@ -7,6 +7,7 @@
 //   upgrade      — cấp thẻ +1…+10 (Phase 25). Thẻ mở từ gói hiện luôn là +1.
 //   rarity       — gold / silver / bronze theo OVR.
 import { PLAYER_CATALOG } from '../data/playerCatalog'
+import { allWorldPlayers } from '../data/worldSquads'
 
 export const RARITY_LABELS = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' }
 
@@ -79,12 +80,21 @@ export const PACK_TYPES = {
     },
 }
 
-const BY_RARITY = PLAYER_CATALOG.reduce((groups, player) => {
-    const key = player.rarity || rarityOf(player.overall)
+// Phase 26A: gói rút từ mọi cầu thủ thế giới + cầu thủ tự do (tạo lần đầu dùng).
+let byRarity = null
 
-    ;(groups[key] = groups[key] || []).push(player)
-    return groups
-}, {})
+function poolsByRarity() {
+    if (byRarity) return byRarity
+
+    byRarity = [...allWorldPlayers(), ...PLAYER_CATALOG].reduce((groups, player) => {
+        const key = player.rarity || rarityOf(player.overall)
+
+        ;(groups[key] = groups[key] || []).push(player)
+        return groups
+    }, {})
+
+    return byRarity
+}
 
 export function rollPackRarity(packType, random = Math.random) {
     const odds = PACK_TYPES[packType]?.odds || PACK_TYPES.standard.odds
@@ -101,7 +111,7 @@ export function rollPackRarity(packType, random = Math.random) {
 // Rút một cầu thủ trong danh mục theo độ hiếm của gói.
 export function drawFromPack(packType, random = Math.random) {
     const rarity = rollPackRarity(packType, random)
-    const pool = BY_RARITY[rarity] || PLAYER_CATALOG
+    const pool = poolsByRarity()[rarity] || PLAYER_CATALOG
 
     return pool[Math.floor(random() * pool.length)]
 }
