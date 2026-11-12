@@ -42,6 +42,8 @@ export function startWhistle(ctx, type) {
 
     ctx.onActionMessage(type === 'half' ? 'HALF TIME' : 'FULL TIME')
     ctx.onWhistle?.(type)
+    // Phase 29B: còi hết hiệp (2 tiếng) / hết trận (3 tiếng).
+    ctx.onSound?.('whistle', { kind: type === 'half' ? 'half' : 'full' })
 }
 
 function celebrate(ctx) {

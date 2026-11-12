@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
 import { passAccuracy } from '../systems/matchStats'
 import { shortPlayerName } from '../utils/names'
 
@@ -62,7 +62,7 @@ export function StatComparison({ source, compact = false, twoColumns = false, op
         <div className={className}>
             {opponentName && (
                 <div className="stat-compare__teams">
-                    <span>{USER_TEAM.shortName}</span>
+                    <span>{userTeam().shortName}</span>
                     <span>{opponentName}</span>
                 </div>
             )}
@@ -148,7 +148,9 @@ export function MatchTimeline({ events = [] }) {
     const label = (event) => {
         if (event.sub) return `${event.minute}' ${event.sub.on} on, ${event.sub.off} off`
         if (event.card) return `${event.minute}' ${event.card} card · ${event.name || ''}`
-        return `${event.minute}' GOAL · ${event.name || 'Unknown'}${event.ownGoal ? ' (OG)' : ''}`
+        const tag = event.ownGoal ? ' (OG)' : event.deflected ? ' (deflected)' : event.rebound ? ' (rebound)' : ''
+
+        return `${event.minute}' GOAL · ${event.name || 'Unknown'}${tag}`
     }
 
     return (
@@ -205,9 +207,9 @@ function ShotDots({ shots, teamId }) {
                     cx={x}
                     cy={y}
                     r={r}
-                    className={`shotmap__shot shotmap__shot--${teamId}${shot.goal ? ' is-goal' : ''}`}
+                    className={`shotmap__shot shotmap__shot--${teamId}${shot.goal ? ' is-goal' : ''}${shot.rebound ? ' is-rebound' : ''}`}
                 >
-                    <title>{`xG ${shot.xg.toFixed(2)}${shot.goal ? ' · GOAL' : ''}${shot.variant ? ` · ${shot.variant}` : ''}`}</title>
+                    <title>{`xG ${shot.xg.toFixed(2)}${shot.goal ? ' · GOAL' : ''}${shot.rebound ? ' · REBOUND' : ''}${shot.deflected ? ' · DEFLECTED' : ''}${shot.variant ? ` · ${shot.variant}` : ''}`}</title>
                 </circle>
             )
         })
@@ -241,13 +243,13 @@ export function ShotMap({ shots = [], opponentName }) {
 
     return (
         <div className="shotmap">
-            <HalfPitch title={`${USER_TEAM.shortName} · ${summary('blue')}`}>
+            <HalfPitch title={`${userTeam().shortName} · ${summary('blue')}`}>
                 <ShotDots shots={shots} teamId="blue" />
             </HalfPitch>
             <HalfPitch title={`${opponentName} · ${summary('red')}`}>
                 <ShotDots shots={shots} teamId="red" />
             </HalfPitch>
-            <p className="shotmap__legend">Bigger dot = better chance (higher xG). Filled = goal.</p>
+            <p className="shotmap__legend">Bigger dot = better chance (higher xG). Filled = goal. Dashed ring = rebound.</p>
         </div>
     )
 }

@@ -1,4 +1,9 @@
-import { USER_TEAM } from '../../data/leagueData'
+import { useState } from 'react'
+import { isMuted, setMuted } from '../../utils/sound'
+import { SIM_DAILY_LIMIT } from '../../services/quickSim'
+import { fixtureLabel } from '../../services/cupService'
+import ClubCrest from '../ClubCrest'
+import { isUserClub, userClubId, userTeam } from '../../services/career'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
 // trận tiếp theo, bảng xếp hạng thu gọn, kết quả gần nhất, đội hình,
 // CLB, tiến độ mùa giải và cài đặt.
@@ -15,12 +20,11 @@ const LABEL_MODES = [
     ['off', 'OFF'],
 ]
 
-function TeamBadge({ name, shortName, color, strength, position, side }) {
+function TeamBadge({ clubId, name, strength, position, side }) {
     return (
         <div className={`home-team home-team--${side}`}>
-            <div className="home-team__crest" style={{ '--crest': color }}>
-                {shortName}
-            </div>
+            {/* Phase 26B: huy hiệu CLB */}
+            <ClubCrest clubId={clubId} size={68} className="home-team__badge" />
             <div className="home-team__name">{name}</div>
             <div className="home-team__meta">
                 {position ? `${position}${ordinal(position)} · ` : ''}STR {strength}
@@ -53,8 +57,12 @@ export default function HomeScreen({
     onOpenClub,
     onOpenDevelopment,
     onNewSeason,
+    onChangeClub,
+    simsLeft = 0,
+    onSimulate,
 }) {
-    const bluePosition = standings.findIndex((team) => team.teamId === 'blue') + 1
+    const [muted, setMutedState] = useState(isMuted)
+    const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
     const topRows = standings.slice(0, 6)
     const blueRow = standings[bluePosition - 1]
     const showBlueRow = bluePosition > 6
@@ -66,25 +74,23 @@ export default function HomeScreen({
                 {nextMatch ? (
                     <>
                         <div className="home-hero__eyebrow">
-                            NEXT MATCH · ROUND {nextMatch.fixture.round} ·{' '}
+                            NEXT MATCH · {fixtureLabel(nextMatch.fixture)} ·{' '}
                             {nextMatch.isHome ? 'HOME' : 'AWAY'}
                         </div>
 
                         <div className="home-hero__teams">
                             <TeamBadge
                                 side="home"
-                                name={USER_TEAM.name}
-                                shortName={USER_TEAM.shortName}
-                                color={USER_TEAM.color}
+                                clubId={userClubId()}
+                                name={userTeam().name}
                                 strength={nextMatch.blueStrength}
                                 position={bluePosition}
                             />
                             <div className="home-hero__vs">VS</div>
                             <TeamBadge
                                 side="away"
+                                clubId={nextMatch.opponent.id}
                                 name={nextMatch.opponent.name}
-                                shortName={nextMatch.opponent.shortName}
-                                color={nextMatch.opponentColor}
                                 strength={nextMatch.opponent.strength}
                                 position={nextMatch.opponentPosition}
                             />
@@ -96,6 +102,16 @@ export default function HomeScreen({
                             </button>
                             <button type="button" className="btn" onClick={onEditLineup}>
                                 EDIT LINEUP
+                            </button>
+                            {/* Phase 28 */}
+                            <button
+                                type="button"
+                                className="btn btn--sim btn--large"
+                                onClick={onSimulate}
+                                disabled={!simsLeft}
+                                title="Quick simulation: instant result, rewards ×0.7 · 5 per day"
+                            >
+                                SIMULATE <small>{simsLeft}/{SIM_DAILY_LIMIT}</small>
                             </button>
                         </div>
                     </>
@@ -135,9 +151,9 @@ export default function HomeScreen({
                         </thead>
                         <tbody>
                             {topRows.map((team, index) => (
-                                <tr key={team.teamId} className={team.teamId === 'blue' ? 'is-user' : ''}>
+                                <tr key={team.teamId} className={isUserClub(team.teamId) ? 'is-user' : ''}>
                                     <td>{index + 1}</td>
-                                    <td>{team.name}</td>
+                                    <td><span className="home-table__club"><ClubCrest clubId={team.teamId} size={15} />{team.name}</span></td>
                                     <td>{team.played}</td>
                                     <td>{team.goalDifference}</td>
                                     <td><b>{team.points}</b></td>
@@ -146,7 +162,7 @@ export default function HomeScreen({
                             {showBlueRow && blueRow && (
                                 <tr className="is-user is-separated">
                                     <td>{bluePosition}</td>
-                                    <td>{blueRow.name}</td>
+                                    <td><span className="home-table__club"><ClubCrest clubId={blueRow.teamId} size={15} />{blueRow.name}</span></td>
                                     <td>{blueRow.played}</td>
                                     <td>{blueRow.goalDifference}</td>
                                     <td><b>{blueRow.points}</b></td>
@@ -165,10 +181,10 @@ export default function HomeScreen({
                                 {lastResult.outcome.toUpperCase()}
                             </span>
                             <div className="last-result__score">
-                                {USER_TEAM.name} <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
+                                {userTeam().name} <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
                                 {lastResult.opponentName}
                             </div>
-                            <small>ROUND {lastResult.round}</small>
+                            <small>{lastResult.label || `ROUND ${lastResult.round}`}</small>
                         </div>
                     ) : (
                         <p className="home-card__empty">No matches played yet this season.</p>
@@ -200,7 +216,7 @@ export default function HomeScreen({
                     <div className="stat-tiles">
                         <div><b>{squad.formation}</b><small>FORMATION</small></div>
                         <div><b>{squad.averageOverall}</b><small>AVG OVR (XI)</small></div>
-                        <div><b>{squad.size}</b><small>PLAYERS</small></div>
+                        <div><b>{squad.size}/50</b><small>PLAYERS</small></div>
                         <div><b>{squad.value}</b><small>SQUAD VALUE</small></div>
                     </div>
                     <div className="home-card__head home-card__head--spaced">
@@ -215,17 +231,28 @@ export default function HomeScreen({
                             : 'Players earn XP every match and gain attribute points when they level up.'}
                     </p>
                     <div className="home-card__head home-card__head--spaced">
-                        <span>CLUB</span>
+                        <span>TRANSFERS</span>
                         <button type="button" className="link-btn" onClick={onOpenClub}>
-                            CLUB MANAGEMENT →
+                            TRANSFER MARKET →
                         </button>
                     </div>
-                    <p className="home-card__empty">Transfers, contracts and wages.</p>
+                    <p className="home-card__empty">Sign and sell players, contracts and wages.</p>
                 </div>
 
                 {/* Cài đặt */}
                 <div className="home-card">
                     <div className="home-card__head"><span>SETTINGS</span></div>
+                    {/* Phase 26B */}
+                    <div className="setting-row setting-row--club">
+                        <span>Club</span>
+                        <div className="setting-club">
+                            <ClubCrest clubId={userClubId()} size={22} />
+                            <b>{userTeam().name}</b>
+                            <button type="button" className="btn btn--small" onClick={onChangeClub}>
+                                CHANGE CLUB
+                            </button>
+                        </div>
+                    </div>
                     <div className="setting-row">
                         <span>Match length</span>
                         <div className="segmented">
@@ -256,8 +283,58 @@ export default function HomeScreen({
                             ))}
                         </div>
                     </div>
+                    {/* Phase 29B */}
+                    <div className="setting-row">
+                        <span>Graphics</span>
+                        <div className="segmented">
+                            {[['high', 'HIGH'], ['low', 'LOW']].map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className={(settings.graphics || 'high') === value ? 'is-active' : ''}
+                                    onClick={() => onSettingsChange({ graphics: value })}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="setting-row">
+                        <span>Sound</span>
+                        <div className="segmented">
+                            {[[false, 'ON'], [true, 'OFF']].map(([value, label]) => (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    className={muted === value ? 'is-active' : ''}
+                                    onClick={() => {
+                                        setMuted(value)
+                                        setMutedState(value)
+                                    }}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="setting-row">
+                        <span>FPS counter</span>
+                        <div className="segmented">
+                            {[[true, 'ON'], [false, 'OFF']].map(([value, label]) => (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    className={Boolean(settings.showFps) === value ? 'is-active' : ''}
+                                    onClick={() => onSettingsChange({ showFps: value })}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <p className="home-card__empty">
-                        Match length is real time for 90 minutes of play.
+                        Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
+                        smoothing for weaker laptops and phones.
                     </p>
                 </div>
             </div>

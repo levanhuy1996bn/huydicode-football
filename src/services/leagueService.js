@@ -1,14 +1,22 @@
+// Phase 26A: giải đấu của người chơi là một trong 36 giải của thế giới
+// (data/world.js). Bản lưu: { season, leagueId, clubIds, fixtures,
+// userMatchStats }. Các giải khác là "giải ảo" (services/worldService.js).
 import {
-    LEAGUE_TEAMS,
     LEAGUE_STORAGE_KEY,
     LEAGUE_POINTS,
 } from '../data/leagueData'
+import { hashString, worldClub } from '../data/world'
+import { isUserClub, userClubId } from './career'
+import { DEFAULT_DIFFICULTY } from './difficulty'
 
-const CURRENT_SEASON = 2026
+export const CURRENT_SEASON = 2026
+export const FIXTURES_PER_LEAGUE = 380
 
-function createEmptyTeamStats(team) {
+function createEmptyTeamStats(teamId) {
+    const team = worldClub(teamId) || { name: String(teamId).toUpperCase(), shortName: String(teamId).toUpperCase(), strength: 70 }
+
     return {
-        teamId: team.id,
+        teamId,
         name: team.name,
         shortName: team.shortName,
         strength: team.strength,
@@ -34,8 +42,8 @@ function seededRandom(seed) {
     }
 }
 
-function generateRoundRobin(teams) {
-    const participants = teams.map((team) => team.id)
+function generateRoundRobin(clubIds) {
+    const participants = [...clubIds]
     const teamCount = participants.length
 
     if (teamCount % 2 !== 0) {
@@ -57,7 +65,10 @@ function generateRoundRobin(teams) {
 
             if (!home || !away) continue
 
-            const shouldSwap = (round + index) % 2 === 1
+            // Phase 27: xen kẽ sân nhà / sân khách (phương pháp vòng tròn chuẩn).
+            // Công thức cũ (round + index) làm một đội đá sân khách liền nửa
+            // mùa đầu rồi sân nhà liền nửa mùa sau.
+            const shouldSwap = round % 2 === 1
 
             matches.push({
                 homeTeamId: shouldSwap ? away : home,
@@ -84,12 +95,19 @@ function generateRoundRobin(teams) {
     return [...firstLeg, ...secondLeg]
 }
 
-export function generateSeasonFixtures(season = CURRENT_SEASON) {
-    const rounds = generateRoundRobin(LEAGUE_TEAMS)
+// Thứ tự CLB trong vòng tròn được xáo theo mùa + giải để lịch mỗi mùa khác nhau.
+function shuffledClubs(clubIds, season, leagueId) {
+    return [...clubIds].sort(
+        (a, b) => hashString(`${season}:${leagueId}:${a}`) - hashString(`${season}:${leagueId}:${b}`),
+    )
+}
+
+export function generateSeasonFixtures(season = CURRENT_SEASON, clubIds = [], leagueId = 'eng1') {
+    const rounds = generateRoundRobin(shuffledClubs(clubIds, season, leagueId))
 
     return rounds.flatMap((matches, roundIndex) =>
         matches.map((match, matchIndex) => ({
-            id: `s${season}-r${roundIndex + 1}-m${matchIndex + 1}`,
+            id: `s${season}-${leagueId}-r${roundIndex + 1}-m${matchIndex + 1}`,
             season,
             round: roundIndex + 1,
             homeTeamId: match.homeTeamId,
@@ -102,36 +120,40 @@ export function generateSeasonFixtures(season = CURRENT_SEASON) {
     )
 }
 
-export function createInitialLeague(season = CURRENT_SEASON) {
+export function createInitialLeague(season, leagueId, clubIds, difficulty = DEFAULT_DIFFICULTY) {
     return {
         season,
-        fixtures: generateSeasonFixtures(season),
+        leagueId,
+        // Phase 26C: độ khó của mùa (services/difficulty.js).
+        difficulty,
+        clubIds: [...clubIds],
+        fixtures: generateSeasonFixtures(season, clubIds, leagueId),
+        userMatchStats: {},
         createdAt: Date.now(),
     }
 }
 
-export function loadLeague() {
+// Bản lưu thô (có thể là bản cũ trước Phase 26, chưa có leagueId).
+export function readLeagueSave() {
     try {
         const saved = localStorage.getItem(LEAGUE_STORAGE_KEY)
 
-        if (!saved) {
-            return createInitialLeague()
-        }
-
-        const parsed = JSON.parse(saved)
-
-        if (
-            !parsed ||
-            !Array.isArray(parsed.fixtures) ||
-            parsed.fixtures.length !== 380
-        ) {
-            return createInitialLeague()
-        }
-
-        return parsed
+        return saved ? JSON.parse(saved) : null
     } catch {
-        return createInitialLeague()
+        return null
     }
+}
+
+export function isValidLeagueSave(league) {
+    return Boolean(
+        league &&
+        league.leagueId &&
+        Array.isArray(league.clubIds) &&
+        league.clubIds.length === 20 &&
+        league.clubIds.includes(userClubId()) &&
+        Array.isArray(league.fixtures) &&
+        league.fixtures.length === FIXTURES_PER_LEAGUE,
+    )
 }
 
 export function saveLeague(league) {
@@ -145,8 +167,10 @@ export function saveLeague(league) {
     }
 }
 
-export function getLeagueStandings(fixtures) {
-    const standings = LEAGUE_TEAMS.map(createEmptyTeamStats)
+// clubIds: danh sách CLB của giải (mặc định suy ra từ lịch thi đấu).
+export function getLeagueStandings(fixtures, clubIds = null) {
+    const ids = clubIds || [...new Set(fixtures.flatMap((fixture) => [fixture.homeTeamId, fixture.awayTeamId]))]
+    const standings = ids.map(createEmptyTeamStats)
     const statsById = new Map(
         standings.map((team) => [team.teamId, team]),
     )
@@ -205,8 +229,9 @@ export function getLeagueStandings(fixtures) {
     )
 }
 
+// CLB bất kỳ trong thế giới (id cũ 'red' = Manchester City).
 export function getTeamById(teamId) {
-    return LEAGUE_TEAMS.find((team) => team.id === teamId) || null
+    return worldClub(teamId)
 }
 
 export function getNextUserFixture(fixtures) {
@@ -214,8 +239,8 @@ export function getNextUserFixture(fixtures) {
         .filter((fixture) =>
             !fixture.played &&
             (
-                fixture.homeTeamId === 'blue' ||
-                fixture.awayTeamId === 'blue'
+                isUserClub(fixture.homeTeamId) ||
+                isUserClub(fixture.awayTeamId)
             ),
         )
         .sort((a, b) =>
@@ -264,13 +289,7 @@ export function simulateFixture(fixture) {
 
     if (!home || !away) return fixture
 
-    const seed = (
-        fixture.season * 100000 +
-        fixture.round * 1000 +
-        LEAGUE_TEAMS.findIndex((team) => team.id === fixture.homeTeamId) * 31 +
-        LEAGUE_TEAMS.findIndex((team) => team.id === fixture.awayTeamId)
-    )
-
+    const seed = hashString(`${fixture.id}:${fixture.homeTeamId}:${fixture.awayTeamId}`) % 2147483000 + 1
     const result = simulateGoals(home, away, seed)
 
     return {
@@ -288,8 +307,8 @@ export function simulateOtherMatchesInRound(league, round) {
         }
 
         if (
-            fixture.homeTeamId === 'blue' ||
-            fixture.awayTeamId === 'blue'
+            isUserClub(fixture.homeTeamId) ||
+            isUserClub(fixture.awayTeamId)
         ) {
             return fixture
         }
@@ -335,18 +354,13 @@ export function recordUserFixtureResult(
     )
 }
 
-export function startNewSeason(previousLeague) {
-    const nextSeason = (previousLeague?.season || CURRENT_SEASON) + 1
-
-    return createInitialLeague(nextSeason)
-}
 
 export function getSeasonProgress(fixtures) {
     const total = fixtures.length
     const played = fixtures.filter((fixture) => fixture.played).length
     const userFixtures = fixtures.filter((fixture) =>
-        fixture.homeTeamId === 'blue' ||
-        fixture.awayTeamId === 'blue',
+        isUserClub(fixture.homeTeamId) ||
+        isUserClub(fixture.awayTeamId),
     )
     const userPlayed = userFixtures.filter(
         (fixture) => fixture.played,

@@ -1,3 +1,4 @@
+import { teamColorOf, withTeamColor } from '../services/teamColor'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Billboard, ContactShadows } from '@react-three/drei'
@@ -11,6 +12,8 @@ import * as THREE from 'three'
 
 import { useKeyboard } from '../hooks/useKeyboard'
 import Pitch from './Pitch'
+import Stadium from './Stadium'
+import { crowdIntensity, matchSoundEvent } from '../utils/matchSound'
 import Player from './Player'
 
 import { FIXED_STEP, TACTICS, clamp } from '../systems/constants'
@@ -28,7 +31,7 @@ import { resetPositions } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
 import { noteUserInput, stepMatch } from '../systems/matchEngine'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
 
 function FixedCamera({ ballRef }) {
     const { camera, size } = useThree()
@@ -358,7 +361,7 @@ function useRadar(radarRef, ctx) {
             g.arc(sx, sy, radius, 0, Math.PI * 2)
             g.fillStyle =
                 item.role === 'GK'
-                    ? '#f0c928'
+                    ? ctx.keeperColors?.[item.teamId] || '#f0c928'
                     : ctx.teamColors?.[item.teamId] || '#ffffff'
             g.fill()
             g.lineWidth = Math.max(1, unit * 0.3)
@@ -410,6 +413,8 @@ export default function MatchWorld({
     onWhistleDone,
     onAutoPilotChange,
     onCard,
+    // Phase 29B: chất lượng đồ hoạ ('high' | 'low').
+    quality = 'high',
 }) {
     const keys = useKeyboard()
 
@@ -433,17 +438,22 @@ export default function MatchWorld({
     useChargeHud(chargeHudRef, state)
     useRadar(radarRef, ctxRef.current)
 
+    // Phase 26D: team color tính trên 11 người đá chính của mỗi đội (kể cả
+    // người bị thẻ đỏ, nên thẻ đỏ không làm mất team color); thay người thì
+    // roster đổi → tính lại. Engine dùng chỉ số đã cộng; roster gốc không đổi.
     const players = useMemo(
         () =>
-            roster.flatMap((team) =>
-                team.players
+            roster.flatMap((team) => {
+                const bonus = teamColorOf(team.players).bonus
+
+                return team.players
                     .filter((player) => !sentOff.includes(player.id))
                     .map((player) => ({
-                        ...player,
+                        ...withTeamColor(player, bonus),
                         teamId: team.id,
                         role: getRole(player),
-                    })),
-            ),
+                    }))
+            }),
         [roster, sentOff],
     )
 
@@ -466,7 +476,7 @@ export default function MatchWorld({
         roster.find((team) => team.id === 'red')?.name || 'OPPONENT'
 
     const userTeamName =
-        roster.find((team) => team.id === 'blue')?.name || USER_TEAM.name
+        roster.find((team) => team.id === 'blue')?.name || userTeam().name
 
     // ctx là object ổn định, được cập nhật giá trị mới nhất mỗi lần render.
     const ctx = ctxRef.current
@@ -490,14 +500,22 @@ export default function MatchWorld({
         isPlaying,
         opponentName,
         userTeamName,
+        // Phase 26C: tốc độ ra quyết định của AI đối thủ theo độ khó.
+        aiSpeed: roster.find((team) => team.id === 'red')?.aiSpeed || 1,
         teamColors: Object.fromEntries(
             roster.map((team) => [team.id, team.color]),
+        ),
+        // Phase 24: màu áo thủ môn từng đội (bản đồ mini).
+        keeperColors: Object.fromEntries(
+            roster.map((team) => [team.id, team.keeperKit?.shirt || '#f0c928']),
         ),
         onSelect,
         onActionMessage,
         onGoal,
         onCard,
         onSentOff: (id) => setSentOff((list) => (list.includes(id) ? list : [...list, id])),
+        // Phase 29B: âm thanh trận đấu (còi, chạm bóng, cứu thua, sút trượt).
+        onSound: matchSoundEvent,
     })
     // Người đang điều khiển: engine có thể tự đổi (nhận bóng, giao bóng, S/Q)
     // trước khi React kịp render lại. Chỉ đồng bộ từ prop khi prop THAY ĐỔI,
@@ -683,6 +701,23 @@ export default function MatchWorld({
         stepMatch(ctx, FIXED_STEP)
     })
 
+    // Phase 29B: tiếng khán giả to dần khi bóng tới gần khung thành (4 lần/giây).
+    const crowdTimer = useRef(0)
+
+    useFrame((_, delta) => {
+        crowdTimer.current += delta
+
+        if (crowdTimer.current < 0.25) return
+
+        crowdTimer.current = 0
+
+        const position = ballRef.current?.translation()
+
+        if (!position || !ctx.isPlaying) return
+
+        crowdIntensity(clamp((Math.abs(position.z) - 22) / 28, 0, 1))
+    })
+
     return (
         <>
             <color attach="background" args={['#10251d']} />
@@ -693,12 +728,19 @@ export default function MatchWorld({
             <directionalLight
                 position={[-25, 45, 20]}
                 intensity={2.2}
-                castShadow
+                castShadow={quality !== 'low'}
                 shadow-mapSize={[2048, 2048]}
             />
 
             <FixedCamera ballRef={ballRef} />
 
+            <Stadium
+                quality={quality}
+                colors={[
+                    roster.find((team) => team.id === 'blue')?.color || '#c8102e',
+                    roster.find((team) => team.id === 'red')?.color || '#00b2a9',
+                ]}
+            />
             <Pitch />
             <GroundCollider />
             <Ball bodyRef={ballRef} />
@@ -717,6 +759,8 @@ export default function MatchWorld({
                         key={player.id}
                         player={player}
                         teamColor={team.color}
+                        kit={team.kit}
+                        keeperKit={team.keeperKit}
                         matchState={state}
                         labelMode={labelMode}
                         isSelected={selectedId === player.id}
@@ -726,13 +770,16 @@ export default function MatchWorld({
                 )
             })}
 
-            <ContactShadows
-                position={[0, -0.04, 0]}
-                opacity={0.25}
-                scale={115}
-                blur={2.5}
-                far={12}
-            />
+            {/* Bóng mờ dưới chân: tốn GPU nhất → tắt khi LOW. */}
+            {quality !== 'low' && (
+                <ContactShadows
+                    position={[0, -0.04, 0]}
+                    opacity={0.25}
+                    scale={115}
+                    blur={2.5}
+                    far={12}
+                />
+            )}
         </>
     )
 }

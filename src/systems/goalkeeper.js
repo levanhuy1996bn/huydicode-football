@@ -1,10 +1,12 @@
+import { keeperReachBonus } from './physique'
 import { FIELD, clamp, distance2D } from './constants'
 import { facingFor, ownGoalSign } from './matchState'
 import { attachBallToPlayer, curlOffset, teamPlayers } from './ball'
 import { moveAIPlayer } from './movement'
 import { recordPlayer, recordTeam } from './matchStats'
 import { isPlayerLocked, setPlayerAction } from './playerState'
-import { attr, skill01 } from './attributes'
+import { attr, over99, skill01 } from './attributes'
+import { OVER_99 } from './constants'
 import { fatiguePenalty } from './stamina'
 
 // ---- Phase 16: thủ môn ----
@@ -98,12 +100,20 @@ function planSave(ctx, teamId, keeper, keeperItem) {
     const reflexes = attr(keeperItem, 'reflexes') - tired
     const diving = attr(keeperItem, 'diving') - tired
     const rating = (reflexes + diving) / 2
-    const reaction = clamp(0.24 - (reflexes - 70) * 0.006, 0.1, 0.3)
+    // Phase 25: trên 99 phản xạ còn nhanh thêm (0.10 → 0.08 → 0.065 → 0.05s
+    // ở 99 / 110 / 120 / 130), tầm bay xa thêm tới 0.9m, cứu thua tối đa +7%.
+    const reaction = Math.max(
+        OVER_99.minReaction,
+        clamp(0.24 - (Math.min(reflexes, 99) - 70) * 0.006, 0.1, 0.3) -
+            Math.max(0, skill01(reflexes) - 1) * OVER_99.keeperReaction,
+    )
+    const saveBonus = over99(rating) * OVER_99.keeperSave
     const speed = Math.hypot(velocity.x, velocity.y, velocity.z)
     const timeToDive = timeToKeeper - reaction
     const maxReach =
         STAND_REACH + DIVE_SPEED * clamp(timeToDive, 0, DIVE_PUSH_TIME) + 0.8 +
-        (diving - 70) * 0.025
+        (diving - 70) * 0.025 + over99(diving) * OVER_99.keeperReach +
+        keeperReachBonus(keeperItem)
 
     // Bóng lốp bay qua đầu (cao hơn tầm với ở chỗ đang đứng): lùi về đón
     // bóng lúc nó rơi xuống — trước vạch vôi, hoặc ngay trên vạch nếu bóng rơi
@@ -114,7 +124,7 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         if (backpedal) {
             const rating = (reflexes + diving) / 2
             const effort = backpedal.run / BACKPEDAL_SPEED / backpedal.time
-            const chance = clamp(0.88 + (rating - 70) * 0.01 - effort * 0.65, 0.08, 0.85)
+            const chance = clamp(0.88 + (rating - 70) * 0.01 - effort * 0.65, 0.08, 0.85 + saveBonus)
 
             return {
                 kickId: state.kickId,
@@ -150,7 +160,7 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         chance = clamp(
             0.9 + (rating - 70) * 0.005 - Math.max(0, speed - 26) * 0.02,
             0.65,
-            0.97,
+            0.97 + saveBonus * 0.3,
         )
     } else if (reachable) {
         // Phase 18: tính theo tỉ lệ tầm với đã dùng (0 = sát người, 1 = vươn
@@ -170,7 +180,7 @@ function planSave(ctx, teamId, keeper, keeperItem) {
             Math.max(0, crossY - 1.9) * 0.25 -
             (timeToDive < 0.18 ? 0.15 : 0),
             0.1,
-            0.9,
+            0.9 + saveBonus,
         )
     }
 
@@ -332,6 +342,9 @@ function resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel) {
         state.pickupLocks[keeperItem.id] = 0.8
         return
     }
+
+    // Phase 29B: khán giả "ồ" khi thủ môn cứu thua.
+    ctx.onSound?.('save')
 
     recordTeam(state, enemyTeamId, 'onTarget')
     recordTeam(state, teamId, 'saves')
@@ -511,7 +524,7 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
     // Positioning kém → đứng lệch về cột gần thêm tới ~0.8m.
     const keeperOffLine = FIELD.lineZ - Math.abs(targetZ)
     const ballOffLine = Math.max(1, FIELD.lineZ - Math.abs(ballPosition.z))
-    const nearPostBias = (1 - skill01(attr(keeperItem, 'positioning'))) * 0.8 * Math.sign(predictedX)
+    const nearPostBias = Math.max(0, 1 - skill01(attr(keeperItem, 'positioning'))) * 0.8 * Math.sign(predictedX)
     let targetX = clamp(
         predictedX * clamp((keeperOffLine / ballOffLine) * 1.3, 0.15, 1) + nearPostBias,
         -3.2,

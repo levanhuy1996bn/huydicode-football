@@ -1,4 +1,5 @@
-import { LEAGUE_TEAMS, USER_TEAM } from './leagueData'
+import { MAN_UTD_ID, worldClub } from './world'
+import { generatePhysique } from '../systems/physique'
 
 const clampStat = (value) => Math.max(1, Math.min(99, value))
 
@@ -67,6 +68,8 @@ const makePlayer = (
     z,
     overall,
     ...baseStats(position, number, overall),
+    // Phase 26C: chiều cao / cân nặng cố định theo id cầu thủ.
+    ...generatePhysique(id, position),
 })
 
 const homeFormation = [
@@ -237,17 +240,148 @@ export const FORMATIONS = {
     ['RW', 21, -7],
     ['ST', 0, -29],
   ],
+
+  // ---- Cập nhật nhanh sau Phase 26B: thêm 8 sơ đồ ----
+  '4-1-4-1': [
+    ['GK', 0, 46],
+    ['LB', -23, 32],
+    ['CB', -8, 35],
+    ['CB', 8, 35],
+    ['RB', 23, 32],
+    ['CDM', 0, 19],
+    ['LM', -22, 4],
+    ['CM', -8, 6],
+    ['CM', 8, 6],
+    ['RM', 22, 4],
+    ['ST', 0, -28],
+  ],
+
+  '4-1-2-1-2': [
+    ['GK', 0, 46],
+    ['LB', -23, 32],
+    ['CB', -8, 35],
+    ['CB', 8, 35],
+    ['RB', 23, 32],
+    ['CDM', 0, 18],
+    ['CM', -13, 7],
+    ['CM', 13, 7],
+    ['CAM', 0, -7],
+    ['ST', -8, -27],
+    ['ST', 8, -27],
+  ],
+
+  '4-3-2-1': [
+    ['GK', 0, 46],
+    ['LB', -23, 32],
+    ['CB', -8, 35],
+    ['CB', 8, 35],
+    ['RB', 23, 32],
+    ['CM', -15, 10],
+    ['CDM', 0, 14],
+    ['CM', 15, 10],
+    ['CAM', -11, -12],
+    ['CAM', 11, -12],
+    ['ST', 0, -29],
+  ],
+
+  '4-4-1-1': [
+    ['GK', 0, 46],
+    ['LB', -23, 32],
+    ['CB', -8, 35],
+    ['CB', 8, 35],
+    ['RB', 23, 32],
+    ['LM', -22, 8],
+    ['CM', -7, 10],
+    ['CM', 7, 10],
+    ['RM', 22, 8],
+    ['CF', 0, -13],
+    ['ST', 0, -29],
+  ],
+
+  '4-2-2-2': [
+    ['GK', 0, 46],
+    ['LB', -23, 32],
+    ['CB', -8, 35],
+    ['CB', 8, 35],
+    ['RB', 23, 32],
+    ['CDM', -9, 15],
+    ['CDM', 9, 15],
+    ['CAM', -17, -8],
+    ['CAM', 17, -8],
+    ['ST', -8, -27],
+    ['ST', 8, -27],
+  ],
+
+  '3-5-2': [
+    ['GK', 0, 46],
+    ['CB', -14, 34],
+    ['CB', 0, 36],
+    ['CB', 14, 34],
+    ['LWB', -25, 12],
+    ['CDM', 0, 16],
+    ['CM', -10, 6],
+    ['CM', 10, 6],
+    ['RWB', 25, 12],
+    ['ST', -8, -27],
+    ['ST', 8, -27],
+  ],
+
+  '3-4-3': [
+    ['GK', 0, 46],
+    ['CB', -14, 34],
+    ['CB', 0, 36],
+    ['CB', 14, 34],
+    ['LM', -23, 8],
+    ['CM', -7, 10],
+    ['CM', 7, 10],
+    ['RM', 23, 8],
+    ['LW', -19, -22],
+    ['ST', 0, -28],
+    ['RW', 19, -22],
+  ],
+
+  '5-3-2': [
+    ['GK', 0, 46],
+    ['LWB', -25, 26],
+    ['CB', -12, 35],
+    ['CB', 0, 37],
+    ['CB', 12, 35],
+    ['RWB', 25, 26],
+    ['CM', -14, 8],
+    ['CDM', 0, 12],
+    ['CM', 14, 8],
+    ['ST', -8, -27],
+    ['ST', 8, -27],
+  ],
 }
 
-const RIVAL_TEAM = LEAGUE_TEAMS.find((team) => team.id === 'red')
+// Tên gọi / mô tả ngắn của từng sơ đồ (màn chọn sơ đồ).
+export const FORMATION_INFO = {
+  '4-3-3': { name: 'Classic', note: 'Wingers stretch the pitch' },
+  '4-4-2': { name: 'Flat', note: 'Two strikers, wide midfield' },
+  '4-2-3-1': { name: 'Wide', note: 'Double pivot, No. 10' },
+  '4-1-4-1': { name: 'Holding', note: 'One anchor, five across' },
+  '4-1-2-1-2': { name: 'Diamond', note: 'Narrow, two strikers' },
+  '4-3-2-1': { name: 'Christmas tree', note: 'Two No. 10s behind a striker' },
+  '4-4-1-1': { name: 'Second striker', note: 'Forward behind the striker' },
+  '4-2-2-2': { name: 'Box', note: 'Two pivots, two No. 10s' },
+  '3-5-2': { name: 'Wing-backs', note: 'Three centre-backs, five in midfield' },
+  '3-4-3': { name: 'Attacking', note: 'Three forwards, three at the back' },
+  '5-3-2': { name: 'Defensive', note: 'Five at the back, counter-attack' },
+}
+
+// Ô đối thủ trong engine; mỗi trận được thay bằng đội hình CLB thật
+// (systems/roster.js → buildMatchRoster). Mặc định là Manchester City.
+const RIVAL_TEAM = worldClub('eng-manchester-city')
 
 export const TEAMS = [
-  // Đội người chơi: Manchester United (trước đây là đội hình "RED UNITED").
+  // Phía đội người chơi: đội hình gốc (Manchester United). Tên / áo hiển thị
+  // theo CLB đang quản lý (Phase 26B, GameScene).
   buildTeam(
       'blue',
-      USER_TEAM.name,
-      USER_TEAM.shortName,
-      USER_TEAM.color,
+      worldClub(MAN_UTD_ID).name,
+      worldClub(MAN_UTD_ID).shortName,
+      worldClub(MAN_UTD_ID).color,
       homeFormation,
       redBench,
       -1,

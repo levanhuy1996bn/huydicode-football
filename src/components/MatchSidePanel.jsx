@@ -1,7 +1,9 @@
+import { naturalPositionOf, positionPenalty } from '../systems/roster'
 import { useEffect, useState } from 'react'
 import { shortPlayerName } from '../utils/names'
 import { ATTRIBUTE_GROUPS, GOALKEEPING_GROUP, getAttributes } from '../systems/attributes'
 import { progressOf } from '../systems/progression'
+import { UpgradeBadge, statClass } from './CardBits'
 
 // Thể lực hiện tại của cầu thủ đang chọn (đọc từ engine 4 lần/giây).
 function LiveStamina({ playerId, statsRef, condition }) {
@@ -55,7 +57,7 @@ function DetailedAttributes({ player }) {
             <div className="attr-row" key={key}>
               <span>{label}</span>
               <b className={values[key] >= 80 ? 'is-high' : values[key] < 60 ? 'is-low' : ''}>
-                {values[key]}
+                <span className={statClass(values[key])}>{values[key]}</span>
               </b>
             </div>
           ))}
@@ -72,6 +74,8 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
 
   if (!selectedPlayer) return <aside className="side-panel" />
 
+  const offPosition = positionPenalty(naturalPositionOf(selectedPlayer), selectedPlayer.position)
+
   return (
       <aside className="side-panel">
         <div className="panel-heading">
@@ -81,13 +85,25 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
           </div>
 
           <div className="overall">
-            {selectedPlayer.overall}
+            {/* Sau Phase 27: OVR theo vị trí đang đá (đá trái vị trí → giảm). */}
+            <span className={statClass(selectedPlayer.overall - offPosition)}>{selectedPlayer.overall - offPosition}</span>
             <small>OVR</small>
+            <UpgradeBadge level={selectedPlayer.upgrade} />
           </div>
         </div>
 
         <div className="player-position">
           #{selectedPlayer.number} · {selectedPlayer.position} · LV {progressOf(selectedPlayer).level}
+          {offPosition > 0 ? (
+            <span className="team-color-chip team-color-chip--off" title={`Natural position ${naturalPositionOf(selectedPlayer)}`}>
+              OUT OF POSITION −{offPosition}
+            </span>
+          ) : null}
+          {selectedPlayer.teamColorBonus ? (
+            <span className="team-color-chip" title="Team color bonus on all main stats (this match)">
+              TEAM COLOR +{selectedPlayer.teamColorBonus}
+            </span>
+          ) : null}
         </div>
 
         <div className="stats-list">
@@ -103,10 +119,10 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
                 <span>{label}</span>
 
                 <div className="stat-track">
-                  <i style={{ width: `${value}%` }} />
+                  <i style={{ width: `${Math.min(100, value)}%` }} />
                 </div>
 
-                <b>{value}</b>
+                <b className={statClass(value)}>{value}</b>
               </div>
           ))}
         </div>

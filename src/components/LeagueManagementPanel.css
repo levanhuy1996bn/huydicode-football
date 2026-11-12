@@ -427,3 +427,199 @@
         font-size: 9px;
     }
 }
+
+/* ---- Phase 22: tóm tắt trên bảng xếp hạng, thống kê cầu thủ, lịch đấu đội nhà ---- */
+.league-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    background: #192533;
+}
+
+.league-summary div { display: grid; gap: 2px; }
+.league-summary span { color: #8292a5; font-size: 9px; letter-spacing: 1px; }
+.league-summary strong { font-size: 15px; }
+.league-summary .league-primary-button { margin-left: auto; }
+
+.league-champion-banner {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(255, 196, 61, .14);
+    color: #ffd36b;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.league-stat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.league-chip {
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    color: #c4cfdc;
+    background: #1a2736;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .8px;
+    cursor: pointer;
+}
+
+.league-chip.active { color: #fff; border-color: var(--user-color); background: var(--user-color-soft); }
+
+.league-player-table th button {
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+}
+
+.league-player-table th.is-sorted { color: #fff; }
+.league-player-pos { margin-left: 6px; color: #8292a5; font-size: 9px; font-weight: 700; }
+
+.league-fixture.league-fixture--user {
+    grid-template-columns: 72px 24px minmax(0, 1fr) 55px 52px;
+}
+
+.league-fixture.is-next {
+    border-color: var(--user-color);
+    background: var(--user-color-soft);
+}
+
+.league-fixture-round { color: #8292a5; font-size: 10px; font-weight: 800; }
+
+.league-fixture-venue {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 900;
+    background: #263548;
+}
+
+.league-fixture-venue--home { background: rgba(126, 224, 129, .18); color: #9be89d; }
+
+.league-result {
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.league-result--W { background: #2f8a55; }
+.league-result--D { background: #6b7280; }
+.league-result--L { background: #a53d33; }
+
+@media (max-width: 560px) {
+    .league-summary .league-primary-button { margin-left: 0; width: 100%; }
+}
+
+/* ---- Phase 26A: chọn giải, vùng trên bảng, huy hiệu ---- */
+.league-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 12px;
+}
+
+.league-picker select {
+    padding: 7px 9px;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 6px;
+    color: #e7eef6;
+    background: #142030;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.league-section-title small {
+    color: #7f90a3;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+
+.league-team-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.league-fixture-team {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.club-crest {
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+}
+
+.league-table tbody tr td.league-pos {
+    border-left: 3px solid transparent;
+}
+
+.league-table tbody tr.zone-c1 td.league-pos { border-left-color: #3b8cff; }
+.league-table tbody tr.zone-c2 td.league-pos { border-left-color: #f39c32; }
+.league-table tbody tr.zone-promotion td.league-pos { border-left-color: #3fbf6a; }
+.league-table tbody tr.zone-relegation td.league-pos { border-left-color: #e2504a; }
+
+.league-zone-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 9px;
+    color: #8f9fb1;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.zone-key::before {
+    content: '';
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 5px;
+    border-radius: 2px;
+    vertical-align: -1px;
+}
+
+.zone-key--c1::before { background: #3b8cff; }
+.zone-key--c2::before { background: #f39c32; }
+.zone-key--promotion::before { background: #3fbf6a; }
+.zone-key--relegation::before { background: #e2504a; }
+
+.league-section-title--spaced {
+    margin-top: 16px;
+}
+
+.league-fixture-list--compact .league-fixture {
+    display: grid;
+    grid-template-columns: 1fr 64px 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+}
+
+.league-fixture-list--compact .league-fixture-team--home {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.league-fixture-list--compact .league-fixture-score {
+    text-align: center;
+}

@@ -260,6 +260,8 @@ export function scheduleRestart(ctx, restart) {
     }
 
     ctx.onActionMessage(restart.message)
+    // Phase 29B: còi ngắn (phạm lỗi, việt vị).
+    ctx.onSound?.('foul')
 }
 
 // ---- Việt vị ----

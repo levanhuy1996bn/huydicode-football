@@ -1,7 +1,63 @@
-import { USER_TEAM } from '../../data/leagueData'
-import { FORMATIONS } from '../../data/teams'
+import { useState } from 'react'
+import { SIM_DAILY_LIMIT } from '../../services/quickSim'
+import { naturalPositionOf, positionPenalty } from '../../systems/roster'
+import { fixtureLabel } from '../../services/cupService'
+import FormationPicker from '../FormationPicker'
+import ClubCrest from '../ClubCrest'
+import TeamColorPanel from '../TeamColorPanel'
+import { teamColorOf, withTeamColor } from '../../services/teamColor'
+import { isUserClub, userClubId, userTeam } from '../../services/career'
+import { FORMATION_INFO } from '../../data/teams'
 import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
+import { KIT_LABELS, KIT_SLOTS, kitsClash, kitsOf } from '../../data/kits'
+import { DIFFICULTIES } from '../../services/difficulty'
+import { UpgradeBadge } from '../CardBits'
+
+// Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
+export function KitIcon({ kit }) {
+    return (
+        <svg viewBox="0 0 40 44" className="kit-icon" aria-hidden="true">
+            <path d="M12 3 L4 8 L1 17 L8 19 L9 15 L9 30 L31 30 L31 15 L32 19 L39 17 L36 8 L28 3 Q20 8 12 3 Z"
+                fill={kit.shirt} stroke="rgba(0,0,0,0.45)" strokeWidth="1" />
+            <path d="M15 3.6 Q20 7 25 3.6" fill="none" stroke={kit.trim} strokeWidth="1.6" />
+            <path d="M9 31 L31 31 L32 42 L22 42 L20 37 L18 42 L8 42 Z"
+                fill={kit.shorts} stroke="rgba(0,0,0,0.45)" strokeWidth="1" />
+        </svg>
+    )
+}
+
+// Chọn bộ áo cho một đội: bộ nào trùng màu với áo đội kia thì bị khóa.
+function KitPicker({ clubId, name, current, otherKit, onChange }) {
+    const kits = kitsOf(clubId)
+
+    return (
+        <div className="kit-picker">
+            <span className="kit-picker__name">{name}</span>
+            <div className="kit-picker__options" role="radiogroup" aria-label={`${name} kit`}>
+                {KIT_SLOTS.map((slot) => {
+                    const clash = otherKit ? kitsClash(kits[slot], otherKit) : false
+
+                    return (
+                        <button
+                            key={slot}
+                            type="button"
+                            role="radio"
+                            aria-checked={current === slot}
+                            disabled={clash}
+                            title={clash ? `${KIT_LABELS[slot]} kit clashes with the other team` : `${KIT_LABELS[slot]} kit`}
+                            className={['kit-option', current === slot ? 'is-active' : '', clash ? 'is-clash' : ''].join(' ')}
+                            onClick={() => onChange(clubId, slot)}
+                        >
+                            <KitIcon kit={kits[slot]} />
+                            <small>{clash ? 'CLASH' : KIT_LABELS[slot].toUpperCase()}</small>
+                        </button>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
 
 // Màn trước trận: đội hình hai đội, sức mạnh, chiến thuật, sơ đồ,
 // chỉnh đội hình (bảng kéo thả, không tính lượt thay) rồi KICK OFF.
@@ -23,15 +79,66 @@ function ConditionChip({ value }) {
     )
 }
 
-function Lineup({ title, color, players, align, showCondition = false }) {
+// Phase 26C: chọn độ khó của mùa (trước trận đầu tiên), sau đó chỉ hiển thị.
+export function DifficultyPicker({ difficulty, locked, onChange }) {
+    if (!difficulty) return null
+
+    return (
+        <div className="difficulty-picker">
+            <div className="kit-section__head">
+                <span>Season difficulty</span>
+                <small>{locked ? 'Locked until next season' : 'Choose before your first match'}</small>
+            </div>
+            <div className="difficulty-picker__options" role="radiogroup" aria-label="Season difficulty">
+                {DIFFICULTIES.map((item) => (
+                    <button
+                        key={item.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={difficulty.id === item.id}
+                        className={difficulty.id === item.id ? 'is-active' : ''}
+                        disabled={locked && difficulty.id !== item.id}
+                        onClick={() => !locked && onChange?.(item.id)}
+                    >
+                        <b>{item.label}</b>
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false, onEdit = null }) {
+    // Phase 26D: OVR hiển thị đã cộng team color (mũi tên xanh, rê chuột xem gốc).
+    const teamColor = teamColorOf(players)
+    // Sau Phase 27: đá trái vị trí → OVR hiển thị giảm (chỉ số thật không đổi).
+    const shown = players.map((player) => {
+        const boosted = withTeamColor(player, teamColor.bonus)
+        const penalty = positionPenalty(naturalPositionOf(player), player.position)
+
+        return { ...boosted, overall: boosted.overall - penalty, positionPenalty: penalty, baseOverall: player.overall }
+    })
+
     return (
         <div className={`lineup lineup--${align}`}>
             <div className="lineup__head" style={{ '--team': color }}>
                 <span>{title}</span>
-                <b>{average(players)} <small>AVG</small></b>
+                <span className="lineup__head-side">
+                    <b>{average(shown)} <small>AVG</small></b>
+                    {onEdit && (
+                        <button
+                            type="button"
+                            className="btn btn--small lineup__edit"
+                            onClick={onEdit}
+                            title="Drag & drop the lineup. Changes before kick-off do not use substitutions. The % next to each player is his condition: players who played recently start tired, so rotate the squad."
+                        >
+                            EDIT ✎
+                        </button>
+                    )}
+                </span>
             </div>
             <ol className="lineup__list">
-                {players.map((player) => (
+                {shown.map((player) => (
                     <li key={player.id}>
                         <span className="lineup__number" style={{ '--team': color }}>
                             {player.number}
@@ -41,10 +148,137 @@ function Lineup({ title, color, players, align, showCondition = false }) {
                         </span>
                         <em>{player.position}</em>
                         {showCondition && <ConditionChip value={player.condition} />}
-                        <b>{player.overall}</b>
+                        {showUpgrade && <UpgradeBadge level={player.upgrade} />}
+                        <b
+                            className={player.positionPenalty ? 'is-off-position' : player.teamColorBonus ? 'is-boosted' : ''}
+                            title={
+                                [
+                                    `Base ${player.baseOverall}`,
+                                    player.positionPenalty ? `${naturalPositionOf(player)} playing ${player.position} −${player.positionPenalty}` : null,
+                                    player.teamColorBonus ? `team color +${player.teamColorBonus}` : null,
+                                ].filter(Boolean).join(' · ')
+                            }
+                        >
+                            {player.overall}
+                        </b>
                     </li>
                 ))}
             </ol>
+            <TeamColorPanel info={teamColor} compact />
+        </div>
+    )
+}
+
+// Sau Phase 28: TEAM SETUP chia 4 tab (mỗi lần một phần) + dòng tóm tắt.
+const SETUP_TABS = [
+    ['formation', 'FORMATION'],
+    ['tactic', 'TACTIC'],
+    ['kits', 'KITS'],
+    ['difficulty', 'DIFFICULTY'],
+]
+
+function SetupCard({
+    summary,
+    formationKey,
+    onFormationChange,
+    tacticKey,
+    onTacticChange,
+    kits,
+    onKitChange,
+    opponentId,
+    opponentShortName,
+    difficulty,
+    difficultyLocked,
+    onDifficultyChange,
+}) {
+    const [tab, setTab] = useState('formation')
+
+    return (
+        <div className="home-card setup-card">
+            <div className="home-card__head"><span>TEAM SETUP</span></div>
+            <p className="setup-card__summary">{summary}</p>
+
+            <div className="setup-tabs" role="tablist" aria-label="Team setup">
+                {SETUP_TABS.map(([id, label]) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === id}
+                        className={tab === id ? 'is-active' : ''}
+                        onClick={() => setTab(id)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="setup-card__body">
+                {tab === 'formation' && (
+                    <>
+                        <p className="setup-card__hint">
+                            {formationKey}
+                            {FORMATION_INFO[formationKey] ? ` · ${FORMATION_INFO[formationKey].note}` : ''}
+                        </p>
+                        <FormationPicker value={formationKey} onChange={onFormationChange} />
+                    </>
+                )}
+
+                {tab === 'tactic' && (
+                    <div className="setup-tactics" role="radiogroup" aria-label="Team tactic">
+                        {Object.entries(TACTICS).map(([key, value]) => (
+                            <button
+                                key={key}
+                                type="button"
+                                role="radio"
+                                aria-checked={tacticKey === key}
+                                className={`setup-tactic${tacticKey === key ? ' is-active' : ''}`}
+                                onClick={() => onTacticChange({ target: { value: key } })}
+                            >
+                                <b>{value.label}</b>
+                                <small>{value.summary}</small>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {tab === 'kits' && kits && onKitChange && (
+                    <div className="kit-section">
+                        <div className="kit-section__head">
+                            <span>Kits</span>
+                            <small>Clashing kits are locked</small>
+                        </div>
+                        <KitPicker
+                            clubId={userClubId()}
+                            name={userTeam().shortName}
+                            current={kits.slots[userClubId()]}
+                            otherKit={kits[opponentId]?.kit}
+                            onChange={onKitChange}
+                        />
+                        <KitPicker
+                            clubId={opponentId}
+                            name={opponentShortName}
+                            current={kits.slots[opponentId]}
+                            otherKit={kits[userClubId()]?.kit}
+                            onChange={onKitChange}
+                        />
+                    </div>
+                )}
+
+                {tab === 'difficulty' && (
+                    difficultyLocked ? (
+                        <p className="setup-card__hint">
+                            <b>{difficulty?.label}</b> · locked until next season (choose before your first match of a season).
+                        </p>
+                    ) : (
+                        <DifficultyPicker
+                            difficulty={difficulty}
+                            locked={false}
+                            onChange={onDifficultyChange}
+                        />
+                    )
+                )}
+            </div>
         </div>
     )
 }
@@ -60,6 +294,14 @@ export default function PreMatchScreen({
     onTacticChange,
     onFormationChange,
     onEditLineup,
+    kits = null,
+    blueKitTeam = null,
+    onKitChange,
+    difficulty = null,
+    difficultyLocked = false,
+    onDifficultyChange,
+    simsLeft = 0,
+    onSimulate,
     onKickOff,
     onBack,
 }) {
@@ -74,7 +316,16 @@ export default function PreMatchScreen({
         )
     }
 
-    const isHome = fixture.homeTeamId === 'blue'
+    const isHome = isUserClub(fixture.homeTeamId)
+    const opponentId = isHome ? fixture.awayTeamId : fixture.homeTeamId
+    const blueColor = blueKitTeam?.color || blueTeam.color
+    const userKitSlot = kits?.slots?.[userClubId()]
+    const summary = [
+        blueTeam.formationKey,
+        TACTICS[tacticKey]?.label,
+        userKitSlot ? `${KIT_LABELS[userKitSlot]} kit` : null,
+        difficulty ? `${difficulty.label}${difficultyLocked ? ' 🔒' : ''}` : null,
+    ].filter(Boolean).join(' · ')
 
     return (
         <section className="screen prematch-screen">
@@ -82,68 +333,62 @@ export default function PreMatchScreen({
                 <button type="button" className="link-btn" onClick={onBack}>← HOME</button>
                 <div>
                     <div className="home-hero__eyebrow">
-                        PRE-MATCH · ROUND {fixture.round} · {isHome ? 'HOME' : 'AWAY'}
+                        PRE-MATCH · {fixtureLabel(fixture)} · {fixture.stage === 'final' ? 'NEUTRAL VENUE' : isHome ? 'HOME' : 'AWAY'}
                     </div>
-                    <h1>{USER_TEAM.name} <span>vs</span> {opponentInfo?.name}</h1>
+                    <h1 className="prematch-title">
+                        <ClubCrest clubId={userClubId()} size={40} />
+                        {userTeam().name} <span>vs</span> {opponentInfo?.name}
+                        <ClubCrest clubId={opponentInfo?.id} size={40} />
+                    </h1>
                     <p>
-                        League position: {USER_TEAM.shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
+                        League position: {userTeam().shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
                         {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
+                        {difficulty && <> · Difficulty {difficulty.label.toUpperCase()}</>}
                     </p>
+                </div>
+
+                {/* Sau Phase 28: nút đá / mô phỏng luôn ở trên cùng */}
+                <div className="prematch-actions">
+                    <button
+                        type="button"
+                        className="btn btn--sim btn--large"
+                        onClick={onSimulate}
+                        disabled={!simsLeft || !onSimulate}
+                        title="Quick simulation: instant result, rewards ×0.7 · 5 per day"
+                    >
+                        SIMULATE <small>{simsLeft}/{SIM_DAILY_LIMIT}</small>
+                    </button>
+                    <button type="button" className="btn btn--primary btn--large" onClick={onKickOff}>
+                        ▶ KICK OFF
+                    </button>
                 </div>
             </div>
 
             <div className="prematch-body">
                 <Lineup
-                    title={USER_TEAM.name}
-                    color={blueTeam.color}
+                    title={userTeam().name}
+                    color={blueColor}
                     players={blueTeam.players}
                     align="left"
                     showCondition
+                    onEdit={onEditLineup}
                 />
 
                 <div className="prematch-setup">
-                    <div className="home-card">
-                        <div className="home-card__head"><span>TEAM SETUP</span></div>
-
-                        <div className="setting-row">
-                            <span>Formation</span>
-                            <div className="segmented">
-                                {Object.keys(FORMATIONS).map((key) => (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        className={blueTeam.formationKey === key ? 'is-active' : ''}
-                                        onClick={() => onFormationChange(key)}
-                                    >
-                                        {key}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <label className="setting-row">
-                            <span>Tactic</span>
-                            <select value={tacticKey} onChange={onTacticChange} aria-label="Team tactic">
-                                {Object.entries(TACTICS).map(([key, value]) => (
-                                    <option key={key} value={key}>{value.label}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <p className="tactic-summary">{TACTICS[tacticKey]?.summary}</p>
-
-                        <button type="button" className="btn btn--block" onClick={onEditLineup}>
-                            EDIT LINEUP (DRAG &amp; DROP)
-                        </button>
-                        <p className="home-card__empty">
-                            Lineup changes before kick-off do not use substitutions.
-                            The % next to each player is their condition: players who
-                            played recently start tired, so rotate the squad.
-                        </p>
-                    </div>
-
-                    <button type="button" className="btn btn--primary btn--large btn--block" onClick={onKickOff}>
-                        KICK OFF
-                    </button>
+                    <SetupCard
+                        summary={summary}
+                        formationKey={blueTeam.formationKey}
+                        onFormationChange={onFormationChange}
+                        tacticKey={tacticKey}
+                        onTacticChange={onTacticChange}
+                        kits={kits}
+                        onKitChange={onKitChange}
+                        opponentId={opponentId}
+                        opponentShortName={opponentInfo?.shortName || 'OPP'}
+                        difficulty={difficulty}
+                        difficultyLocked={difficultyLocked}
+                        onDifficultyChange={onDifficultyChange}
+                    />
                 </div>
 
                 <Lineup
@@ -151,6 +396,7 @@ export default function PreMatchScreen({
                     color={opponentTeam.color}
                     players={opponentTeam.players}
                     align="right"
+                    showUpgrade
                 />
             </div>
         </section>

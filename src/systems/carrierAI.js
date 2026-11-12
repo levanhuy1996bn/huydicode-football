@@ -427,7 +427,10 @@ export function updateCarrierAI(ctx, dt) {
         return
     }
 
-    carry.decideIn = DECIDE_MIN + Math.random() * DECIDE_JITTER
+    // Phase 26C: độ khó — AI đối thủ (red) quyết định nhanh / chậm hơn.
+    carry.decideIn =
+        (DECIDE_MIN + Math.random() * DECIDE_JITTER) *
+        (ownerItem.teamId === 'red' ? ctx.aiSpeed || 1 : 1)
 
     const opponents = opponentsNear(ctx, ownerItem, owner, 28)
     const pressers = opponents.filter((opponent) => opponent.active)
@@ -538,6 +541,13 @@ function takeRestart(ctx, ownerId, ownerItem, owner, restart) {
     const attempt = (action, options) => kickFromPlayer(ctx, ownerId, action, true, options)
 
     if (restart.type === 'throw-in') {
+        if (!attempt('pass')) attempt('lob')
+        return
+    }
+
+    // Giao bóng (Phase 22): chuyền cho người đứng cạnh, thỉnh thoảng chuyền về.
+    if (restart.type === 'kick-off') {
+        if (restart.partnerId && Math.random() < 0.8 && attempt('pass', { receiverId: restart.partnerId })) return
         if (!attempt('pass')) attempt('lob')
         return
     }

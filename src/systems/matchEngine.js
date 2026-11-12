@@ -1,4 +1,4 @@
-import { getPlayer, updateCurl, updateDribble, updateLooseBallPickup, updateWindup } from './ball'
+import { getPlayer, updateCurl, updateDribble, updateLooseBallPickup, updateShotBlock, updateWindup } from './ball'
 import { checkGoalAndOut, enforceRestartSpacing, restartAtSpot } from './rules'
 import { updateWallBlock } from './referee'
 import { updateCharge, updateControlledPlayer } from './control'
@@ -173,6 +173,7 @@ function stepPlay(ctx, dt) {
 
     // 7. Hàng rào chặn cú đá phạt, đối thủ cướp bóng, nhận bóng tự do, rê bóng.
     updateWallBlock(ctx)
+    updateShotBlock(ctx)
     updateAISteal(ctx)
     updateLooseBallPickup(ctx)
     updateDribble(ctx, dt)

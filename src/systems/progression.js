@@ -1,4 +1,5 @@
 import { ATTRIBUTE_GROUPS, GOALKEEPING_GROUP, getAttributes } from './attributes'
+import { upgradeBonus } from '../services/upgrade'
 
 // ---- Phase 19B: lên cấp cầu thủ, cộng điểm chỉ số theo vị trí ----
 //
@@ -15,15 +16,18 @@ import { ATTRIBUTE_GROUPS, GOALKEEPING_GROUP, getAttributes } from './attributes
 // OVR tính lại theo trọng số vị trí (chỉ số chính nặng nhất) và không vượt
 // quá tiềm năng; mỗi chỉ số tối đa 99.
 
-export const MAX_LEVEL = 30
+// Phase 25: cấp tối đa 100 (trước là 30). 3 điểm mỗi cấp tới cấp 30, sau đó
+// 1 điểm mỗi cấp (tổng 157 điểm ở cấp 100).
+export const MAX_LEVEL = 100
 export const POINTS_PER_LEVEL = 3
+export const pointsForLevel = (level) => (level <= 30 ? 3 : 1)
 export const TRAINING_XP = 10
 
-// XP cần để lên cấp tiếp theo: 60 + 30 × level (L1→2: 90, L10→11: 360,
-// L20→21: 660). Cầu thủ đá chính thường xuyên (~90 XP/trận) lên khoảng
-// cấp 12–13 sau mùa đầu tiên và cần 4–5 mùa để chạm cấp 30. (Kế hoạch ban
-// đầu là 100 × level^1.5 nhưng như vậy cả mùa chỉ lên được ~cấp 6.)
-export const xpToNext = (level) => 60 + 30 * level
+// XP cần để lên cấp tiếp theo (Phase 25): 170 + level. Cầu thủ đá chính
+// thường xuyên (~90 XP/trận, 38 trận ≈ 3.400 XP/mùa) lên khoảng cấp 19 sau
+// mùa đầu và chạm cấp 100 sau khoảng 6 mùa (tổng ≈ 21.800 XP).
+// (Phase 19B: 60 + 30 × level, tối đa cấp 30.)
+export const xpToNext = (level) => 170 + level
 
 const ALL_KEYS = [...ATTRIBUTE_GROUPS, GOALKEEPING_GROUP].flatMap((group) =>
     group.items.map(([key]) => key),
@@ -168,15 +172,13 @@ export function upgradeAttribute(player, key) {
         next.attributes = { ...next.attributes }
     }
 
-    if ((next.attributes[key] ?? 0) >= 99) {
-        return { player, ok: false, reason: 'Already 99' }
-    }
-
     next.attributes[key] = (next.attributes[key] ?? 0) + 1
 
     const overall = computeOverall(next)
 
-    if (overall > progress.potential + 0.49) {
+    // Tiềm năng chỉ giới hạn phần OVR từ tập luyện; phần cộng của thẻ +N
+    // (Phase 25) nằm ngoài giới hạn này.
+    if (overall - upgradeBonus(player.upgrade) > progress.potential + 0.49) {
         return { player, ok: false, reason: `Reached potential (${progress.potential})` }
     }
 
@@ -196,7 +198,7 @@ export function upgradeAttribute(player, key) {
         const base = next[`${group.key}Base`] ?? player[group.key]
 
         next[`${group.key}Base`] = base
-        next[group.key] = Math.min(99, Math.round(base + average))
+        next[group.key] = Math.round(base + average)
     })
 
     return { player: next, ok: true }
@@ -217,7 +219,7 @@ export function autoUpgrade(player) {
             ...role.key.map((key) => ({ key, cost: 1 })),
             ...role.secondary.map((key) => ({ key, cost: 2 })),
         ]
-            .filter((option) => option.cost <= progress.unspentPoints && values[option.key] < 99)
+            .filter((option) => option.cost <= progress.unspentPoints)
             .sort((a, b) => values[a.key] + a.cost * 4 - (values[b.key] + b.cost * 4))
 
         let upgraded = false
@@ -274,13 +276,15 @@ export function addXp(player, gained) {
     const progress = progressOf(player)
     let { level, xp, unspentPoints } = progress
     let levelsGained = 0
+    let pointsGained = 0
 
     xp += gained
 
     while (level < MAX_LEVEL && xp >= xpToNext(level)) {
         xp -= xpToNext(level)
         level += 1
-        unspentPoints += POINTS_PER_LEVEL
+        unspentPoints += pointsForLevel(level)
+        pointsGained += pointsForLevel(level)
         levelsGained += 1
     }
 
@@ -303,7 +307,7 @@ export function addXp(player, gained) {
             levelBefore: progress.level,
             level,
             levelsGained,
-            pointsGained: levelsGained * POINTS_PER_LEVEL,
+            pointsGained,
             xp,
             xpNeeded: level >= MAX_LEVEL ? 0 : xpToNext(level),
         },
@@ -316,7 +320,10 @@ export function applyMatchProgression(players, lines, fractions, context) {
     const reports = []
 
     const next = players.map((player) => {
-        const gained = matchXp(player, lineById.get(player.id), fractions[player.id] || 0, context)
+        // Phase 28: xpFactor (trận mô phỏng nhanh = 0.7).
+        const gained = Math.round(
+            matchXp(player, lineById.get(player.id), fractions[player.id] || 0, context) * (context.xpFactor ?? 1),
+        )
 
         if (!gained) return player
 

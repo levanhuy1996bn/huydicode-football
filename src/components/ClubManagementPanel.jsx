@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
-import { TRANSFER_MARKET } from '../data/transferMarket'
+import { FREE_AGENT, TRANSFER_MARKET } from '../data/transferMarket'
+import { COUNTRIES, COUNTRY_BY_ID, INITIAL_DIVISIONS, LEAGUE_BY_ID, worldClub } from '../data/world'
 import {
     loadClub,
     saveClub,
@@ -10,7 +11,21 @@ import {
     getContract,
     formatMoney,
 } from '../services/clubService'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
+import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
+import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
+import { StatNum, UpgradeBadge } from './CardBits'
+import { physiqueOf } from '../systems/physique'
+
+const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
+const MARKET_PAGE = 48
+const RARITY_COLORS = { gold: '#e3bd62', silver: '#c9d2d8', bronze: '#c98b5a' }
+
+const GROUP_LABELS = {
+    starter: 'STARTING XI',
+    bench: 'BENCH',
+    reserve: 'RESERVES',
+}
 
 const POSITION_FILTERS = ['ALL', 'GK', 'DF', 'MF', 'FW']
 
@@ -91,97 +106,159 @@ export default function ClubManagementPanel({
                                                 isOpen: controlledOpen,
                                                 onOpenChange,
                                                 hideTrigger = false,
+                                                // Phase 23: CLB do GameScene giữ (cấp độ, kho thẻ, tiền thưởng).
+                                                club: controlledClub,
+                                                onClubChange,
+                                                initialSearch = '',
+                                                world = null,
                                             }) {
-    const [club, setClub] = useState(loadClub)
+    const [internalClub, setInternalClub] = useState(loadClub)
+    const club = controlledClub ?? internalClub
+    const setClub = onClubChange ?? setInternalClub
     const [internalOpen, setInternalOpen] = useState(false)
     const isOpen = controlledOpen ?? internalOpen
     const setIsOpen = (value) => {
         if (onOpenChange) onOpenChange(value)
         else setInternalOpen(value)
     }
-    const [tab, setTab] = useState('overview')
+    // Phase 22: màn TRANSFERS mở thẳng vào thị trường chuyển nhượng.
+    const [tab, setTab] = useState('market')
+    // Sau Phase 29B: bán cầu thủ phải xác nhận (trước đây bấm là bán luôn).
+    const [sellConfirm, setSellConfirm] = useState(null)
 
-    const [search, setSearch] = useState('')
+    const [search, setSearch] = useState(initialSearch || '')
     const [positionFilter, setPositionFilter] = useState('ALL')
     const [sortBy, setSortBy] = useState('overall')
+    const [rarityFilter, setRarityFilter] = useState('ALL')
+    const [marketLimit, setMarketLimit] = useState(MARKET_PAGE)
+    // Phase 26A: lọc theo nước → giải (theo hạng hiện tại) → CLB.
+    const [countryFilter, setCountryFilter] = useState('ALL')
+    const [leagueFilter, setLeagueFilter] = useState('ALL')
+    const [clubFilter, setClubFilter] = useState('ALL')
+    const divisions = world?.divisions || INITIAL_DIVISIONS
+    const country = COUNTRY_BY_ID.get(countryFilter) || null
+    const leagueOptions = country ? [country.topLeagueId, country.secondLeagueId] : []
+    const clubOptions = useMemo(
+        () =>
+            leagueFilter !== 'ALL'
+                ? [...(divisions[leagueFilter] || [])]
+                    .map((id) => worldClub(id))
+                    .filter(Boolean)
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                : [],
+        [divisions, leagueFilter],
+    )
+    const leagueClubs = useMemo(
+        () => (leagueFilter !== 'ALL' ? new Set(divisions[leagueFilter] || []) : null),
+        [divisions, leagueFilter],
+    )
 
     const [selectedPlayer, setSelectedPlayer] = useState(null)
-    const [message, setMessage] = useState('')
+    // Phase 22: thông báo dạng toast (trước đây chỉ đổi chữ ở chân panel 3 giây).
+    const [toast, setToast] = useState(null)
 
     const blueTeam = roster.find((team) => team.id === 'blue')
 
     const squad = useMemo(() => {
         if (!blueTeam) return []
 
-        return [
-            ...(blueTeam.players || []),
-            ...(blueTeam.substitutes || []),
-        ]
+        return squadOf(blueTeam)
     }, [blueTeam])
 
-    const squadMarketIds = useMemo(
-        () => new Set(squad.map((player) => player.id)),
-        [squad],
-    )
+    // Phase 25: mua cùng một cầu thủ bao nhiêu lần cũng được (có EP và còn
+    // chỗ trong đội) — dùng làm thẻ nguyên liệu khi đập thẻ. Hiện "Owned ×N".
+    const ownedCounts = useMemo(() => {
+        const counts = new Map()
+
+        squad.forEach((player) => {
+            const id = playerIdOf(player)
+
+            counts.set(id, (counts.get(id) || 0) + 1)
+        })
+
+        return counts
+    }, [squad])
 
     const availablePlayers = useMemo(() => {
         return TRANSFER_MARKET
-            .filter((player) => !squadMarketIds.has(player.id))
             .filter((player) => {
-                const matchesSearch = player.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase())
+                const query = search.toLowerCase()
+                const matchesSearch =
+                    player.name.toLowerCase().includes(query) ||
+                    (query.length >= 3 && String(player.club || '').toLowerCase().includes(query))
 
                 const matchesPosition =
                     positionFilter === 'ALL' ||
                     getPositionGroup(player.position) === positionFilter
 
-                return matchesSearch && matchesPosition
+                const matchesRarity = rarityFilter === 'ALL' || player.rarity === rarityFilter
+                const matchesCountry =
+                    countryFilter === 'ALL' ||
+                    (countryFilter === 'FREE' ? !player.clubId : player.countryId === countryFilter)
+                const matchesLeague = !leagueClubs || leagueClubs.has(player.clubId)
+                const matchesClub = clubFilter === 'ALL' || player.clubId === clubFilter
+
+                return matchesSearch && matchesPosition && matchesRarity && matchesCountry && matchesLeague && matchesClub
             })
             .sort((a, b) => {
                 if (sortBy === 'value') return a.value - b.value
-                if (sortBy === 'age') return a.age - b.age
+                if (sortBy === 'height') return physiqueOf(b).height - physiqueOf(a).height
 
                 return b.overall - a.overall
             })
-    }, [search, positionFilter, sortBy, squadMarketIds])
+    }, [search, positionFilter, rarityFilter, sortBy, countryFilter, leagueClubs, clubFilter])
+
+    // Đổi bộ lọc thì hiện lại từ trang đầu.
+    useEffect(() => {
+        setMarketLimit(MARKET_PAGE)
+    }, [search, positionFilter, rarityFilter, sortBy, countryFilter, leagueFilter, clubFilter])
+
+    // Chỉ tự lưu khi panel tự giữ CLB (GameScene lưu bản được truyền vào).
+    useEffect(() => {
+        if (!controlledClub) saveClub(internalClub)
+    }, [controlledClub, internalClub])
+
+    const showMessage = (text, tone = 'info', detail = null) => {
+        setToast({ text, tone, detail, key: Date.now() })
+    }
 
     useEffect(() => {
-        saveClub(club)
-    }, [club])
+        if (!toast) return undefined
 
-    const showMessage = (text) => {
-        setMessage(text)
+        const timer = window.setTimeout(() => setToast(null), toast.tone === 'error' ? 3200 : 3800)
 
-        window.setTimeout(() => {
-            setMessage('')
-        }, 3000)
-    }
+        return () => window.clearTimeout(timer)
+    }, [toast])
 
     const buyPlayer = (player) => {
         if (!club.transferWindowOpen) {
-            showMessage('TRANSFER WINDOW IS CLOSED')
+            showMessage('TRANSFER WINDOW IS CLOSED', 'error', 'Open the transfer window in the Overview tab to sign players.')
             return
         }
 
         if (!blueTeam) return
 
         if (club.budget < player.value) {
-            showMessage('NOT ENOUGH TRANSFER BUDGET')
+            showMessage(
+                'NOT ENOUGH TRANSFER BUDGET',
+                'error',
+                `${player.name} costs ${formatMoney(player.value)} · budget ${formatMoney(club.budget)}`,
+            )
             return
         }
 
-        if (squad.length >= 30) {
-            showMessage('SQUAD LIMIT REACHED')
+        if (squad.length >= SQUAD_LIMITS.total) {
+            showMessage(
+                `SQUAD IS FULL (${squad.length}/${SQUAD_LIMITS.total})`,
+                'error',
+                'Sell a player from the reserves to make room.',
+            )
             return
         }
 
-        const newPlayer = {
-            ...player,
-            x: -28 + blueTeam.substitutes.length * 5,
-            z: 48,
-            number: 20 + squad.length,
-        }
+        // Phase 22: cầu thủ mới vào đội hình ngoài (không tự vào băng ghế dự bị).
+        // Phase 23: mỗi lần mua tạo một thẻ mới (+1) với cardId riêng.
+        const newPlayer = cardFromCatalog(player, { number: freeShirtNumber(squad) })
 
         onRosterChange((current) =>
             current.map((team) => {
@@ -189,8 +266,8 @@ export default function ClubManagementPanel({
 
                 return {
                     ...team,
-                    substitutes: [
-                        ...team.substitutes,
+                    reserves: [
+                        ...(team.reserves || []),
                         newPlayer,
                     ],
                 }
@@ -202,7 +279,7 @@ export default function ClubManagementPanel({
             budget: current.budget - player.value,
             contracts: {
                 ...current.contracts,
-                [player.id]: {
+                [newPlayer.id]: {
                     wage: player.wage,
                     years: 4,
                 },
@@ -210,10 +287,15 @@ export default function ClubManagementPanel({
         }))
 
         setSelectedPlayer(null)
-        showMessage(`${player.name.toUpperCase()} SIGNED`)
+        showMessage(
+            `${player.name.toUpperCase()} SIGNED`,
+            'success',
+            `Fee ${formatMoney(player.value)} · budget left ${formatMoney(club.budget - player.value)} · joined the reserves (${squad.length + 1}/${SQUAD_LIMITS.total})`,
+        )
     }
 
-    const sellPlayer = (player) => {
+    // Bấm SELL PLAYER: kiểm tra điều kiện rồi mở hộp xác nhận.
+    const requestSell = (player) => {
         if (!club.transferWindowOpen) {
             showMessage('TRANSFER WINDOW IS CLOSED')
             return
@@ -221,12 +303,49 @@ export default function ClubManagementPanel({
 
         if (!blueTeam) return
 
-        const isStarter = blueTeam.players.some(
-            (item) => item.id === player.id,
-        )
+        if (squadGroupOf(blueTeam, player.id) !== 'reserve') {
+            showMessage(
+                `${player.name.toUpperCase()} IS IN THE MATCHDAY SQUAD`,
+                'error',
+                'Starters and bench players cannot be sold. Move him to the reserves in the lineup screen first.',
+            )
+            return
+        }
 
-        if (isStarter) {
-            showMessage('SUBSTITUTE THIS PLAYER BEFORE SELLING')
+        setSellConfirm(player)
+    }
+
+    // Esc = huỷ.
+    useEffect(() => {
+        if (!sellConfirm) return undefined
+
+        const onKey = (event) => {
+            if (event.key === 'Escape') setSellConfirm(null)
+        }
+
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [sellConfirm])
+
+    const sellPlayer = (player) => {
+        setSellConfirm(null)
+
+        if (!club.transferWindowOpen) {
+            showMessage('TRANSFER WINDOW IS CLOSED')
+            return
+        }
+
+        if (!blueTeam) return
+
+        // Phase 22: chỉ bán được cầu thủ ở đội hình ngoài.
+        const group = squadGroupOf(blueTeam, player.id)
+
+        if (group !== 'reserve') {
+            showMessage(
+                `${player.name.toUpperCase()} IS IN THE MATCHDAY SQUAD`,
+                'error',
+                'Starters and bench players cannot be sold. Move him to the reserves in the lineup screen first.',
+            )
             return
         }
 
@@ -238,7 +357,7 @@ export default function ClubManagementPanel({
 
                 return {
                     ...team,
-                    substitutes: team.substitutes.filter(
+                    reserves: (team.reserves || []).filter(
                         (item) => item.id !== player.id,
                     ),
                 }
@@ -259,7 +378,9 @@ export default function ClubManagementPanel({
         setSelectedPlayer(null)
 
         showMessage(
-            `${player.name.toUpperCase()} SOLD FOR ${formatMoney(saleValue)}`,
+            `${player.name.toUpperCase()} SOLD`,
+            'success',
+            `Received ${formatMoney(saleValue)} · budget ${formatMoney(club.budget + saleValue)}`,
         )
     }
 
@@ -279,7 +400,7 @@ export default function ClubManagementPanel({
             }
         })
 
-        showMessage('CONTRACT UPDATED')
+        showMessage('CONTRACT UPDATED', 'success', `${player.name} · ${field === 'wage' ? 'weekly wage' : 'contract length'} changed`)
     }
 
     const toggleTransferWindow = () => {
@@ -294,10 +415,10 @@ export default function ClubManagementPanel({
     const squadValue = getSquadValue(roster)
 
     const tabs = [
-        ['overview', 'OVERVIEW'],
         ['market', 'TRANSFER MARKET'],
-        ['squad', 'SQUAD'],
+        ['squad', 'SQUAD & SALES'],
         ['contracts', 'CONTRACTS'],
+        ['overview', 'OVERVIEW'],
     ]
 
     return (
@@ -315,7 +436,7 @@ export default function ClubManagementPanel({
                     borderColor: '#d4a64d',
                 }}
             >
-                CLUB MANAGEMENT
+                TRANSFERS
             </button>
             )}
 
@@ -371,7 +492,7 @@ export default function ClubManagementPanel({
                                         letterSpacing: 1.5,
                                     }}
                                 >
-                                    FOOTBALL CLUB MANAGEMENT
+                                    TRANSFERS · {userTeam().name}
                                 </div>
 
                                 <div
@@ -475,7 +596,7 @@ export default function ClubManagementPanel({
 
                                         <Stat
                                             label="SQUAD SIZE"
-                                            value={`${squad.length} / 30`}
+                                            value={`${squad.length} / ${SQUAD_LIMITS.total}`}
                                         />
                                     </div>
 
@@ -545,7 +666,7 @@ export default function ClubManagementPanel({
                                         style={{
                                             display: 'grid',
                                             gridTemplateColumns:
-                                                'minmax(100px, 1fr) 90px 110px',
+                                                'minmax(100px, 1fr) 80px 90px 110px',
                                             gap: 8,
                                             marginBottom: 12,
                                         }}
@@ -574,6 +695,21 @@ export default function ClubManagementPanel({
                                         </select>
 
                                         <select
+                                            value={rarityFilter}
+                                            onChange={(event) =>
+                                                setRarityFilter(event.target.value)
+                                            }
+                                            style={inputStyle}
+                                            aria-label="Card rarity"
+                                        >
+                                            {RARITY_FILTERS.map((item) => (
+                                                <option key={item} value={item}>
+                                                    {item === 'ALL' ? 'ALL CARDS' : RARITY_LABELS[item].toUpperCase()}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <select
                                             value={sortBy}
                                             onChange={(event) =>
                                                 setSortBy(event.target.value)
@@ -586,9 +722,57 @@ export default function ClubManagementPanel({
                                             <option value="value">
                                                 Lowest Price
                                             </option>
-                                            <option value="age">
-                                                Youngest
+                                            <option value="height">
+                                                Tallest
                                             </option>
+                                        </select>
+                                    </div>
+
+                                    <div className="market-world-filters">
+                                        <select
+                                            value={countryFilter}
+                                            onChange={(event) => {
+                                                setCountryFilter(event.target.value)
+                                                setLeagueFilter('ALL')
+                                                setClubFilter('ALL')
+                                            }}
+                                            style={inputStyle}
+                                            aria-label="Country"
+                                        >
+                                            <option value="ALL">ALL COUNTRIES</option>
+                                            {COUNTRIES.map((item) => (
+                                                <option key={item.id} value={item.id}>{item.name.toUpperCase()}</option>
+                                            ))}
+                                            <option value="FREE">{FREE_AGENT}S</option>
+                                        </select>
+
+                                        <select
+                                            value={leagueFilter}
+                                            onChange={(event) => {
+                                                setLeagueFilter(event.target.value)
+                                                setClubFilter('ALL')
+                                            }}
+                                            style={inputStyle}
+                                            aria-label="League"
+                                            disabled={!country}
+                                        >
+                                            <option value="ALL">ALL LEAGUES</option>
+                                            {leagueOptions.map((id) => (
+                                                <option key={id} value={id}>{LEAGUE_BY_ID.get(id)?.name.toUpperCase()}</option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            value={clubFilter}
+                                            onChange={(event) => setClubFilter(event.target.value)}
+                                            style={inputStyle}
+                                            aria-label="Club"
+                                            disabled={leagueFilter === 'ALL'}
+                                        >
+                                            <option value="ALL">ALL CLUBS</option>
+                                            {clubOptions.map((item) => (
+                                                <option key={item.id} value={item.id}>{item.name}</option>
+                                            ))}
                                         </select>
                                     </div>
 
@@ -600,7 +784,7 @@ export default function ClubManagementPanel({
                                             gap: 10,
                                         }}
                                     >
-                                        {availablePlayers.map((player) => (
+                                        {availablePlayers.slice(0, marketLimit).map((player) => (
                                             <div
                                                 key={player.id}
                                                 style={{
@@ -636,15 +820,25 @@ export default function ClubManagementPanel({
                                                                 marginTop: 4,
                                                             }}
                                                         >
-                                                            {player.position} · {player.age} years · {player.nationality}
+                                                            {[player.position, `${physiqueOf(player).height} cm · ${physiqueOf(player).weight} kg`, player.nationality].filter(Boolean).join(' · ')}
                                                         </div>
+                                                        <div className="market-club-line" title={player.club}>
+                                                            {player.club || FREE_AGENT}
+                                                        </div>
+                                                        {ownedCounts.get(player.playerId) > 0 && (
+                                                            <div className="owned-chip">
+                                                                OWNED ×{ownedCounts.get(player.playerId)}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div
+                                                        title={`${RARITY_LABELS[player.rarity] || ''} card`}
                                                         style={{
                                                             flexShrink: 0,
                                                             textAlign: 'center',
-                                                            background: '#a87928',
+                                                            background: RARITY_COLORS[player.rarity] || '#a87928',
+                                                            color: '#14201a',
                                                             borderRadius: 7,
                                                             padding: '5px 8px',
                                                             height: 'fit-content',
@@ -708,6 +902,16 @@ export default function ClubManagementPanel({
                                         ))}
                                     </div>
 
+                                    {availablePlayers.length > marketLimit && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMarketLimit((limit) => limit + MARKET_PAGE)}
+                                            style={{ ...buttonStyle, width: '100%', marginTop: 12 }}
+                                        >
+                                            SHOW MORE ({availablePlayers.length - marketLimit} more of {availablePlayers.length})
+                                        </button>
+                                    )}
+
                                     {availablePlayers.length === 0 && (
                                         <div
                                             style={{
@@ -732,9 +936,9 @@ export default function ClubManagementPanel({
                                     }}
                                 >
                                     {squad.map((player) => {
-                                        const isStarter = blueTeam.players.some(
-                                            (item) => item.id === player.id,
-                                        )
+                                        const group = squadGroupOf(blueTeam, player.id)
+                                        // Phase 22: đá chính và dự bị không bán được.
+                                        const isStarter = group !== 'reserve'
 
                                         return (
                                             <div
@@ -761,7 +965,7 @@ export default function ClubManagementPanel({
                                                                 fontSize: 13,
                                                             }}
                                                         >
-                                                            {player.name}
+                                                            {player.name} <UpgradeBadge level={player.upgrade} />
                                                         </div>
 
                                                         <div
@@ -781,7 +985,7 @@ export default function ClubManagementPanel({
                                                             fontSize: 18,
                                                         }}
                                                     >
-                                                        {player.overall}
+                                                        <StatNum value={player.overall} />
                                                     </strong>
                                                 </div>
 
@@ -794,9 +998,7 @@ export default function ClubManagementPanel({
                                                         marginTop: 10,
                                                     }}
                                                 >
-                                                    {isStarter
-                                                        ? 'STARTING XI'
-                                                        : 'SUBSTITUTE'}
+                                                    {GROUP_LABELS[group] || 'RESERVES'}
                                                 </div>
 
                                                 <div
@@ -815,7 +1017,7 @@ export default function ClubManagementPanel({
 
                                                 <button
                                                     disabled={isStarter}
-                                                    onClick={() => sellPlayer(player)}
+                                                    onClick={() => requestSell(player)}
                                                     style={{
                                                         ...buttonStyle,
                                                         width: '100%',
@@ -829,13 +1031,65 @@ export default function ClubManagementPanel({
                                                             : 'pointer',
                                                     }}
                                                 >
-                                                    {isStarter ? 'STARTER' : 'SELL PLAYER'}
+                                                    {isStarter ? 'IN MATCHDAY SQUAD' : 'SELL PLAYER'}
                                                 </button>
                                             </div>
                                         )
                                     })}
                                 </div>
                             )}
+
+                            {sellConfirm && (() => {
+                                const value = getPlayerValue(sellConfirm)
+                                const saleValue = Math.round(value * 0.85)
+                                const level = sellConfirm.upgrade || 1
+                                const copies = squad.filter(
+                                    (item) => item.id !== sellConfirm.id && playerIdOf(item) === playerIdOf(sellConfirm),
+                                ).length
+
+                                return (
+                                    <div
+                                        className="sell-confirm-overlay"
+                                        role="dialog"
+                                        aria-modal="true"
+                                        aria-label={`Sell ${sellConfirm.name}`}
+                                        onClick={() => setSellConfirm(null)}
+                                    >
+                                        <div className="sell-confirm" onClick={(event) => event.stopPropagation()}>
+                                            <div className="home-hero__eyebrow">CONFIRM SALE</div>
+                                            <h3>SELL {sellConfirm.name.toUpperCase()}?</h3>
+                                            <div className="sell-confirm__card">
+                                                <StatNum value={sellConfirm.overall} />
+                                                <span>{sellConfirm.position}</span>
+                                                <UpgradeBadge level={level} />
+                                                <small>{RARITY_LABELS[sellConfirm.rarity] || ''}</small>
+                                            </div>
+                                            <dl className="sell-confirm__money">
+                                                <div><dt>Card value</dt><dd>{formatMoney(value)}</dd></div>
+                                                <div><dt>You receive (85%)</dt><dd className="is-gain">+{formatMoney(saleValue)}</dd></div>
+                                                <div><dt>Budget after sale</dt><dd>{formatMoney(club.budget + saleValue)}</dd></div>
+                                            </dl>
+                                            {level >= 2 && (
+                                                <p className="sell-confirm__warn">
+                                                    This is a +{level} card — the upgrade level is lost when you sell it.
+                                                </p>
+                                            )}
+                                            {copies === 0 && level < 2 && (
+                                                <p className="sell-confirm__note">You have no other card of this player.</p>
+                                            )}
+                                            <p className="sell-confirm__note">A sale cannot be undone.</p>
+                                            <div className="sell-confirm__actions">
+                                                <button type="button" className="btn" onClick={() => setSellConfirm(null)} autoFocus>
+                                                    CANCEL
+                                                </button>
+                                                <button type="button" className="btn btn--danger" onClick={() => sellPlayer(sellConfirm)}>
+                                                    SELL
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
 
                             {tab === 'contracts' && (
                                 <div style={{ display: 'grid', gap: 8 }}>
@@ -964,7 +1218,7 @@ export default function ClubManagementPanel({
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                {message || `${USER_TEAM.name} · CLUB MANAGEMENT`}
+                                {`${userTeam().name} · TRANSFERS · SQUAD ${squad.length}/${SQUAD_LIMITS.total}`}
                             </span>
 
                             <strong style={{ flexShrink: 0 }}>
@@ -972,6 +1226,25 @@ export default function ClubManagementPanel({
                             </strong>
                         </div>
                     </div>
+
+                    {/* Phase 22: thông báo ký / bán / hợp đồng */}
+                    {toast && (
+                        <div
+                            key={toast.key}
+                            className={`toast toast--${toast.tone}`}
+                            role={toast.tone === 'error' ? 'alert' : 'status'}
+                            aria-live="polite"
+                        >
+                            <span className="toast__icon" aria-hidden="true">
+                                {toast.tone === 'success' ? '✓' : toast.tone === 'error' ? '!' : 'i'}
+                            </span>
+                            <div className="toast__body">
+                                <strong>{toast.text}</strong>
+                                {toast.detail && <small>{toast.detail}</small>}
+                            </div>
+                            <button type="button" className="toast__close" onClick={() => setToast(null)} aria-label="Dismiss">✕</button>
+                        </div>
+                    )}
 
                     {/* PLAYER DETAIL MODAL */}
                     {selectedPlayer && (
@@ -1027,7 +1300,7 @@ export default function ClubManagementPanel({
                                                 fontSize: 11,
                                             }}
                                         >
-                                            {selectedPlayer.position} · {selectedPlayer.age} years · {selectedPlayer.nationality}
+                                            {[selectedPlayer.position, `${physiqueOf(selectedPlayer).height} cm · ${physiqueOf(selectedPlayer).weight} kg`, selectedPlayer.nationality, selectedPlayer.club].filter(Boolean).join(' · ')}
                                         </div>
                                     </div>
 

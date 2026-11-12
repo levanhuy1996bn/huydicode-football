@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { shortPlayerName } from '../utils/names'
+import { bodyScale } from '../systems/physique'
 import {
     applyPose,
     createPose,
@@ -71,6 +72,9 @@ function useNumberTexture(number, shirtColor) {
 export default function Player({
     player,
     teamColor,
+    // Phase 24: bộ áo của trận (áo / quần / tất / viền) và bộ thủ môn.
+    kit = null,
+    keeperKit = null,
     matchState,
     labelMode = 'smart',
     isSelected,
@@ -110,10 +114,14 @@ export default function Player({
         String(player.position || '').toUpperCase() === 'GK' ||
         player.number === 1
 
-    const shirt = goalkeeper ? '#f0c928' : teamColor
-    const shorts = goalkeeper ? '#242b32' : teamColor
-    const trim = goalkeeper ? '#fff1a6' : '#eaf4ff'
-    const hand = goalkeeper ? '#f4d33e' : SKIN
+    const wear = goalkeeper
+        ? keeperKit || { shirt: '#f0c928', shorts: '#242b32', socks: '#f0c928', trim: '#fff1a6' }
+        : kit || { shirt: teamColor, shorts: teamColor, socks: SOCK, trim: '#eaf4ff' }
+    const shirt = wear.shirt
+    const shorts = wear.shorts
+    const socks = wear.socks || SOCK
+    const trim = wear.trim || '#eaf4ff'
+    const hand = goalkeeper ? shirt : SKIN
 
     const numberTexture = useNumberTexture(player.number, shirt)
     const labelRef = useRef(null)
@@ -282,7 +290,7 @@ export default function Player({
             <group ref={kneeRef} position={[0, -0.27, 0]}>
                 <mesh position={[0, -0.08, 0]} castShadow>
                     <capsuleGeometry args={[0.088, 0.12, 5, 9]} />
-                    <meshStandardMaterial color={SOCK} />
+                    <meshStandardMaterial color={socks} />
                 </mesh>
 
                 <mesh position={[0, -0.16, 0]} castShadow>
@@ -303,6 +311,8 @@ export default function Player({
         </group>
     )
 
+    const body = bodyScale(player)
+
     return (
         <group
             ref={root}
@@ -314,7 +324,7 @@ export default function Player({
             }}
         >
             <Html
-                position={[0, 2.25, 0]}
+                position={[0, 2.25 * body.height, 0]}
                 center
                 zIndexRange={[6, 0]}
                 style={{ pointerEvents: 'none' }}
@@ -340,6 +350,8 @@ export default function Player({
             )}
 
             {/* Rig: hông → chân (đùi, gối, cẳng chân) + eo → thân → tay, đầu */}
+            {/* Phase 26C: dáng người theo chiều cao / cân nặng */}
+            <group scale={[body.width, body.height, body.width]}>
             <group ref={hips} position={[0, HIP_HEIGHT, 0]}>
                 {/* Quần */}
                 <mesh position={[0, 0.05, 0]} castShadow>
@@ -441,6 +453,7 @@ export default function Player({
                         </group>
                     </group>
                 </group>
+            </group>
             </group>
         </group>
     )

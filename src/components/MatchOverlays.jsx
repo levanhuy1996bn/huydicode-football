@@ -1,7 +1,9 @@
-import { FORMATIONS } from '../data/teams'
+import { fixtureLabel } from '../services/cupService'
+import FormationPicker from './FormationPicker'
 import { TACTICS } from '../systems/constants'
 import { useState } from 'react'
-import { USER_TEAM } from '../data/leagueData'
+import { userClubId, userTeam } from '../services/career'
+import ClubCrest from './ClubCrest'
 import { StatComparison, useLiveStats } from './MatchStatsPanel'
 
 // Danh sách bàn thắng của một đội: "Tên 23'" (OG = phản lưới).
@@ -26,11 +28,14 @@ export function GoalList({ events, teamId, align }) {
     )
 }
 
-export function Scoreline({ homeName, awayName, homeScore, awayScore, events, size = 'large' }) {
+export function Scoreline({ homeName, awayName, homeScore, awayScore, events, size = 'large', homeClubId = null, awayClubId = null }) {
     return (
         <div className={`scoreline scoreline--${size}`}>
             <div className="scoreline__team">
-                <span>{homeName}</span>
+                <span className="scoreline__name">
+                    {homeClubId && <ClubCrest clubId={homeClubId} size={size === 'large' ? 30 : 22} />}
+                    {homeName}
+                </span>
                 <GoalList events={events} teamId="blue" align="left" />
             </div>
 
@@ -41,7 +46,10 @@ export function Scoreline({ homeName, awayName, homeScore, awayScore, events, si
             </div>
 
             <div className="scoreline__team scoreline__team--away">
-                <span>{awayName}</span>
+                <span className="scoreline__name">
+                    {awayName}
+                    {awayClubId && <ClubCrest clubId={awayClubId} size={size === 'large' ? 30 : 22} />}
+                </span>
                 <GoalList events={events} teamId="red" align="right" />
             </div>
         </div>
@@ -77,6 +85,7 @@ export function PausedStats({ statsRef, opponentName }) {
 // Bảng quản lý đội (bên trái) vẫn dùng được để thay người.
 export function HalfTimeOverlay({
     opponentName,
+    opponentClubId = null,
     blueScore,
     redScore,
     events,
@@ -102,8 +111,10 @@ export function HalfTimeOverlay({
                 <div className="match-card__eyebrow">HALF TIME</div>
 
                 <Scoreline
-                    homeName={USER_TEAM.name}
+                    homeName={userTeam().name}
                     awayName={opponentName}
+                    homeClubId={userClubId()}
+                    awayClubId={opponentClubId}
                     homeScore={blueScore}
                     awayScore={redScore}
                     events={events}
@@ -154,20 +165,9 @@ export function HalfTimeOverlay({
                         )}
                     </p>
 
-                    <div className="halftime-settings__row">
+                    <div className="halftime-settings__row halftime-settings__row--stack">
                         <span>Formation</span>
-                        <div className="segmented">
-                            {Object.keys(FORMATIONS).map((key) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    className={key === formationKey ? 'is-active' : ''}
-                                    onClick={() => onFormationChange(key)}
-                                >
-                                    {key}
-                                </button>
-                            ))}
-                        </div>
+                        <FormationPicker value={formationKey} onChange={onFormationChange} compact />
                     </div>
 
                     <div className="halftime-settings__row">
@@ -197,6 +197,7 @@ export function HalfTimeOverlay({
 // Hết giờ: tỉ số thật to + người ghi bàn + các bước tiếp theo.
 export function FullTimeOverlay({
     opponentName,
+    opponentClubId = null,
     blueScore,
     redScore,
     events,
@@ -209,7 +210,6 @@ export function FullTimeOverlay({
     nextOpponentName,
     onNextMatch,
     onOpenLeague,
-    onReplay,
     onNewSeason,
     onSummary,
 }) {
@@ -220,12 +220,14 @@ export function FullTimeOverlay({
         <div className="match-overlay match-overlay--dim match-overlay--front">
             <div className="match-card match-card--wide">
                 <div className="match-card__eyebrow">
-                    FULL TIME{fixture ? ` · ROUND ${fixture.round}` : ''}
+                    FULL TIME{fixture ? ` · ${fixtureLabel(fixture)}` : ''}
                 </div>
 
                 <Scoreline
-                    homeName={USER_TEAM.name}
+                    homeName={userTeam().name}
                     awayName={opponentName}
+                    homeClubId={userClubId()}
+                    awayClubId={opponentClubId}
                     homeScore={blueScore}
                     awayScore={redScore}
                     events={events}
@@ -268,9 +270,6 @@ export function FullTimeOverlay({
                     <button type="button" className="btn" onClick={onOpenLeague}>
                         LEAGUE TABLE
                     </button>
-                    <button type="button" className="btn btn--ghost" onClick={onReplay}>
-                        REPLAY (FRIENDLY)
-                    </button>
                 </div>
             </div>
         </div>
@@ -284,7 +283,7 @@ export function QuitConfirm({ isLeagueMatch, onConfirm, onCancel }) {
                 <div className="match-card__title">QUIT MATCH?</div>
                 <div className="match-card__subtitle">
                     {isLeagueMatch
-                        ? 'This league match will be recorded as a 0–3 loss.'
+                        ? 'This match will be recorded as a 0–3 loss.'
                         : 'The match will end without a result.'}
                 </div>
                 <div className="match-card__actions">

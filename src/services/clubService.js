@@ -1,13 +1,19 @@
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from './career'
+import { upgradeValueFactor } from './upgrade'
 
 const STORAGE_KEY = 'ultimate-football-club-save'
 
 export const INITIAL_CLUB = {
-    name: USER_TEAM.name,
+    name: userTeam().name,
     budget: 100000000,
     reputation: 4,
     transferWindowOpen: true,
     contracts: {},
+    // Phase 23: cấp độ CLB, XP, kho thẻ (gói cầu thủ, thẻ EP), thưởng cuối mùa đã nhận.
+    level: 0,
+    xp: 0,
+    inventory: [],
+    seasonBonusPaid: {},
 }
 
 export function loadClub() {
@@ -18,6 +24,8 @@ export function loadClub() {
             return {
                 ...INITIAL_CLUB,
                 contracts: {},
+                inventory: [],
+                seasonBonusPaid: {},
             }
         }
 
@@ -28,11 +36,17 @@ export function loadClub() {
             ...parsed,
             name: INITIAL_CLUB.name,
             contracts: parsed.contracts || {},
+            level: Number(parsed.level) || 0,
+            xp: Number(parsed.xp) || 0,
+            inventory: Array.isArray(parsed.inventory) ? parsed.inventory : [],
+            seasonBonusPaid: parsed.seasonBonusPaid || {},
         }
     } catch {
         return {
             ...INITIAL_CLUB,
             contracts: {},
+            inventory: [],
+            seasonBonusPaid: {},
         }
     }
 }
@@ -49,7 +63,8 @@ export function saveClub(club) {
 }
 
 export function getPlayerValue(player) {
-    if (player.value) return player.value
+    // Phase 25: thẻ +N đáng giá hơn (+5 ×2.5, +10 ×20).
+    if (player.value) return Math.round(player.value * upgradeValueFactor(player.upgrade))
 
     const overall = player.overall || 60
     const age = player.age || 25
@@ -83,6 +98,7 @@ export function getSquadValue(roster) {
     const allPlayers = [
         ...(blueTeam.players || []),
         ...(blueTeam.substitutes || []),
+        ...(blueTeam.reserves || []),
     ]
 
     return allPlayers.reduce(
@@ -119,6 +135,7 @@ export function getWeeklyWages(roster, club = INITIAL_CLUB) {
     const allPlayers = [
         ...(blueTeam.players || []),
         ...(blueTeam.substitutes || []),
+        ...(blueTeam.reserves || []),
     ]
 
     return allPlayers.reduce(
@@ -131,10 +148,7 @@ export function getWeeklyWages(roster, club = INITIAL_CLUB) {
     )
 }
 
+// Phase 23: tiền của CLB là EP (trước đây hiển thị EUR).
 export function formatMoney(amount) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 0,
-    }).format(amount || 0)
+    return `${Math.round(amount || 0).toLocaleString('en-US')} EP`
 }
