@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6 and Phases 15–24 — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 25 (card upgrades), 26 (more leagues, club selection), 27 (mobile, graphics, sound, performance), 28 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6 and Phases 15–25 — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 26 (more leagues, club selection), 27 (mobile, graphics, sound, performance), 28 (card seasons, real data). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -132,6 +132,7 @@ npm run preview
 - **Phase 20:** fouls, yellow and red cards, sending off, offside, free kicks with a wall, penalties, and proper goal kicks, corners and throw-ins.
 - **Skill shots and passes:** finesse (Z+D), chip (Q+D), trivela (C+D), low driven shot (D, D), driven pass (Z+S), lobbed through ball (Q+W), whipped cross (Z+A). The AI uses them too.
 - **Phase 21:** live stats during the match (STATS button), full stats when paused and at half time, expected goals (xG), pass accuracy, match timeline, shot map and top performers after the match.
+- **Phase 25 (2026-11-12):** upgrade cards +1 → +10 in CARDS → UPGRADE CARDS (Phase 25B: stronger effect above 99, original MU players buyable as copies) (same-player material + up to 5 extra cards, total % shown, heartbeat animation with sound), every + level adds to all stats, coloured + badges and stat numbers, buy the same player many times, card value grows with the + level, player level max 100, stats above 99 still count (diminishing returns).
 - **Phase 24 (2026-11-12):** every club has fixed home / away / third kits (+ two goalkeeper kits); before each match you pick the kit of both teams, clashing kits are locked and keepers get a colour that differs from both teams. Shot and pass accuracy now clearly follow the stats: weak finishers / passers miss a lot more, good ones stay precise.
 - **Phase 23 (2026-11-12):** club level and XP after every league match, prize money (EP), level-up rewards (EP cards + player packs) in a new CARDS tab, a catalog of 500 fictional players (transfer market + packs), every owned player is a card (`playerId` / `cardId`, +1), no duplicate player in the matchday squad, and shots that hit an outfield opponent now rebound instead of sticking to him.
 - **Phase 22 (2026-11-12):** kick-off with two players (the taker must pass), stronger passes and shots, CONTROLS panel (key guide + name display) instead of NAMES, TRANSFERS screen (was CLUB) with clear signing / selling toasts, squad rules (11 starters, max 9 on the bench, reserves, max 50; only reserves can be sold), League screen with LEAGUE TABLE first, PLAYER STATS for every player in the league and the full list of your 38 fixtures.
@@ -250,6 +251,7 @@ ultimate-football-manager-3d/
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
+    │   ├── upgrade.js        # card upgrades: bonus table, success rates, + badge / stat colours (Phase 25)
     │   └── ...
     ├── systems/              # match engine (no React)
     │   ├── constants.js      # field, tactics, timestep, helpers
@@ -284,7 +286,10 @@ ultimate-football-manager-3d/
         ├── MatchOverlays.jsx
         ├── MatchStatsPanel.jsx   # stat comparison bars, live stats, timeline, shot map
         ├── ControlsPanel.jsx     # CONTROLS key guide + name display (Phase 22)
-        ├── screens/CardsScreen.jsx # CARDS tab: club level, open packs / EP cards (Phase 23)
+        ├── screens/CardsScreen.jsx # CARDS tab: club level, open packs / EP cards (Phase 23), UPGRADE CARDS (Phase 25)
+        ├── UpgradePanel.jsx      # pick main card, material, extra cards, success % (Phase 25)
+        ├── UpgradeAnimation.jsx  # FC Online-style upgrade animation (Phase 25)
+        ├── CardBits.jsx          # PlayerCardView, + badge, coloured stat numbers (Phase 25)
         ├── SubstitutionBoard.jsx
         ├── MatchSidePanel.jsx
         ├── Player.jsx
@@ -337,8 +342,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 22 | Kick-off pass, stronger passes and shots, CONTROLS button, signing feedback, CLUB → TRANSFERS, squad rules (11 / 9 / reserves / 50), League screen rework, season player stats (whole league) | ✅ Done (2026-11-12) |
 | 23 | Club level and XP, match prize money, 500-player catalog (`playerId` / `cardId`), Cards tab with player packs and EP cards (+ shot rebound fix) | ✅ Done (2026-11-12) |
 | 24 | Club kits (home / away / third, fixed per club, picked before each match to avoid clashes) + shooting / passing accuracy by stats | ✅ Done (2026-11-12) |
-| 25 | Player card upgrades (+1 → +10) | ⏳ Next |
-| 26 | More leagues and club selection (with crests) | 🔜 Planned |
+| 25 | Player card upgrades (+1 → +10, coloured + badge), player level max 100, stats above 99 with coloured numbers | ✅ Done (2026-11-12) |
+| 26 | More leagues and club selection (with crests) | ⏳ Next |
 | 27 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
 | 28 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
 | Backlog | Individual player skills / traits | 💤 Later |
@@ -818,7 +823,7 @@ Hold a modifier, then press or charge the action key. The modifier also counts i
 
 ### Later phases (not started)
 
-Everything up to and including Phase 24 is done. Roadmap agreed on 2026-11-12:
+Everything up to and including Phase 25 is done. Roadmap agreed on 2026-11-12:
 
 ### Phase 22 — Match feel, screens and squad rules, season player stats ✅ (2026-11-12)
 
@@ -951,22 +956,99 @@ What was built:
   - AI v AI simulator (48 matches, both teams ≈ 80 rated): pass completion 84%, goals 1.97, shots 5.9 per team — unchanged, because good players keep their accuracy. Weaker league clubs (strength 72–76) now miss more.
   - Kits: 380 fixtures with the default choice → 0 outfield clashes, 0 keeper clashes (away team wears away 325×, third 55×). Browser: MUN home vs Crystal Palace → MUN away (white) locked as CLASH with Palace's white away kit; MUN third (black) + Palace home (blue) → Palace third (black) locked; the match shows the chosen colours and the keepers in green / pink on the mini map; no console errors.
 
-### Phase 25 — Player card upgrades (next)
+### Phase 25 — Player card upgrades, level 100, stats above 99 ✅ (2026-11-12)
 
-- Cards have an upgrade level **+1 to +10** (shown by the card border colour). Each level adds OVR on top of the player's XP level from Phase 19B (the two are separate and stack).
-- **Upgrade only with two cards of the same player:** the main card plus one duplicate card with the same `playerId` (from the reserves). The duplicate is used up whether the upgrade succeeds or fails.
-- Starters and substitutes can be upgraded as the main card, but cannot be used as the material card.
-- **Failure rule (fixed):** below +5 a failed upgrade keeps the level; from +5 up a failed upgrade drops **exactly one level**.
-- **Success rates:** not decided yet. They live in one config table so they are easy to tune. Starting values (placeholder, to be tuned in testing):
+Plan (agreed on 2026-11-12):
 
-  | Upgrade | +1→+2 | +2→+3 | +3→+4 | +4→+5 | +5→+6 | +6→+7 | +7→+8 | +8→+9 | +9→+10 |
-  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-  | Success | 100% | 80% | 65% | 50% | 35% | 25% | 15% | 8% | 5% |
-  | OVR bonus at the new level | +1 | +2 | +4 | +6 | +8 | +11 | +15 | +19 | +24 |
+- **Card upgrade level +1 → +10.** The card keeps its look; only the **+N badge** changes colour (like FC Online):
 
-- **Upgrade screen:** pick the main card, pick the duplicate, see the success rate and EP cost, then a success / failure animation.
+  | Badge | +1 | +2 → +4 | +5 → +7 | +8, +9 | +10 |
+  | --- | --- | --- | --- | --- | --- |
+  | Colour | Grey | Bronze | Silver | Gold | Diamond |
 
-### Phase 26 — More leagues and club selection (planned)
+- **Upgrade bonus — added to every stat of the player** (main and detailed stats; OVR follows):
+
+  | Level | +1 | +2 | +3 | +4 | +5 | +6 | +7 | +8 | +9 | +10 |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Every stat | +0 | +2 | +3 | +5 | +7 | +8 | +11 | +14 | +18 | +24 |
+
+- **How to upgrade:**
+  - Main card (any group: XI, bench or reserves) + **one material card of the same player** (`playerId`) from the reserves.
+  - Success = base rate of the target level × material factor (the material's own + level matters):
+
+    | Material vs main | 1+ higher | same | 1 lower | 2 lower | 3+ lower |
+    | --- | --- | --- | --- | --- | --- |
+    | Factor | ×1.25 | ×1 | ×0.7 | ×0.5 | ×0.35 |
+
+    Base rates (tunable): +2 100% · +3 80% · +4 65% · +5 50% · +6 35% · +7 25% · +8 15% · +9 8% · +10 5%.
+  - **Up to 5 extra cards** (any player from the reserves) add success: each up to +2% depending on its OVR (including its + bonus) compared with the main card; **all extras together +10% at most**. Total success never above 100%.
+  - The material and the extra cards are used up whether the upgrade succeeds or fails.
+  - **No EP cost.**
+  - **Failure:** below +5 the card keeps its level; from +5 up it drops **exactly one level**.
+  - The upgrade screen shows **only the total success %** (not the breakdown), the main card, OVR before → after, and the material / extra slots.
+- **Upgrade animation (FC Online style)** — the result is decided when the button is pressed; the animation only builds tension:
+  1. Gather (~0.6 s): screen dims, the material and extra cards fly into the main card, each with a small spark.
+  2. Heartbeat (~2–3 s): the card pulses with a light ring, beats getting faster ("thump… thump… thump-thump-thump"), an energy ring fills around it. Higher targets = more beats (+2/+3 ≈ 3 beats, +8 → +10 ≈ 5–6 beats with a small screen shake on the last beat).
+  3. Success: white flash, light rays in the colour of the new + badge, the badge pops to +N+1, stats count up to the new values (numbers change colour at 99 / 100 / 120), OVR "82 → 87"; confetti from +8, diamond sparkle at +10.
+     Failure: the glow dies, the card shakes, a red flash and "FAILED"; from +5 the badge cracks and drops to +N−1 while the stats count down.
+  4. Buttons UPGRADE AGAIN (keeps the main card) and DONE. Click / Space skips to the result. Reduced-motion: short fade only, no shake or flashing.
+  - Sound: generated in the browser (no audio files): heartbeat thumps, a success burst, a failure tone, with a mute toggle.
+- **Transfer market: buy the same player as many times as you like** (as long as you have EP and squad space); cards you already own show "Owned ×N". The matchday rule (no two cards of the same player in the 20) still applies.
+- **Card value grows with the + level** (sale value ×): +1 ×1 · +2 ×1.2 · +3 ×1.4 · +4 ×1.8 · +5 ×2.5 · +6 ×3.2 · +7 ×4.5 · +8 ×7 · +9 ×11 · +10 ×20.
+- **Player level max 100** (was 30). XP needed per level = 170 + level (a regular starter ≈ level 19 after one season, level 100 after ≈ 6 seasons). Attribute points: 3 per level up to level 30, then 1 per level.
+- **Training is still limited by potential** (the OVR from training points cannot pass the potential); the + bonus is on top and not limited.
+- **No 99 cap on stats any more.** Above 99 a stat keeps improving with diminishing returns (each point is worth less and less, effective value up to ≈ 128), in every formula: shot / pass accuracy, shot power, speed, acceleration, ball control, tackles, keeper reflexes and reach. Physical limits stay sensible (top speed ≈ 10.5 m/s, shots ≈ 40 m/s, keeper reaction ≥ 0.08 s). Checked with the accuracy test at 99 / 110 / 120 / 130.
+- **Stat number colours** (card, player profile, SQUAD screen, market, upgrade screen):
+
+  | Value | 1–98 | 99 | 100–120 | > 120 |
+  | --- | --- | --- | --- | --- |
+  | Colour | as now | Orange | Purple | Gold |
+
+What was built:
+
+- **`services/upgrade.js`:** `UPGRADE_BONUS`, `BASE_RATES`, `materialFactor`, `extraBonus` (each extra = 2% × (extra OVR / main OVR)^3.2, total ≤ 10%), `successRate`, `rollUpgrade`, `levelAfterFailure`, `applyUpgradeLevel` (adds / removes the bonus difference on the six main stats, their training bases, OVR and any trained detailed attributes — no 99 cap, fully reversible), `upgradeValueFactor`, `upgradeTier` (badge colour) and `statTier` (number colour).
+- **CARDS → UPGRADE CARDS** (`UpgradePanel.jsx`): list of all cards (filter "Has a duplicate", shows XI / BENCH / RES and how many duplicates), main card with + badges "+N → +N+1", OVR before → after and the **total success %** only; material slot (same player, reserves; the default pick is the lowest-level duplicate that still gives the full rate) and up to 5 extra cards. Material and extras are removed from the squad and their contracts.
+- **Animation** (`UpgradeAnimation.jsx` + CSS): gather (cards fly in) → heartbeat beats (3 / 4 / 5 / 6 beats by target level, each 16% faster, energy ring in the target tier colour, shake on the last beat from +8) → success (white flash, rotating light rays in the new tier colour, badge pop, stats count up with +N, confetti from +8, sparkle at +10) or failure (red flash, card shake, badge crack and drop from +5, stats count down). UPGRADE AGAIN (when another duplicate is left) and DONE. Click / Space skips. Reduced motion: almost no movement.
+- **Sound** (`utils/sound.js`): Web Audio only — "lub-dub" heartbeat getting louder, a rising chord + thump on success, a falling tone on failure; SOUND ON / OFF button (remembered in the browser).
+- **Badges and numbers** (`CardBits.jsx`): `UpgradeBadge` (grey / bronze / silver / gold / diamond), `StatNum` / `statClass` (99 orange, 100–120 purple, > 120 gold) on cards, the in-match player profile, the SQUAD screen and the TRANSFERS squad list.
+- **Market:** the same player can be bought again and again (EP and squad space permitting) with an "OWNED ×N" chip; `getPlayerValue` multiplies by the + level factor.
+- **Progression:** `MAX_LEVEL` 100, `xpToNext = 170 + level`, `pointsForLevel` (3 up to level 30, then 1); no 99 cap on training; the potential check ignores the + bonus.
+- **Stats above 99:** `attributes.js → effectiveStat` (99 + 29.5 × (1 − e^(−(v − 99)/25)): 110 → 109.5, 120 → 115.8, 130 → 120, max ≈ 128.5) is used by `attr()` everywhere in the engine; `skill01` now goes up to 1.5; accuracy curves shrink below their minimum for skills above 99; keeper reaction can reach 0.08 s; top speed capped at 10.5 m/s and shots at 40 m/s.
+- **Test results (2026-11-12):**
+  - Unit tests: bonus table 2 / 3 / 5 / 7 / 8 / 11 / 14 / 18 / 24; +2 & +2 → +3 = 80%, +2 & +1 = 56%, +5 & +6 = 43.75%; five strong extras turn +9 → +10 from 5% into 15%; an extra of 70 OVR for an 80 OVR main card = +1.30%; 20,000 rolls at 56% → 55.9%; +10 adds 24 to every stat (86 → 110) and +10 → +1 restores the card exactly; value +5 ×2.5, +10 ×20; one season of a regular starter → level 20, level 100 after ≈ 6.4 seasons with 157 points; training still works on a +10 card above its potential; finishing can be trained 99 → 100.
+  - Above 99 (400–600 kicks each): your shot from 16 m misses the aim by 0.07 m at 99 → 0.05 m at 120–130; full-power shot from 25 m 0.27 m → 0.15 m and 39.9 → 40 m/s; AI shot 0.75 m → 0.47 m; pass 0.08 m → 0.05 m; top speed 9.12 → 9.70 m/s, acceleration 20.0 → 22.5 m/s² (sprint / acceleration 99 → 130).
+  - AI v AI simulator (48 matches): goals 1.83, pass completion 84% — unchanged.
+  - Browser: bought the same player 4× ("OWNED ×4"); +1 → +2 at 100% (OVR 54 → 56, every stat +2, bronze badge); two +2 attempts with a +1 material (56%) failed and kept +2; UPGRADE AGAIN / Space skip / DONE work; no console errors.
+
+
+### Phase 25B — Stronger effect above 99, original squad in the market ✅ (2026-11-12)
+
+Agreed after Phase 25 (the first version made stats above 99 change too little: 99 → 130 gave only 0.07 → 0.05 m shot error and 9.1 → 9.7 m/s).
+
+- **Softer diminishing returns:** `effectiveStat` = 99 + 45 × (1 − e^(−(v − 99)/40)) → 110 ≈ 109.8, 120 ≈ 117.4, 130 ≈ 123.3 (was 120). `skill01` up to 1.6.
+- **Extra rewards above 99** (`constants.js → OVER_99`, `attributes.js → over99`: 110 → 0.44, 120 → 0.75, 130 → 1.0) and stronger error shrinking (`aboveNinetyNine`: errors × 0.74 / 0.55 / 0.40 at 110 / 120 / 130).
+- **Measured (99 → 110 → 120 → 130):**
+
+  | | 99 | 110 | 120 | 130 |
+  | --- | --- | --- | --- | --- |
+  | Top speed (Sprint speed) | 9.12 | 9.69 | 10.08 | 10.39 m/s |
+  | Acceleration | 20.0 | 22.7 | 24.5 | 26.0 m/s² |
+  | Your full-power shot from 25 m: speed | 39.9 | 42.9 | 45.0 | 46.0 m/s (cap) |
+  | Your full-power shot from 25 m: miss from aim | 0.28 | 0.12 | 0.08 | 0.05 m |
+  | AI shot from 16 m: miss | 0.72 | 0.53 | 0.40 | 0.30 m |
+  | Pass at 20 m: miss / pass speed | 0.09 m / +0% | 0.06 / +7% | 0.04 / +11% | 0.03 m / +15% |
+  | Clean first touch up to (Ball control) | 21.0 | 25.0 | 27.8 | 30.0 m/s |
+  | Keeper reaction (Reflexes) | 0.100 | 0.078 | 0.062 | 0.050 s |
+  | Keeper extra reach (Diving) vs 70 | +0.73 | +1.13 | +1.41 | +1.63 m |
+
+  Keeper save caps also rise up to +7% at 130. Tackles already scale with the stat difference (≈ +6 / +11 / +15% vs a 99 tackler). Chips, free-kick and penalty shots do not get the extra shot speed. AI v AI simulator unchanged (no AI player above 99).
+- **Original Manchester United players in the transfer market** (`data/transferMarket.js`): every starter and substitute from `data/teams.js` with the same id as `playerId` (e.g. `blue-9`), priced by OVR like the catalog, so copies can be bought and the original squad can be upgraded. Packs still draw only from the 500-player catalog.
+- **Upgrade screen:** the "Has a duplicate" filter stays on by default. When no card has a duplicate there is a **GO TO TRANSFER MARKET →** button; when the chosen card has no duplicate there is a **BUY A COPY ON THE MARKET →** button that opens TRANSFERS with the player's name already in the search box.
+- **Fix (2026-11-12):** after buying a copy from the upgrade screen, the material was not picked automatically, so UPGRADE did nothing. The screen now re-picks the material whenever a duplicate appears (or the picked one is used up). Disabled buttons (e.g. UPGRADE without a material) are grey with a not-allowed cursor everywhere (`.btn:disabled`).
+  - Browser test: Huy Le without a duplicate → UPGRADE grey and disabled, success "–"; buy a copy → back on the screen the copy is selected automatically, success 100%, UPGRADE enabled → animation → SUCCESS +1 → +2.
+- **Browser test:** Huy Le (ST, no duplicate) → BUY A COPY ON THE MARKET → TRANSFERS searched "Huy Le" (1 result, OWNED ×1) → signed for 34,400,000 EP → back in UPGRADE CARDS Huy Le shows "1 dup"; no console errors.
+
+### Phase 26 — More leagues and club selection (next)
 
 - **More leagues:** add several leagues (fictional or generic names), each with its own clubs, squads (from the player catalog), fixtures, table and season stats. A league selector in the League screen.
 - **Club selection:** choose which club (and league) to manage when starting a career or a new season, and from a "Change club" option in Settings.

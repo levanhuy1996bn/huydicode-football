@@ -12,6 +12,7 @@ import {
     xpToNext,
 } from '../../systems/progression'
 import { shortPlayerName } from '../../utils/names'
+import { UpgradeBadge, statClass } from '../CardBits'
 
 // Phase 19B: màn phát triển cầu thủ — cấp độ, XP, điểm chưa dùng, tiềm năng
 // và cộng điểm chỉ số (giá theo vị trí), có nút tự cộng theo vị trí.
@@ -152,9 +153,9 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                     <h1>Level up your squad</h1>
                     <p>
                         Players earn XP from every match (minutes, rating, goals, assists, tackles,
-                        saves, clean sheets). Each level gives {POINTS_PER_LEVEL} points. Key attributes for the
-                        position cost 1 point, secondary 2, others 3. Overall can't go above the
-                        player's potential. {totalUnspent > 0 && <b>{totalUnspent} points waiting.</b>}
+                        saves, clean sheets). Max level {MAX_LEVEL}: {POINTS_PER_LEVEL} points per level up to level 30,
+                        then 1 point per level. Key attributes for the position cost 1 point, secondary 2, others 3.
+                        Training can't take Overall above the player's potential (card upgrades +N add on top). {totalUnspent > 0 && <b>{totalUnspent} points waiting.</b>}
                     </p>
                 </div>
             </div>
@@ -205,7 +206,8 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                             <XpBar player={selected} />
                         </div>
                         <div className="dev-detail__ovr">
-                            <b>{selected.overall}</b>
+                            <b className={statClass(selected.overall)}>{selected.overall}</b>
+                            <UpgradeBadge level={selected.upgrade} />
                             <small>OVR · POTENTIAL {progress.potential}</small>
                         </div>
                     </div>
@@ -262,14 +264,14 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                                                 {label}
                                             </span>
                                             <b>
-                                                {values[key]}
+                                                <span className={statClass(values[key])}>{values[key]}</span>
                                                 {gain - added > 0 && <em>+{gain - added}</em>}
                                                 {added > 0 && <i className="dev-attr__new">+{added}</i>}
                                             </b>
                                             <button
                                                 type="button"
                                                 className="dev-plus"
-                                                disabled={progress.unspentPoints < cost || values[key] >= 99}
+                                                disabled={progress.unspentPoints < cost}
                                                 onClick={() => upgrade(key)}
                                                 title={`Costs ${cost} point${cost > 1 ? 's' : ''}`}
                                             >

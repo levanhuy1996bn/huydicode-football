@@ -1,4 +1,5 @@
 import { USER_TEAM } from '../data/leagueData'
+import { upgradeValueFactor } from './upgrade'
 
 const STORAGE_KEY = 'ultimate-football-club-save'
 
@@ -62,7 +63,8 @@ export function saveClub(club) {
 }
 
 export function getPlayerValue(player) {
-    if (player.value) return player.value
+    // Phase 25: thẻ +N đáng giá hơn (+5 ×2.5, +10 ×20).
+    if (player.value) return Math.round(player.value * upgradeValueFactor(player.upgrade))
 
     const overall = player.overall || 60
     const age = player.age || 25

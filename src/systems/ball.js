@@ -7,6 +7,8 @@ import {
     KICK_POWER,
     kickPowerScale,
     ACCURACY,
+    OVER_99,
+    aboveNinetyNine,
     aiCornerError,
     aiShotSpread,
     passAngleError,
@@ -17,7 +19,7 @@ import {
 import { attackDir } from './matchState'
 import { setPlayerAction } from './playerState'
 import { closePass, openPass, recordPlayer, recordShot, recordTeam, shotXg } from './matchStats'
-import { attr, skill01 } from './attributes'
+import { attr, over99, skill01 } from './attributes'
 import { fatiguePenalty } from './stamina'
 import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
 
@@ -611,7 +613,7 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             attr(item, 'longShots') * longRange -
             fatiguePenalty(state, playerId),
             40,
-            99,
+            130,
         )
         const shotPower = attr(item, 'shotPower')
 
@@ -628,10 +630,10 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             // Phase 24: chỉ số thấp lệch nhiều hơn rõ rệt (constants.js → ACCURACY).
             const miss = 1 - accuracy
             const { longRange, overPower } = ACCURACY
-            const spread =
+            const spread = aboveNinetyNine(miss) * (
                 shotSpread(accuracy) +
-                Math.max(0, charge - overPower.from) * overPower.perUnit * (overPower.min + overPower.max * miss) +
-                Math.max(0, distanceToGoal - longRange.from) * (longRange.min + longRange.max * miss)
+                Math.max(0, charge - overPower.from) * overPower.perUnit * Math.max(0.2, overPower.min + overPower.max * miss) +
+                Math.max(0, distanceToGoal - longRange.from) * Math.max(0.01, longRange.min + longRange.max * miss))
             // Sút xoáy ZD chính xác hơn, sút má ngoài CD nhỉnh hơn sút thường.
             const spreadScale =
                 variant === 'finesse' ? 0.6 : variant === 'trivela' ? 0.85 : variant === 'chip' ? 1.6 : 1
@@ -804,6 +806,16 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         power = Math.min(power, KICK_POWER.maxPass)
     }
 
+    // Phase 25: Shot power trên 99 sút căng hơn rõ (tới +5.4 m/s ở 130),
+    // trần 46 m/s. Lốp bóng / phạt đền / đá phạt không cộng.
+    if (action === 'shoot') {
+        if (variant !== 'chip' && restartType !== 'free-kick' && restartType !== 'penalty') {
+            power += over99(attr(item, 'shotPower')) * OVER_99.shotSpeed
+        }
+
+        power = Math.min(power, OVER_99.maxShotSpeed)
+    }
+
     const animation = isThrowIn
         ? 'throw'
         : action === 'shoot'
@@ -961,6 +973,11 @@ function beginWindup(ctx, params) {
 
         direction.set(dx, 0, dz)
         params.power = power * (1 + (Math.random() * 2 - 1) * passPowerError(sloppiness))
+
+        // Phase 25: chuyền sệt / chọc khe nhanh hơn tới 15% khi chỉ số > 99.
+        if (action === 'pass' || action === 'through') {
+            params.power *= 1 + over99(skill + fatiguePenalty(state, playerId)) * OVER_99.passSpeed
+        }
     }
 
     // Quay người về hướng đá để animation đúng hướng.
@@ -1338,9 +1355,11 @@ export function updateLooseBallPickup(ctx) {
     // ngay đường chuyền có tốc độ vừa phải. Đối phương chặn bóng nhanh thì
     // bóng chỉ bật ra chậm lại, phải tranh tiếp mới có bóng (Phase 18).
     // Ball control (Phase 19): khống chế gọn bóng tới 10–18 m/s.
+    const ballControl = attr(best.item, 'ballControl')
     const controlSpeed =
         CONTROL_SPEED - 4 +
-        skill01(attr(best.item, 'ballControl') - fatiguePenalty(state, best.item.id)) * 8
+        skill01(ballControl - fatiguePenalty(state, best.item.id)) * 8 +
+        over99(ballControl) * OVER_99.control
     const cleanControl =
         best.item.teamId === reachTeam && ballSpeed <= controlSpeed
 

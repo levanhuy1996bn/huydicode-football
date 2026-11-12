@@ -13,6 +13,7 @@ import {
 import { USER_TEAM } from '../data/leagueData'
 import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
 import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
+import { StatNum, UpgradeBadge } from './CardBits'
 
 const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
 const MARKET_PAGE = 48
@@ -106,6 +107,7 @@ export default function ClubManagementPanel({
                                                 // Phase 23: CLB do GameScene giữ (cấp độ, kho thẻ, tiền thưởng).
                                                 club: controlledClub,
                                                 onClubChange,
+                                                initialSearch = '',
                                             }) {
     const [internalClub, setInternalClub] = useState(loadClub)
     const club = controlledClub ?? internalClub
@@ -119,7 +121,7 @@ export default function ClubManagementPanel({
     // Phase 22: màn TRANSFERS mở thẳng vào thị trường chuyển nhượng.
     const [tab, setTab] = useState('market')
 
-    const [search, setSearch] = useState('')
+    const [search, setSearch] = useState(initialSearch || '')
     const [positionFilter, setPositionFilter] = useState('ALL')
     const [sortBy, setSortBy] = useState('overall')
     const [rarityFilter, setRarityFilter] = useState('ALL')
@@ -137,16 +139,22 @@ export default function ClubManagementPanel({
         return squadOf(blueTeam)
     }, [blueTeam])
 
-    // Đã có thẻ của cầu thủ này thì không mua thêm trên thị trường
-    // (thẻ trùng chỉ đến từ gói cầu thủ — Phase 23).
-    const squadMarketIds = useMemo(
-        () => new Set(squad.map(playerIdOf)),
-        [squad],
-    )
+    // Phase 25: mua cùng một cầu thủ bao nhiêu lần cũng được (có EP và còn
+    // chỗ trong đội) — dùng làm thẻ nguyên liệu khi đập thẻ. Hiện "Owned ×N".
+    const ownedCounts = useMemo(() => {
+        const counts = new Map()
+
+        squad.forEach((player) => {
+            const id = playerIdOf(player)
+
+            counts.set(id, (counts.get(id) || 0) + 1)
+        })
+
+        return counts
+    }, [squad])
 
     const availablePlayers = useMemo(() => {
         return TRANSFER_MARKET
-            .filter((player) => !squadMarketIds.has(player.id))
             .filter((player) => {
                 const matchesSearch = player.name
                     .toLowerCase()
@@ -166,7 +174,7 @@ export default function ClubManagementPanel({
 
                 return b.overall - a.overall
             })
-    }, [search, positionFilter, rarityFilter, sortBy, squadMarketIds])
+    }, [search, positionFilter, rarityFilter, sortBy])
 
     // Đổi bộ lọc thì hiện lại từ trang đầu.
     useEffect(() => {
@@ -699,6 +707,11 @@ export default function ClubManagementPanel({
                                                         >
                                                             {player.position} · {player.age} years · {player.nationality}
                                                         </div>
+                                                        {ownedCounts.get(player.playerId) > 0 && (
+                                                            <div className="owned-chip">
+                                                                OWNED ×{ownedCounts.get(player.playerId)}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div
@@ -834,7 +847,7 @@ export default function ClubManagementPanel({
                                                                 fontSize: 13,
                                                             }}
                                                         >
-                                                            {player.name}
+                                                            {player.name} <UpgradeBadge level={player.upgrade} />
                                                         </div>
 
                                                         <div
@@ -854,7 +867,7 @@ export default function ClubManagementPanel({
                                                             fontSize: 18,
                                                         }}
                                                     >
-                                                        {player.overall}
+                                                        <StatNum value={player.overall} />
                                                     </strong>
                                                 </div>
 

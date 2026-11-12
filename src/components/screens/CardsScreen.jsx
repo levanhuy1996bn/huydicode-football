@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { formatMoney } from '../../services/clubService'
 import {
     PACK_TYPES,
-    RARITY_LABELS,
     cardFromCatalog,
     drawFromPack,
     freeShirtNumber,
@@ -10,47 +9,14 @@ import {
 } from '../../services/cards'
 import { CLUB_XP, clubXpToNext, levelRewards } from '../../services/clubProgress'
 import { SQUAD_LIMITS, squadOf } from '../../systems/roster'
+import { PlayerCardView } from '../CardBits'
+import UpgradePanel from '../UpgradePanel'
 
 // Phase 23: tab CARDS — kho phần thưởng (gói cầu thủ, thẻ EP), mở lúc nào
 // cũng được. Cầu thủ mở ra là thẻ +1 và vào đội hình ngoài. Đội đủ 50 người
 // thì không mở được gói (phải bán bớt), không tự đổi ra tiền.
 
-export function PlayerCardView({ player, size = 'large' }) {
-    if (!player) return null
-
-    const rarity = player.rarity || 'bronze'
-
-    return (
-        <div className={`player-card player-card--${rarity} player-card--${size}`}>
-            <div className="player-card__top">
-                <div className="player-card__ovr">
-                    <b>{player.overall}</b>
-                    <span>{player.position}</span>
-                </div>
-                <span className="player-card__upgrade">+{player.upgrade || 1}</span>
-            </div>
-            <div className="player-card__name">{player.name}</div>
-            <div className="player-card__meta">
-                {player.nationality || '—'} · {player.age ? `${player.age} yrs` : ''}
-            </div>
-            <div className="player-card__stats">
-                {[
-                    ['PAC', player.pace],
-                    ['SHO', player.shooting],
-                    ['PAS', player.passing],
-                    ['DRI', player.dribbling],
-                    ['DEF', player.defending],
-                    ['PHY', player.physical],
-                ].map(([label, value]) => (
-                    <span key={label}>
-                        <b>{value ?? '–'}</b> {label}
-                    </span>
-                ))}
-            </div>
-            <div className="player-card__rarity">{RARITY_LABELS[rarity] || rarity}</div>
-        </div>
-    )
-}
+export { PlayerCardView }
 
 function itemTitle(item) {
     if (item.type === 'ep') return `${formatMoney(item.amount)} card`
@@ -58,6 +24,7 @@ function itemTitle(item) {
 }
 
 export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers }) {
+    const [tab, setTab] = useState('rewards') // 'rewards' | 'upgrade' (Phase 25)
     const [reveal, setReveal] = useState(null)
     const [notice, setNotice] = useState(null)
 
@@ -147,7 +114,29 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                 </div>
             </div>
 
-            {notice && (
+            <nav className="cards-tabs" aria-label="Cards">
+                {[['rewards', `REWARDS · ${inventory.length}`], ['upgrade', 'UPGRADE CARDS']].map(([id, label]) => (
+                    <button
+                        key={id}
+                        type="button"
+                        className={tab === id ? 'cards-tab active' : 'cards-tab'}
+                        onClick={() => setTab(id)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </nav>
+
+            {tab === 'upgrade' && (
+                <UpgradePanel
+                    team={team}
+                    onRosterChange={onRosterChange}
+                    onClubChange={onClubChange}
+                    onFindCopy={onOpenTransfers}
+                />
+            )}
+
+            {tab === 'rewards' && notice && (
                 <div className={`cards-notice cards-notice--${notice.tone}`} role="alert">
                     {notice.text}
                     {squadFull && (
@@ -158,6 +147,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                 </div>
             )}
 
+            {tab === 'rewards' && (
             <div className="cards-layout">
                 <div className="home-card">
                     <div className="home-card__head">
@@ -220,10 +210,11 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         <li>Every level: <b>{formatMoney(5000000)}</b> card + {PACK_TYPES.standard.label}.</li>
                         <li>Levels 5, 10, 15…: <b>{formatMoney(10000000)}</b> card + {PACK_TYPES.premium.label}.</li>
                         <li>End of season: EP card by final position (champion {formatMoney(30000000)}).</li>
-                        <li>Packs give one +1 player card (reserves). Duplicates are kept for upgrades (Phase 25).</li>
+                        <li>Packs give one +1 player card (reserves). Duplicates are used in UPGRADE CARDS.</li>
                     </ul>
                 </div>
             </div>
+            )}
 
             {reveal && (
                 <div className="pack-reveal" role="dialog" aria-label="Opened">

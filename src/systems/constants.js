@@ -185,7 +185,17 @@ export const ACCURACY = {
     passPower: { base: 0.015, scale: 0.13, curve: 1.3 },
 }
 
-const curved = ({ base, scale, curve }, miss) => base + scale * Math.pow(Math.max(0, Math.min(1, miss)), curve)
+// miss < 0 (chỉ số trên 99, Phase 25): sai số còn nhỏ hơn mức tối thiểu,
+// tới 50% base ở chỉ số hiệu dụng cao nhất (miss ≈ −0.5).
+const curved = ({ base, scale, curve }, miss) =>
+    miss < 0
+        ? base * aboveNinetyNine(miss)
+        : base + scale * Math.pow(Math.min(1, miss), curve)
+
+// Hệ số thu nhỏ sai số khi chỉ số vượt 99 (miss < 0): 110 ≈ 0.74, 120 ≈ 0.55, 130 ≈ 0.4.
+export function aboveNinetyNine(miss) {
+    return miss < 0 ? Math.max(0.25, 1 + miss * 1.45) : 1
+}
 
 export const shotSpread = (accuracy) => curved(ACCURACY.shot, 1 - accuracy)
 export const aiShotSpread = (accuracy) => curved(ACCURACY.aiShot, 1 - accuracy)
@@ -194,3 +204,25 @@ export const shotLiftError = (accuracy) =>
     ACCURACY.shotLift.scale * Math.pow(Math.max(0, 1 - accuracy), ACCURACY.shotLift.curve)
 export const passAngleError = (sloppiness) => curved(ACCURACY.passAngle, sloppiness)
 export const passPowerError = (sloppiness) => curved(ACCURACY.passPower, sloppiness)
+
+// ---- Phase 25 (bổ sung): phần thưởng khi chỉ số vượt 99 ----
+// o = over99(chỉ số hiệu dụng): 110 → 0.44, 120 → 0.75, 130 → 1.0.
+// Mục tiêu ở 99 → 110 → 120 → 130:
+//   tốc độ 9.1 → 9.6 → 10.0 → 10.4 m/s · gia tốc 20 → 22 → 24 → 26 m/s²
+//   sút hết lực 40 → 42 → 44 → 46 m/s · chuyền nhanh hơn 5 / 10 / 15%
+//   đỡ bóng gọn tới 21 → 24 → 27 → 30 m/s · thủ môn phản xạ 0.10 → 0.08 → 0.065 → 0.05s,
+//   tầm bay +0.3 / +0.6 / +0.9m, cứu thua tối đa 85% → 92%.
+export const OVER_99 = {
+    topSpeed: 0.6,       // m/s cộng thêm × o (trần 10.5)
+    maxSpeed: 10.5,
+    acceleration: 3.1,   // m/s² × o
+    shotSpeed: 5.4,      // m/s × o (sau hệ số lực)
+    maxShotSpeed: 46,
+    passSpeed: 0.15,     // +15% × o (chuyền sệt / chọc khe)
+    control: 5.7,        // m/s × o (tốc độ bóng còn đỡ gọn được)
+    keeperReaction: 0.122, // s × (skill − 1), sàn 0.05s
+    minReaction: 0.05,
+    keeperReach: 0.3,    // m × o
+    keeperSave: 0.07,    // +7% trần cứu thua × o
+    accuracyDrop: 1.45,  // sai số × max(0.25, 1 + miss × 1.45) khi miss < 0
+}

@@ -1484,3 +1484,163 @@ nav button { position: relative; }
 .kit-option.is-clash { opacity: 0.4; cursor: not-allowed; }
 .kit-option.is-clash small { color: #ff8a7a; }
 .kit-icon { width: 30px; height: 33px; }
+
+/* ---- Phase 25: số chỉ số theo mốc, ô +N, thẻ đã sở hữu ---- */
+.stat-num--orange { color: #ff9a3c; }
+.stat-num--purple { color: #b98cff; }
+.stat-num--gold { color: #ffd34d; text-shadow: 0 0 8px rgba(255, 211, 77, 0.45); }
+.player-card .stat-num--orange { color: #b45309; }
+.player-card .stat-num--purple { color: #6d28d9; }
+.player-card .stat-num--gold { color: #a16207; text-shadow: none; }
+.owned-chip { display: inline-block; margin-top: 6px; padding: 2px 7px; border-radius: 10px; background: rgba(185, 237, 112, 0.14); color: #b9ed70; font-size: 9px; font-weight: 900; letter-spacing: 1px; }
+
+.upgrade-badge {
+  display: inline-grid; place-items: center; min-width: 28px; padding: 2px 7px; border-radius: 6px;
+  font: 900 11px Inter, sans-serif; letter-spacing: 0.5px; color: #fff; vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.upgrade-badge--large { min-width: 44px; padding: 4px 10px; font-size: 16px; border-radius: 8px; }
+.upgrade-badge--grey { background: linear-gradient(160deg, #9aa3ab, #5d666e); }
+.upgrade-badge--bronze { background: linear-gradient(160deg, #e0a172, #8c5329); }
+.upgrade-badge--silver { background: linear-gradient(160deg, #f1f4f6, #8e9aa2); color: #1d2328; }
+.upgrade-badge--gold { background: linear-gradient(160deg, #ffe08a, #c38f1c); color: #2a1d02; }
+.upgrade-badge--diamond {
+  background: linear-gradient(135deg, #b8f3ff, #7aa8ff 35%, #e3b6ff 65%, #9ff5e0); color: #10233a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 0 12px rgba(160, 220, 255, 0.7);
+}
+.dev-detail__ovr .upgrade-badge { margin-top: 4px; }
+
+/* ---- Phase 25: màn đập thẻ ---- */
+.cards-tabs { display: flex; gap: 8px; }
+.cards-tab {
+  padding: 9px 16px; border-radius: 8px; border: 1px solid #355642; background: #13251d; color: #9fb8a9;
+  font: 800 11px Inter, sans-serif; letter-spacing: 1.5px; cursor: pointer;
+}
+.cards-tab.active { background: #b9ed70; border-color: #b9ed70; color: #0b1a12; }
+.upgrade-panel { display: grid; grid-template-columns: minmax(240px, 0.8fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.upgrade-filter { display: inline-flex; gap: 6px; align-items: center; font-size: 11px; color: #9fb8a9; cursor: pointer; }
+.upgrade-list { display: grid; gap: 6px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
+.upgrade-list--inline { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); max-height: 220px; }
+.upgrade-row {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 8px; align-items: center;
+  width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid #2a4436; background: #13251d;
+  color: #edf5f0; text-align: left; cursor: pointer; font: inherit;
+}
+.upgrade-row:hover { border-color: #4b6b5a; }
+.upgrade-row.is-active { border-color: #b9ed70; background: #1c3529; box-shadow: inset 0 0 0 1px #b9ed70; }
+.upgrade-row.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.upgrade-row__ovr { font: 900 17px 'Barlow Condensed', Inter, sans-serif; }
+.upgrade-row__name { display: grid; min-width: 0; font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upgrade-row__name small { font-size: 10px; color: #8fb3a0; font-weight: 600; }
+.upgrade-row__note { font-style: normal; font-size: 10px; color: #b9ed70; font-weight: 800; }
+.upgrade-main { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; }
+.upgrade-main__info { display: grid; gap: 12px; }
+.upgrade-main__levels { display: flex; gap: 10px; align-items: center; font-size: 18px; color: #8fb3a0; }
+.upgrade-main__ovr { font-size: 14px; color: #c9dacf; }
+.upgrade-main__ovr .stat-num { font: 900 22px 'Barlow Condensed', Inter, sans-serif; color: #fff; }
+.upgrade-rate { display: flex; align-items: baseline; gap: 12px; }
+.upgrade-rate span { font-size: 11px; letter-spacing: 2px; color: #8fb3a0; }
+.upgrade-rate b { font: 900 44px 'Barlow Condensed', Inter, sans-serif; color: #b9ed70; line-height: 1; }
+.upgrade-rate.is-empty b { color: #4b6b5a; }
+.upgrade-warning { margin: 0; font-size: 11px; color: #ffd166; }
+.upgrade-note { margin: 0; font-size: 11px; color: #7f9a8b; }
+.upgrade-slots { display: grid; gap: 8px; margin-top: 18px; }
+.upgrade-slots__head { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #8fb3a0; margin-top: 6px; }
+.upgrade-slots__head small { font-weight: 600; letter-spacing: 0; color: #6f8a7b; }
+@media (max-width: 960px) {
+  .upgrade-panel { grid-template-columns: 1fr; }
+  .upgrade-main { grid-template-columns: 1fr; justify-items: center; }
+}
+
+/* ---- Phase 25: hoạt cảnh đập thẻ ---- */
+.upgrade-anim {
+  position: fixed; inset: 0; z-index: 240; display: grid; place-items: center; align-content: center; gap: 14px;
+  padding: 16px; background: radial-gradient(ellipse at center, rgba(12, 28, 20, 0.92), rgba(2, 6, 4, 0.97));
+  color: #fff; cursor: pointer; overflow: hidden;
+}
+.upgrade-anim__title { font: 900 20px 'Barlow Condensed', Inter, sans-serif; letter-spacing: 3px; text-align: center; }
+.upgrade-anim.is-success .upgrade-anim__title { color: #b9ed70; }
+.upgrade-anim.is-fail .upgrade-anim__title { color: #ff8a7a; }
+.upgrade-anim__mute { position: absolute; top: 14px; right: 14px; background: none; border: 1px solid #355642; border-radius: 6px; color: #9fb8a9; font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 5px 9px; cursor: pointer; }
+.upgrade-anim__stage { position: relative; display: grid; place-items: center; width: 340px; height: 360px; }
+.upgrade-anim__stage.is-shaking { animation: up-shake 0.35s linear; }
+.upgrade-anim__card { position: relative; z-index: 2; }
+.upgrade-anim__card.is-beating { animation: up-beat 0.42s ease-out; }
+.upgrade-anim__card.is-beating::after {
+  content: ''; position: absolute; inset: -14px; border-radius: 20px; border: 3px solid rgba(185, 237, 112, 0.8);
+  animation: up-pulse-ring 0.6s ease-out forwards; pointer-events: none;
+}
+.upgrade-anim--beat .upgrade-anim__card .player-card { box-shadow: 0 0 40px rgba(185, 237, 112, 0.35), 0 14px 30px rgba(0, 0, 0, 0.45); }
+.upgrade-anim.is-fail .upgrade-anim__card { animation: up-fail-shake 0.5s ease-in-out; filter: saturate(0.6) brightness(0.85); }
+.upgrade-anim__badge { position: absolute; top: 12px; right: 14px; z-index: 3; }
+.upgrade-anim__badge.is-pop { animation: up-pop 0.6s cubic-bezier(.2, 1.6, .4, 1); }
+.upgrade-anim__badge.is-crack { animation: up-crack 0.7s ease-out; }
+.upgrade-anim__ring { position: absolute; width: 340px; height: 340px; transform: rotate(-90deg); z-index: 1; }
+.upgrade-anim__ring-track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 4; }
+.upgrade-anim__ring-fill { fill: none; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 339.3; transition: stroke-dashoffset 0.35s ease-out; stroke: #b9ed70; }
+.upgrade-anim__ring-fill--bronze { stroke: #e0a172; }
+.upgrade-anim__ring-fill--silver { stroke: #e6ecef; }
+.upgrade-anim__ring-fill--gold { stroke: #ffd34d; }
+.upgrade-anim__ring-fill--diamond { stroke: #9fe3ff; }
+.upgrade-anim__fly {
+  position: absolute; z-index: 3; display: grid; justify-items: center; gap: 4px; width: 58px; padding: 8px 4px;
+  border-radius: 8px; background: #22392d; border: 1px solid #4b6b5a; font: 900 16px 'Barlow Condensed', Inter, sans-serif;
+  animation: up-fly 0.55s ease-in forwards; opacity: 0;
+}
+.upgrade-anim__flash { position: absolute; inset: -40vmax; z-index: 4; background: #fff; pointer-events: none; animation: up-flash 0.7s ease-out forwards; }
+.upgrade-anim__flash--fail { background: #c4302b; animation-duration: 0.6s; }
+.upgrade-anim__rays {
+  position: absolute; width: 640px; height: 640px; z-index: 0; border-radius: 50%; opacity: 0.7;
+  background: repeating-conic-gradient(var(--ray) 0 8deg, transparent 8deg 20deg);
+  mask-image: radial-gradient(circle, #000 15%, transparent 65%); -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 65%);
+  animation: up-rays 6s linear infinite, up-fade-in 0.4s ease-out;
+}
+.upgrade-anim__rays--grey { --ray: rgba(200, 210, 215, 0.35); }
+.upgrade-anim__rays--bronze { --ray: rgba(224, 161, 114, 0.45); }
+.upgrade-anim__rays--silver { --ray: rgba(236, 242, 245, 0.45); }
+.upgrade-anim__rays--gold { --ray: rgba(255, 211, 77, 0.5); }
+.upgrade-anim__rays--diamond { --ray: rgba(170, 225, 255, 0.55); }
+.upgrade-anim__sparkle {
+  position: absolute; inset: -30px; z-index: 3; pointer-events: none;
+  background: radial-gradient(circle at 20% 30%, #fff 0 2px, transparent 3px), radial-gradient(circle at 80% 20%, #bff 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 80%, #fdf 0 2px, transparent 3px), radial-gradient(circle at 30% 75%, #fff 0 1.5px, transparent 3px),
+    radial-gradient(circle at 50% 10%, #fff 0 1.5px, transparent 3px);
+  animation: up-sparkle 1.2s ease-in-out infinite alternate;
+}
+.upgrade-anim__confetti { position: absolute; inset: -80px -160px; z-index: 5; pointer-events: none; }
+.upgrade-anim__confetti i { position: absolute; top: -10px; width: 8px; height: 14px; border-radius: 2px; animation: up-confetti 1.6s ease-in forwards; }
+.upgrade-anim__ovr { display: flex; gap: 10px; align-items: baseline; font-size: 13px; color: #8fb3a0; }
+.upgrade-anim__ovr .stat-num { font: 900 30px 'Barlow Condensed', Inter, sans-serif; color: #fff; }
+.upgrade-anim__ovr .stat-num--orange { color: #ff9a3c; }
+.upgrade-anim__ovr .stat-num--purple { color: #b98cff; }
+.upgrade-anim__ovr .stat-num--gold { color: #ffd34d; }
+.upgrade-anim__stats { display: grid; grid-template-columns: repeat(6, auto); gap: 6px 16px; }
+.upgrade-anim__stat { display: grid; justify-items: center; font-size: 10px; color: #8fb3a0; letter-spacing: 1px; }
+.upgrade-anim__stat .stat-num { font: 900 20px 'Barlow Condensed', Inter, sans-serif; }
+.upgrade-anim__stat em { font-style: normal; font-weight: 900; font-size: 11px; }
+.upgrade-anim__stat em.is-up { color: #b9ed70; }
+.upgrade-anim__stat em.is-down { color: #ff8a7a; }
+.upgrade-anim__actions { display: flex; gap: 10px; cursor: default; }
+.upgrade-anim__hint { font-size: 11px; color: #6f8a7b; }
+
+@keyframes up-beat { 0% { transform: scale(1); } 28% { transform: scale(1.09); } 55% { transform: scale(0.98); } 100% { transform: scale(1); } }
+@keyframes up-pulse-ring { from { opacity: 1; transform: scale(0.95); } to { opacity: 0; transform: scale(1.25); } }
+@keyframes up-shake { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -4px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(4px, 3px); } }
+@keyframes up-fail-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-12px) rotate(-2deg); } 40% { transform: translateX(10px) rotate(2deg); } 60% { transform: translateX(-7px); } 80% { transform: translateX(5px); } }
+@keyframes up-pop { 0% { transform: scale(0.4); } 60% { transform: scale(1.5); } 100% { transform: scale(1); } }
+@keyframes up-crack { 0% { transform: scale(1.2) rotate(0); filter: brightness(1.6); } 40% { transform: scale(0.9) rotate(-8deg); filter: grayscale(1); } 100% { transform: scale(1) rotate(0); filter: none; } }
+@keyframes up-fly { 0% { opacity: 1; transform: translate(var(--from-x), var(--from-y)) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(0, 0) scale(0.3); } }
+@keyframes up-flash { from { opacity: 0.9; } to { opacity: 0; } }
+@keyframes up-rays { to { transform: rotate(360deg); } }
+@keyframes up-fade-in { from { opacity: 0; } }
+@keyframes up-sparkle { from { opacity: 0.3; transform: scale(0.96); } to { opacity: 1; transform: scale(1.04); } }
+@keyframes up-confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(620px) rotate(540deg); opacity: 0; } }
+.upgrade-anim.is-reduced * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+.upgrade-find { margin-top: 10px; }
+.upgrade-nocopy { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+/* Nút bị khóa (vd. UPGRADE khi chưa có thẻ nguyên liệu): xám, không bấm được. */
+.btn:disabled, .btn[disabled] {
+  background: #2a3a32 !important; border-color: #3a4d43 !important; color: #7b8f84 !important;
+  cursor: not-allowed; box-shadow: none !important; opacity: 0.8;
+}

@@ -154,7 +154,8 @@ function hash(text) {
 // Độ lệch cố định −4..+4 theo cầu thủ + chỉ số.
 const variation = (id, key) => (hash(`${id}:${key}`) % 9) - 4
 
-const clampStat = (value) => Math.max(15, Math.min(99, Math.round(value)))
+// Phase 25: chỉ số không còn giới hạn 99 (cộng điểm tập luyện + thẻ +N).
+const clampStat = (value) => Math.max(15, Math.round(value))
 
 const cache = new Map()
 
@@ -215,12 +216,33 @@ export function getAttributes(player) {
     return value
 }
 
-// Một chỉ số chi tiết (mặc định 70 nếu thiếu cầu thủ).
+// Phase 25: chỉ số trên 99 vẫn có tác dụng nhưng giảm dần (diminishing
+// returns). Giá trị hiệu dụng = 99 + 45 × (1 − e^(−(v − 99) / 40)):
+// 110 → 109.8, 120 → 117.4, 130 → 123.3, 150 → 132.6, tối đa 144.
+// (Bản đầu Phase 25: room 29.5 / scale 25 → 130 chỉ ≈ 120, quá ít.)
+// Từ 99 trở xuống giữ nguyên để không đổi cân bằng cũ.
+export const STAT_SOFT_CAP = { from: 99, room: 45, scale: 40 }
+
+export function effectiveStat(value) {
+    if (!(value > STAT_SOFT_CAP.from)) return value
+
+    return STAT_SOFT_CAP.from +
+        STAT_SOFT_CAP.room * (1 - Math.exp(-(value - STAT_SOFT_CAP.from) / STAT_SOFT_CAP.scale))
+}
+
+// Một chỉ số chi tiết đã quy về giá trị hiệu dụng (engine dùng hàm này).
+// Mặc định 70 nếu thiếu cầu thủ. Hiển thị dùng getAttributes (giá trị thật).
 export function attr(player, key) {
     if (!player) return 70
 
-    return getAttributes(player)[key] ?? player[key] ?? player.overall ?? 70
+    return effectiveStat(getAttributes(player)[key] ?? player[key] ?? player.overall ?? 70)
 }
 
-// Chuẩn hóa chỉ số về 0..1 (40 → 0, 99 → 1).
-export const skill01 = (value) => Math.max(0, Math.min(1, (value - 40) / 59))
+// Chuẩn hóa chỉ số: 40 → 0, 99 → 1; trên 99 tiếp tục tới tối đa 1.6
+// — các công thức coi > 1 là "giỏi hơn hoàn hảo".
+export const skill01 = (value) => Math.max(0, Math.min(1.6, (value - 40) / 59))
+
+// Phần vượt 99 của một giá trị hiệu dụng (đã qua attr()), chuẩn hóa:
+// chỉ số thật 110 → 0.44, 120 → 0.75, 130 → 1.0. Dùng cho các phần thưởng
+// riêng khi vượt 99 (constants.js → OVER_99).
+export const over99 = (effective) => Math.max(0, effective - 99) / 24.3

@@ -2,7 +2,8 @@ import { FIELD, clamp } from './constants'
 import { isPlayerLocked } from './playerState'
 import { duelSpeedFactor, pushShare } from './duels'
 import { teamTactic } from './tactics'
-import { attr, skill01 } from './attributes'
+import { attr, over99, skill01 } from './attributes'
+import { OVER_99 } from './constants'
 import { fatigueOf, staminaSpeedFactor } from './stamina'
 
 export function clampPlayer(object) {
@@ -15,7 +16,10 @@ export function clampPlayer(object) {
 // Mệt (thể lực < 70) làm giảm tới 18%.
 export function topSpeedOf(ctx, item) {
     const sprint = attr(item, 'sprintSpeed')
-    const base = item.role === 'GK' ? 8 : 6.4 + (sprint / 80) * 2.2
+    // Phase 25: trên 99 vẫn nhanh thêm (giá trị hiệu dụng), tối đa 10.5 m/s.
+    const base = item.role === 'GK'
+        ? 8
+        : Math.min(OVER_99.maxSpeed, 6.4 + (sprint / 80) * 2.2 + over99(sprint) * OVER_99.topSpeed)
 
     return base * staminaSpeedFactor(ctx.state, item.id)
 }
@@ -25,9 +29,10 @@ export function accelerationOf(ctx, item) {
     // Thủ môn di chuyển ngang (bước đệm) rất nhanh trong khung thành.
     if (item.role === 'GK') return 22
 
-    const value = skill01(attr(item, 'acceleration'))
+    const acceleration = attr(item, 'acceleration')
+    const value = skill01(acceleration)
 
-    return (13 + value * 7) * (1 - 0.25 * fatigueOf(ctx.state, item.id))
+    return (13 + value * 7 + over99(acceleration) * OVER_99.acceleration) * (1 - 0.25 * fatigueOf(ctx.state, item.id))
 }
 
 // Tốc độ được phép ở bước này khi muốn chạy `desired` m/s theo hướng (dirX, dirZ):

@@ -109,6 +109,8 @@ export default function GameScene() {
     // giữ để thưởng sau trận, tab CARDS và màn TRANSFERS dùng chung một bản.
     const [club, setClub] = useState(loadClub)
     const clubReportRef = useRef(null)
+    // Phase 25: mở TRANSFERS với ô tìm kiếm điền sẵn (nút mua bản sao ở màn đập thẻ).
+    const [clubSearch, setClubSearch] = useState('')
 
     useEffect(() => {
         saveClub(club)
@@ -1424,7 +1426,10 @@ export default function GameScene() {
                     onClubChange={setClub}
                     team={blueTeam}
                     onRosterChange={setRoster}
-                    onOpenTransfers={() => setIsClubOpen(true)}
+                    onOpenTransfers={(search) => {
+                        setClubSearch(typeof search === 'string' ? search : '')
+                        setIsClubOpen(true)
+                    }}
                 />
             )}
 
@@ -1861,9 +1866,13 @@ export default function GameScene() {
                         onRosterChange={setRoster}
                         club={club}
                         onClubChange={setClub}
+                        initialSearch={clubSearch}
                         isOpen
                         hideTrigger
-                        onOpenChange={(open) => setIsClubOpen(open)}
+                        onOpenChange={(open) => {
+                            setIsClubOpen(open)
+                            if (!open) setClubSearch('')
+                        }}
                     />
                 </div>
             )}
