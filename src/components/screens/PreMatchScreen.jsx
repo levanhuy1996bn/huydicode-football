@@ -2,6 +2,52 @@ import { USER_TEAM } from '../../data/leagueData'
 import { FORMATIONS } from '../../data/teams'
 import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
+import { KIT_LABELS, KIT_SLOTS, kitsClash, kitsOf } from '../../data/kits'
+
+// Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
+function KitIcon({ kit }) {
+    return (
+        <svg viewBox="0 0 40 44" className="kit-icon" aria-hidden="true">
+            <path d="M12 3 L4 8 L1 17 L8 19 L9 15 L9 30 L31 30 L31 15 L32 19 L39 17 L36 8 L28 3 Q20 8 12 3 Z"
+                fill={kit.shirt} stroke="rgba(0,0,0,0.45)" strokeWidth="1" />
+            <path d="M15 3.6 Q20 7 25 3.6" fill="none" stroke={kit.trim} strokeWidth="1.6" />
+            <path d="M9 31 L31 31 L32 42 L22 42 L20 37 L18 42 L8 42 Z"
+                fill={kit.shorts} stroke="rgba(0,0,0,0.45)" strokeWidth="1" />
+        </svg>
+    )
+}
+
+// Chọn bộ áo cho một đội: bộ nào trùng màu với áo đội kia thì bị khóa.
+function KitPicker({ clubId, name, current, otherKit, onChange }) {
+    const kits = kitsOf(clubId)
+
+    return (
+        <div className="kit-picker">
+            <span className="kit-picker__name">{name}</span>
+            <div className="kit-picker__options" role="radiogroup" aria-label={`${name} kit`}>
+                {KIT_SLOTS.map((slot) => {
+                    const clash = otherKit ? kitsClash(kits[slot], otherKit) : false
+
+                    return (
+                        <button
+                            key={slot}
+                            type="button"
+                            role="radio"
+                            aria-checked={current === slot}
+                            disabled={clash}
+                            title={clash ? `${KIT_LABELS[slot]} kit clashes with the other team` : `${KIT_LABELS[slot]} kit`}
+                            className={['kit-option', current === slot ? 'is-active' : '', clash ? 'is-clash' : ''].join(' ')}
+                            onClick={() => onChange(clubId, slot)}
+                        >
+                            <KitIcon kit={kits[slot]} />
+                            <small>{clash ? 'CLASH' : KIT_LABELS[slot].toUpperCase()}</small>
+                        </button>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
 
 // Màn trước trận: đội hình hai đội, sức mạnh, chiến thuật, sơ đồ,
 // chỉnh đội hình (bảng kéo thả, không tính lượt thay) rồi KICK OFF.
@@ -60,6 +106,9 @@ export default function PreMatchScreen({
     onTacticChange,
     onFormationChange,
     onEditLineup,
+    kits = null,
+    blueKitTeam = null,
+    onKitChange,
     onKickOff,
     onBack,
 }) {
@@ -75,6 +124,8 @@ export default function PreMatchScreen({
     }
 
     const isHome = fixture.homeTeamId === 'blue'
+    const opponentId = isHome ? fixture.awayTeamId : fixture.homeTeamId
+    const blueColor = blueKitTeam?.color || blueTeam.color
 
     return (
         <section className="screen prematch-screen">
@@ -95,7 +146,7 @@ export default function PreMatchScreen({
             <div className="prematch-body">
                 <Lineup
                     title={USER_TEAM.name}
-                    color={blueTeam.color}
+                    color={blueColor}
                     players={blueTeam.players}
                     align="left"
                     showCondition
@@ -130,6 +181,29 @@ export default function PreMatchScreen({
                             </select>
                         </label>
                         <p className="tactic-summary">{TACTICS[tacticKey]?.summary}</p>
+
+                        {kits && onKitChange && (
+                            <div className="kit-section">
+                                <div className="kit-section__head">
+                                    <span>Kits</span>
+                                    <small>Clashing kits are locked</small>
+                                </div>
+                                <KitPicker
+                                    clubId="blue"
+                                    name={USER_TEAM.shortName}
+                                    current={kits.slots.blue}
+                                    otherKit={kits[opponentId]?.kit}
+                                    onChange={onKitChange}
+                                />
+                                <KitPicker
+                                    clubId={opponentId}
+                                    name={opponentInfo?.shortName || 'OPP'}
+                                    current={kits.slots[opponentId]}
+                                    otherKit={kits.blue?.kit}
+                                    onChange={onKitChange}
+                                />
+                            </div>
+                        )}
 
                         <button type="button" className="btn btn--block" onClick={onEditLineup}>
                             EDIT LINEUP (DRAG &amp; DROP)

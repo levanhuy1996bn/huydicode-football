@@ -209,7 +209,6 @@ export function FullTimeOverlay({
     nextOpponentName,
     onNextMatch,
     onOpenLeague,
-    onReplay,
     onNewSeason,
     onSummary,
 }) {
@@ -267,9 +266,6 @@ export function FullTimeOverlay({
                     )}
                     <button type="button" className="btn" onClick={onOpenLeague}>
                         LEAGUE TABLE
-                    </button>
-                    <button type="button" className="btn btn--ghost" onClick={onReplay}>
-                        REPLAY (FRIENDLY)
                     </button>
                 </div>
             </div>

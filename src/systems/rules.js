@@ -40,10 +40,39 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
         ctx.players.find((item) => item.teamId === kickoffTeam)
 
     const kickoffObject = kickoffItem ? objects[kickoffItem.id] : null
+    const ownSign = ownGoalSign(state, kickoffTeam)
 
     if (kickoffObject) {
-        kickoffObject.position.set(0, 0, ownGoalSign(state, kickoffTeam) * 1.2)
+        kickoffObject.position.set(0, 0, ownSign * 0.85)
         kickoffObject.rotation.y = facingFor(state, kickoffTeam)
+    }
+
+    // Phase 22: giao bóng như trận thật — người thứ hai đứng cạnh bóng trong
+    // vòng tròn giữa sân, người giao bóng bắt buộc phải chuyền (không được rê / sút).
+    const partnerItem = kickoffItem
+        ? ctx.players
+            .filter(
+                (item) =>
+                    item.teamId === kickoffTeam &&
+                    item.role !== 'GK' &&
+                    item.id !== kickoffItem.id &&
+                    objects[item.id],
+            )
+            .sort((a, b) => {
+                const homeA = homePosition(state, a)
+                const homeB = homePosition(state, b)
+
+                return Math.hypot(homeA.x, homeA.z) - Math.hypot(homeB.x, homeB.z)
+            })[0]
+        : null
+    const partnerObject = partnerItem ? objects[partnerItem.id] : null
+
+    if (partnerObject) {
+        const home = homePosition(state, partnerItem)
+        const side = Math.sign(home.x) || (Math.random() < 0.5 ? -1 : 1)
+
+        partnerObject.position.set(side * 2.6, 0, ownSign * 0.5)
+        partnerObject.rotation.y = facingFor(state, kickoffTeam)
     }
 
     placeBall(ctx, 0, 0)
@@ -66,6 +95,23 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
     state.whistle = null
     state.deadBall = false
 
+    if (kickoffObject) {
+        state.lastToucherId = kickoffItem.id
+        state.restart = {
+            type: 'kick-off',
+            teamId: kickoffTeam,
+            playerId: kickoffItem.id,
+            partnerId: partnerItem?.id || null,
+            ballX: 0,
+            ballZ: 0,
+            indirect: true,
+            wall: null,
+        }
+
+        // Mọi người về đúng phần sân nhà, đối phương ra ngoài vòng tròn giữa sân.
+        enforceRestartSpacing(ctx, 1, true)
+    }
+
     // BLUE giao bóng: người chơi điều khiển luôn cầu thủ giao bóng.
     if (kickoffTeam === 'blue' && kickoffObject) {
         ctx.onSelect(kickoffItem.id)
@@ -75,7 +121,7 @@ export function resetPositions(ctx, kickoffTeam = 'blue') {
     state.timers.tackleCooldown = 0
     state.timers.aiAttemptCooldown = 0
     state.timers.aiAttemptCooldownBlue = 0
-    state.timers.aiDecisionCooldown = 0.6
+    state.timers.aiDecisionCooldown = 1.1
 
     clearPlayerStates(state)
 }
@@ -344,6 +390,22 @@ export function enforceRestartSpacing(ctx, dt, immediate = false) {
 
         const opponent = item.teamId !== restart.teamId
         const position = object.position
+
+        // Giao bóng (Phase 22): mọi người ở phần sân nhà; đối phương đứng ngoài
+        // vòng tròn giữa sân (9.15m). Người đứng cạnh bóng giữ nguyên chỗ.
+        if (restart.type === 'kick-off') {
+            if (item.id === restart.partnerId) return
+
+            const homeSign = ownGoalSign(state, item.teamId)
+
+            if (position.z * homeSign < 0.6) {
+                moveTo(object, position.x, homeSign * 0.6)
+            }
+
+            if (opponent) pushOut(position, ball, REFEREE_DISTANCE, moveTo, object)
+
+            return
+        }
 
         if (restart.type === 'penalty') {
             // Thủ môn đội phòng ngự: trên vạch vôi tới khi bóng được đá.

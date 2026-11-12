@@ -358,7 +358,7 @@ function useRadar(radarRef, ctx) {
             g.arc(sx, sy, radius, 0, Math.PI * 2)
             g.fillStyle =
                 item.role === 'GK'
-                    ? '#f0c928'
+                    ? ctx.keeperColors?.[item.teamId] || '#f0c928'
                     : ctx.teamColors?.[item.teamId] || '#ffffff'
             g.fill()
             g.lineWidth = Math.max(1, unit * 0.3)
@@ -492,6 +492,10 @@ export default function MatchWorld({
         userTeamName,
         teamColors: Object.fromEntries(
             roster.map((team) => [team.id, team.color]),
+        ),
+        // Phase 24: màu áo thủ môn từng đội (bản đồ mini).
+        keeperColors: Object.fromEntries(
+            roster.map((team) => [team.id, team.keeperKit?.shirt || '#f0c928']),
         ),
         onSelect,
         onActionMessage,
@@ -717,6 +721,8 @@ export default function MatchWorld({
                         key={player.id}
                         player={player}
                         teamColor={team.color}
+                        kit={team.kit}
+                        keeperKit={team.keeperKit}
                         matchState={state}
                         labelMode={labelMode}
                         isSelected={selectedId === player.id}

@@ -11,6 +11,18 @@ import {
     formatMoney,
 } from '../services/clubService'
 import { USER_TEAM } from '../data/leagueData'
+import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
+import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
+
+const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
+const MARKET_PAGE = 48
+const RARITY_COLORS = { gold: '#e3bd62', silver: '#c9d2d8', bronze: '#c98b5a' }
+
+const GROUP_LABELS = {
+    starter: 'STARTING XI',
+    bench: 'BENCH',
+    reserve: 'RESERVES',
+}
 
 const POSITION_FILTERS = ['ALL', 'GK', 'DF', 'MF', 'FW']
 
@@ -91,36 +103,44 @@ export default function ClubManagementPanel({
                                                 isOpen: controlledOpen,
                                                 onOpenChange,
                                                 hideTrigger = false,
+                                                // Phase 23: CLB do GameScene giữ (cấp độ, kho thẻ, tiền thưởng).
+                                                club: controlledClub,
+                                                onClubChange,
                                             }) {
-    const [club, setClub] = useState(loadClub)
+    const [internalClub, setInternalClub] = useState(loadClub)
+    const club = controlledClub ?? internalClub
+    const setClub = onClubChange ?? setInternalClub
     const [internalOpen, setInternalOpen] = useState(false)
     const isOpen = controlledOpen ?? internalOpen
     const setIsOpen = (value) => {
         if (onOpenChange) onOpenChange(value)
         else setInternalOpen(value)
     }
-    const [tab, setTab] = useState('overview')
+    // Phase 22: màn TRANSFERS mở thẳng vào thị trường chuyển nhượng.
+    const [tab, setTab] = useState('market')
 
     const [search, setSearch] = useState('')
     const [positionFilter, setPositionFilter] = useState('ALL')
     const [sortBy, setSortBy] = useState('overall')
+    const [rarityFilter, setRarityFilter] = useState('ALL')
+    const [marketLimit, setMarketLimit] = useState(MARKET_PAGE)
 
     const [selectedPlayer, setSelectedPlayer] = useState(null)
-    const [message, setMessage] = useState('')
+    // Phase 22: thông báo dạng toast (trước đây chỉ đổi chữ ở chân panel 3 giây).
+    const [toast, setToast] = useState(null)
 
     const blueTeam = roster.find((team) => team.id === 'blue')
 
     const squad = useMemo(() => {
         if (!blueTeam) return []
 
-        return [
-            ...(blueTeam.players || []),
-            ...(blueTeam.substitutes || []),
-        ]
+        return squadOf(blueTeam)
     }, [blueTeam])
 
+    // Đã có thẻ của cầu thủ này thì không mua thêm trên thị trường
+    // (thẻ trùng chỉ đến từ gói cầu thủ — Phase 23).
     const squadMarketIds = useMemo(
-        () => new Set(squad.map((player) => player.id)),
+        () => new Set(squad.map(playerIdOf)),
         [squad],
     )
 
@@ -136,7 +156,9 @@ export default function ClubManagementPanel({
                     positionFilter === 'ALL' ||
                     getPositionGroup(player.position) === positionFilter
 
-                return matchesSearch && matchesPosition
+                const matchesRarity = rarityFilter === 'ALL' || player.rarity === rarityFilter
+
+                return matchesSearch && matchesPosition && matchesRarity
             })
             .sort((a, b) => {
                 if (sortBy === 'value') return a.value - b.value
@@ -144,44 +166,59 @@ export default function ClubManagementPanel({
 
                 return b.overall - a.overall
             })
-    }, [search, positionFilter, sortBy, squadMarketIds])
+    }, [search, positionFilter, rarityFilter, sortBy, squadMarketIds])
+
+    // Đổi bộ lọc thì hiện lại từ trang đầu.
+    useEffect(() => {
+        setMarketLimit(MARKET_PAGE)
+    }, [search, positionFilter, rarityFilter, sortBy])
+
+    // Chỉ tự lưu khi panel tự giữ CLB (GameScene lưu bản được truyền vào).
+    useEffect(() => {
+        if (!controlledClub) saveClub(internalClub)
+    }, [controlledClub, internalClub])
+
+    const showMessage = (text, tone = 'info', detail = null) => {
+        setToast({ text, tone, detail, key: Date.now() })
+    }
 
     useEffect(() => {
-        saveClub(club)
-    }, [club])
+        if (!toast) return undefined
 
-    const showMessage = (text) => {
-        setMessage(text)
+        const timer = window.setTimeout(() => setToast(null), toast.tone === 'error' ? 3200 : 3800)
 
-        window.setTimeout(() => {
-            setMessage('')
-        }, 3000)
-    }
+        return () => window.clearTimeout(timer)
+    }, [toast])
 
     const buyPlayer = (player) => {
         if (!club.transferWindowOpen) {
-            showMessage('TRANSFER WINDOW IS CLOSED')
+            showMessage('TRANSFER WINDOW IS CLOSED', 'error', 'Open the transfer window in the Overview tab to sign players.')
             return
         }
 
         if (!blueTeam) return
 
         if (club.budget < player.value) {
-            showMessage('NOT ENOUGH TRANSFER BUDGET')
+            showMessage(
+                'NOT ENOUGH TRANSFER BUDGET',
+                'error',
+                `${player.name} costs ${formatMoney(player.value)} · budget ${formatMoney(club.budget)}`,
+            )
             return
         }
 
-        if (squad.length >= 30) {
-            showMessage('SQUAD LIMIT REACHED')
+        if (squad.length >= SQUAD_LIMITS.total) {
+            showMessage(
+                `SQUAD IS FULL (${squad.length}/${SQUAD_LIMITS.total})`,
+                'error',
+                'Sell a player from the reserves to make room.',
+            )
             return
         }
 
-        const newPlayer = {
-            ...player,
-            x: -28 + blueTeam.substitutes.length * 5,
-            z: 48,
-            number: 20 + squad.length,
-        }
+        // Phase 22: cầu thủ mới vào đội hình ngoài (không tự vào băng ghế dự bị).
+        // Phase 23: mỗi lần mua tạo một thẻ mới (+1) với cardId riêng.
+        const newPlayer = cardFromCatalog(player, { number: freeShirtNumber(squad) })
 
         onRosterChange((current) =>
             current.map((team) => {
@@ -189,8 +226,8 @@ export default function ClubManagementPanel({
 
                 return {
                     ...team,
-                    substitutes: [
-                        ...team.substitutes,
+                    reserves: [
+                        ...(team.reserves || []),
                         newPlayer,
                     ],
                 }
@@ -202,7 +239,7 @@ export default function ClubManagementPanel({
             budget: current.budget - player.value,
             contracts: {
                 ...current.contracts,
-                [player.id]: {
+                [newPlayer.id]: {
                     wage: player.wage,
                     years: 4,
                 },
@@ -210,7 +247,11 @@ export default function ClubManagementPanel({
         }))
 
         setSelectedPlayer(null)
-        showMessage(`${player.name.toUpperCase()} SIGNED`)
+        showMessage(
+            `${player.name.toUpperCase()} SIGNED`,
+            'success',
+            `Fee ${formatMoney(player.value)} · budget left ${formatMoney(club.budget - player.value)} · joined the reserves (${squad.length + 1}/${SQUAD_LIMITS.total})`,
+        )
     }
 
     const sellPlayer = (player) => {
@@ -221,12 +262,15 @@ export default function ClubManagementPanel({
 
         if (!blueTeam) return
 
-        const isStarter = blueTeam.players.some(
-            (item) => item.id === player.id,
-        )
+        // Phase 22: chỉ bán được cầu thủ ở đội hình ngoài.
+        const group = squadGroupOf(blueTeam, player.id)
 
-        if (isStarter) {
-            showMessage('SUBSTITUTE THIS PLAYER BEFORE SELLING')
+        if (group !== 'reserve') {
+            showMessage(
+                `${player.name.toUpperCase()} IS IN THE MATCHDAY SQUAD`,
+                'error',
+                'Starters and bench players cannot be sold. Move him to the reserves in the lineup screen first.',
+            )
             return
         }
 
@@ -238,7 +282,7 @@ export default function ClubManagementPanel({
 
                 return {
                     ...team,
-                    substitutes: team.substitutes.filter(
+                    reserves: (team.reserves || []).filter(
                         (item) => item.id !== player.id,
                     ),
                 }
@@ -259,7 +303,9 @@ export default function ClubManagementPanel({
         setSelectedPlayer(null)
 
         showMessage(
-            `${player.name.toUpperCase()} SOLD FOR ${formatMoney(saleValue)}`,
+            `${player.name.toUpperCase()} SOLD`,
+            'success',
+            `Received ${formatMoney(saleValue)} · budget ${formatMoney(club.budget + saleValue)}`,
         )
     }
 
@@ -279,7 +325,7 @@ export default function ClubManagementPanel({
             }
         })
 
-        showMessage('CONTRACT UPDATED')
+        showMessage('CONTRACT UPDATED', 'success', `${player.name} · ${field === 'wage' ? 'weekly wage' : 'contract length'} changed`)
     }
 
     const toggleTransferWindow = () => {
@@ -294,10 +340,10 @@ export default function ClubManagementPanel({
     const squadValue = getSquadValue(roster)
 
     const tabs = [
-        ['overview', 'OVERVIEW'],
         ['market', 'TRANSFER MARKET'],
-        ['squad', 'SQUAD'],
+        ['squad', 'SQUAD & SALES'],
         ['contracts', 'CONTRACTS'],
+        ['overview', 'OVERVIEW'],
     ]
 
     return (
@@ -315,7 +361,7 @@ export default function ClubManagementPanel({
                     borderColor: '#d4a64d',
                 }}
             >
-                CLUB MANAGEMENT
+                TRANSFERS
             </button>
             )}
 
@@ -371,7 +417,7 @@ export default function ClubManagementPanel({
                                         letterSpacing: 1.5,
                                     }}
                                 >
-                                    FOOTBALL CLUB MANAGEMENT
+                                    TRANSFERS · {USER_TEAM.name}
                                 </div>
 
                                 <div
@@ -475,7 +521,7 @@ export default function ClubManagementPanel({
 
                                         <Stat
                                             label="SQUAD SIZE"
-                                            value={`${squad.length} / 30`}
+                                            value={`${squad.length} / ${SQUAD_LIMITS.total}`}
                                         />
                                     </div>
 
@@ -545,7 +591,7 @@ export default function ClubManagementPanel({
                                         style={{
                                             display: 'grid',
                                             gridTemplateColumns:
-                                                'minmax(100px, 1fr) 90px 110px',
+                                                'minmax(100px, 1fr) 80px 90px 110px',
                                             gap: 8,
                                             marginBottom: 12,
                                         }}
@@ -569,6 +615,21 @@ export default function ClubManagementPanel({
                                             {POSITION_FILTERS.map((item) => (
                                                 <option key={item} value={item}>
                                                     {item}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            value={rarityFilter}
+                                            onChange={(event) =>
+                                                setRarityFilter(event.target.value)
+                                            }
+                                            style={inputStyle}
+                                            aria-label="Card rarity"
+                                        >
+                                            {RARITY_FILTERS.map((item) => (
+                                                <option key={item} value={item}>
+                                                    {item === 'ALL' ? 'ALL CARDS' : RARITY_LABELS[item].toUpperCase()}
                                                 </option>
                                             ))}
                                         </select>
@@ -600,7 +661,7 @@ export default function ClubManagementPanel({
                                             gap: 10,
                                         }}
                                     >
-                                        {availablePlayers.map((player) => (
+                                        {availablePlayers.slice(0, marketLimit).map((player) => (
                                             <div
                                                 key={player.id}
                                                 style={{
@@ -641,10 +702,12 @@ export default function ClubManagementPanel({
                                                     </div>
 
                                                     <div
+                                                        title={`${RARITY_LABELS[player.rarity] || ''} card`}
                                                         style={{
                                                             flexShrink: 0,
                                                             textAlign: 'center',
-                                                            background: '#a87928',
+                                                            background: RARITY_COLORS[player.rarity] || '#a87928',
+                                                            color: '#14201a',
                                                             borderRadius: 7,
                                                             padding: '5px 8px',
                                                             height: 'fit-content',
@@ -708,6 +771,16 @@ export default function ClubManagementPanel({
                                         ))}
                                     </div>
 
+                                    {availablePlayers.length > marketLimit && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMarketLimit((limit) => limit + MARKET_PAGE)}
+                                            style={{ ...buttonStyle, width: '100%', marginTop: 12 }}
+                                        >
+                                            SHOW MORE ({availablePlayers.length - marketLimit} more of {availablePlayers.length})
+                                        </button>
+                                    )}
+
                                     {availablePlayers.length === 0 && (
                                         <div
                                             style={{
@@ -732,9 +805,9 @@ export default function ClubManagementPanel({
                                     }}
                                 >
                                     {squad.map((player) => {
-                                        const isStarter = blueTeam.players.some(
-                                            (item) => item.id === player.id,
-                                        )
+                                        const group = squadGroupOf(blueTeam, player.id)
+                                        // Phase 22: đá chính và dự bị không bán được.
+                                        const isStarter = group !== 'reserve'
 
                                         return (
                                             <div
@@ -794,9 +867,7 @@ export default function ClubManagementPanel({
                                                         marginTop: 10,
                                                     }}
                                                 >
-                                                    {isStarter
-                                                        ? 'STARTING XI'
-                                                        : 'SUBSTITUTE'}
+                                                    {GROUP_LABELS[group] || 'RESERVES'}
                                                 </div>
 
                                                 <div
@@ -829,7 +900,7 @@ export default function ClubManagementPanel({
                                                             : 'pointer',
                                                     }}
                                                 >
-                                                    {isStarter ? 'STARTER' : 'SELL PLAYER'}
+                                                    {isStarter ? 'IN MATCHDAY SQUAD' : 'SELL PLAYER'}
                                                 </button>
                                             </div>
                                         )
@@ -964,7 +1035,7 @@ export default function ClubManagementPanel({
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                {message || `${USER_TEAM.name} · CLUB MANAGEMENT`}
+                                {`${USER_TEAM.name} · TRANSFERS · SQUAD ${squad.length}/${SQUAD_LIMITS.total}`}
                             </span>
 
                             <strong style={{ flexShrink: 0 }}>
@@ -972,6 +1043,25 @@ export default function ClubManagementPanel({
                             </strong>
                         </div>
                     </div>
+
+                    {/* Phase 22: thông báo ký / bán / hợp đồng */}
+                    {toast && (
+                        <div
+                            key={toast.key}
+                            className={`toast toast--${toast.tone}`}
+                            role={toast.tone === 'error' ? 'alert' : 'status'}
+                            aria-live="polite"
+                        >
+                            <span className="toast__icon" aria-hidden="true">
+                                {toast.tone === 'success' ? '✓' : toast.tone === 'error' ? '!' : 'i'}
+                            </span>
+                            <div className="toast__body">
+                                <strong>{toast.text}</strong>
+                                {toast.detail && <small>{toast.detail}</small>}
+                            </div>
+                            <button type="button" className="toast__close" onClick={() => setToast(null)} aria-label="Dismiss">✕</button>
+                        </div>
+                    )}
 
                     {/* PLAYER DETAIL MODAL */}
                     {selectedPlayer && (

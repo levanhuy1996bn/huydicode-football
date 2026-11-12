@@ -542,6 +542,13 @@ function takeRestart(ctx, ownerId, ownerItem, owner, restart) {
         return
     }
 
+    // Giao bóng (Phase 22): chuyền cho người đứng cạnh, thỉnh thoảng chuyền về.
+    if (restart.type === 'kick-off') {
+        if (restart.partnerId && Math.random() < 0.8 && attempt('pass', { receiverId: restart.partnerId })) return
+        if (!attempt('pass')) attempt('lob')
+        return
+    }
+
     if (restart.type === 'penalty') {
         attempt('shoot')
         return

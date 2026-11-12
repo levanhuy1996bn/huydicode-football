@@ -200,7 +200,7 @@ export default function HomeScreen({
                     <div className="stat-tiles">
                         <div><b>{squad.formation}</b><small>FORMATION</small></div>
                         <div><b>{squad.averageOverall}</b><small>AVG OVR (XI)</small></div>
-                        <div><b>{squad.size}</b><small>PLAYERS</small></div>
+                        <div><b>{squad.size}/50</b><small>PLAYERS</small></div>
                         <div><b>{squad.value}</b><small>SQUAD VALUE</small></div>
                     </div>
                     <div className="home-card__head home-card__head--spaced">
@@ -215,12 +215,12 @@ export default function HomeScreen({
                             : 'Players earn XP every match and gain attribute points when they level up.'}
                     </p>
                     <div className="home-card__head home-card__head--spaced">
-                        <span>CLUB</span>
+                        <span>TRANSFERS</span>
                         <button type="button" className="link-btn" onClick={onOpenClub}>
-                            CLUB MANAGEMENT →
+                            TRANSFER MARKET →
                         </button>
                     </div>
-                    <p className="home-card__empty">Transfers, contracts and wages.</p>
+                    <p className="home-card__empty">Sign and sell players, contracts and wages.</p>
                 </div>
 
                 {/* Cài đặt */}

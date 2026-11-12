@@ -6,6 +6,9 @@ import { shortPlayerName } from '../utils/names'
 // - Kéo cầu thủ trên sân thả lên cầu thủ dự bị → thay người.
 // - Kéo cầu thủ trên sân thả lên cầu thủ trên sân → đổi vị trí (không tính lượt).
 // - Không kéo được (màn hình cảm ứng): bấm chọn một thẻ rồi bấm thẻ thứ hai.
+// - Phase 22 (chỉ trước trận): khu ĐỘI HÌNH NGOÀI. Kéo qua lại giữa sân / dự bị
+//   (tối đa 9) / đội hình ngoài; thả lên tiêu đề BENCH / RESERVES để chuyển
+//   sang khu đó mà không cần đổi với ai.
 
 const PITCH_HALF_LENGTH = 52.5
 const PITCH_HALF_WIDTH = 34
@@ -98,6 +101,8 @@ export default function SubstitutionBoard({
     subbedOffIds,
     onSubstitute,
     onSwap,
+    onMoveSquad,
+    benchLimit = 9,
     onClose,
     isPrematch = false,
     staminaById = null,
@@ -123,7 +128,13 @@ export default function SubstitutionBoard({
 
         let result
 
-        if (source.zone === 'pitch' && target.zone === 'pitch') {
+        if (source.zone === 'reserves' || target.zone === 'reserves') {
+            result = onMoveSquad
+                ? onMoveSquad(source, target)
+                : { ok: false, message: 'Reserves can only be changed before the match.' }
+        } else if (!target.id) {
+            result = { ok: false, message: 'Drop onto a player to swap.' }
+        } else if (source.zone === 'pitch' && target.zone === 'pitch') {
             result = onSwap(source.id, target.id)
         } else if (source.zone === 'bench' && target.zone === 'pitch') {
             result = onSubstitute(target.id, source.id)
@@ -150,6 +161,30 @@ export default function SubstitutionBoard({
 
         resolve(picked, { id, zone })
     }
+
+    // Thả lên tiêu đề khu vực (BENCH / RESERVES): chuyển sang khu đó.
+    const zoneDropProps = (zone) => ({
+        onDragOver: (event) => {
+            event.preventDefault()
+            setDropTarget(`zone:${zone}`)
+        },
+        onDragLeave: () => setDropTarget(null),
+        onDrop: (event) => {
+            event.preventDefault()
+
+            try {
+                const source = JSON.parse(event.dataTransfer.getData('text/plain'))
+                resolve(source, { id: null, zone })
+            } catch {
+                // bỏ qua
+            }
+        },
+        onClick: () => {
+            if (picked && picked.zone !== zone) resolve(picked, { id: null, zone })
+        },
+    })
+
+    const reserves = team.reserves || []
 
     const cardHandlers = {
         onPick: handlePick,
@@ -212,7 +247,12 @@ export default function SubstitutionBoard({
                     </div>
 
                     <div className="sub-bench">
-                        <div className="sub-bench__title">BENCH</div>
+                        <div
+                            className={`sub-bench__title${dropTarget === 'zone:bench' ? ' is-drop-target' : ''}`}
+                            {...(isPrematch ? zoneDropProps('bench') : {})}
+                        >
+                            BENCH {team.substitutes.length}/{benchLimit}
+                        </div>
                         {team.substitutes.map((player) => (
                             <PlayerCard
                                 key={player.id}
@@ -225,6 +265,31 @@ export default function SubstitutionBoard({
                                 {...cardHandlers}
                             />
                         ))}
+
+                        {isPrematch && (
+                            <>
+                                <div
+                                    className={`sub-bench__title sub-bench__title--reserves${dropTarget === 'zone:reserves' ? ' is-drop-target' : ''}`}
+                                    {...zoneDropProps('reserves')}
+                                >
+                                    RESERVES {reserves.length}
+                                </div>
+                                {reserves.length === 0 && (
+                                    <div className="sub-bench__empty">Drop a bench player here to leave him out of the matchday squad.</div>
+                                )}
+                                {reserves.map((player) => (
+                                    <PlayerCard
+                                        key={player.id}
+                                        player={player}
+                                        stamina={staminaOf(player)}
+                                        zone="reserves"
+                                        isPicked={picked?.id === player.id}
+                                        isDropTarget={dropTarget === player.id}
+                                        {...cardHandlers}
+                                    />
+                                ))}
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -236,7 +301,9 @@ export default function SubstitutionBoard({
                         {feedback?.message ||
                             (picked
                                 ? 'Now drop on (or click) the player to swap with.'
-                                : 'Drag a bench player onto a starter to substitute. Drag starter onto starter to swap positions.')}
+                                : isPrematch
+                                    ? 'Drag between pitch, bench (max ' + benchLimit + ') and reserves. Only reserves can be sold.'
+                                    : 'Drag a bench player onto a starter to substitute. Drag starter onto starter to swap positions.')}
                     </div>
                     <button type="button" className="btn btn--primary" onClick={onClose}>
                         DONE

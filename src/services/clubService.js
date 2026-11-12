@@ -8,6 +8,11 @@ export const INITIAL_CLUB = {
     reputation: 4,
     transferWindowOpen: true,
     contracts: {},
+    // Phase 23: cấp độ CLB, XP, kho thẻ (gói cầu thủ, thẻ EP), thưởng cuối mùa đã nhận.
+    level: 0,
+    xp: 0,
+    inventory: [],
+    seasonBonusPaid: {},
 }
 
 export function loadClub() {
@@ -18,6 +23,8 @@ export function loadClub() {
             return {
                 ...INITIAL_CLUB,
                 contracts: {},
+                inventory: [],
+                seasonBonusPaid: {},
             }
         }
 
@@ -28,11 +35,17 @@ export function loadClub() {
             ...parsed,
             name: INITIAL_CLUB.name,
             contracts: parsed.contracts || {},
+            level: Number(parsed.level) || 0,
+            xp: Number(parsed.xp) || 0,
+            inventory: Array.isArray(parsed.inventory) ? parsed.inventory : [],
+            seasonBonusPaid: parsed.seasonBonusPaid || {},
         }
     } catch {
         return {
             ...INITIAL_CLUB,
             contracts: {},
+            inventory: [],
+            seasonBonusPaid: {},
         }
     }
 }
@@ -83,6 +96,7 @@ export function getSquadValue(roster) {
     const allPlayers = [
         ...(blueTeam.players || []),
         ...(blueTeam.substitutes || []),
+        ...(blueTeam.reserves || []),
     ]
 
     return allPlayers.reduce(
@@ -119,6 +133,7 @@ export function getWeeklyWages(roster, club = INITIAL_CLUB) {
     const allPlayers = [
         ...(blueTeam.players || []),
         ...(blueTeam.substitutes || []),
+        ...(blueTeam.reserves || []),
     ]
 
     return allPlayers.reduce(
@@ -131,10 +146,7 @@ export function getWeeklyWages(roster, club = INITIAL_CLUB) {
     )
 }
 
+// Phase 23: tiền của CLB là EP (trước đây hiển thị EUR).
 export function formatMoney(amount) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 0,
-    }).format(amount || 0)
+    return `${Math.round(amount || 0).toLocaleString('en-US')} EP`
 }

@@ -113,3 +113,84 @@ export const distance2D = (a, b) =>
 // Vector hướng mặt (trục +Z local) của một object theo rotation.y.
 export const facingVector = (rotationY) =>
     new THREE.Vector3(0, 0, 1).applyAxisAngle(UP_AXIS, rotationY)
+
+// Phase 22: chuyền và sút mạnh hơn (playtest: "lực chuyền, lực sút quá yếu").
+// Hệ số nhân vào tốc độ bóng lúc rời chân, sau khi đã tính lực theo khoảng
+// cách / thanh lực. Chỉnh ở đây để cân lại toàn bộ trận đấu.
+export const KICK_POWER = {
+    pass: 1.15,        // chuyền ngắn (S), cả chuyền căng ZS
+    through: 1.12,     // chọc khe (W) của người chơi (tự canh lực bằng thanh lực)
+    lob: 1.06,         // chuyền bổng / tạt (A) của người chơi — độ bổng giữ nguyên
+    lobbedThrough: 1.05, // chọc khe bổng (QW)
+    shoot: 1.12,       // sút thường / sút mạnh / sút chìm / trivela
+    finesse: 1.1,      // sút xoáy ZD
+    chip: 1,           // sút lốp QD: giữ nguyên để không vọt xà
+    freeKick: 1.04,    // sút phạt qua hàng rào
+    penalty: 1.08,
+    clearance: 1.04,
+    keeper: 1.04,      // thủ môn ném / phát bóng
+    // Máy chọc khe / tạt vào khoảng trống theo khoảng cách đã tính sẵn: tăng
+    // lực nhiều thì bóng lăn quá người nhận ra biên (mô phỏng: ném biên +60%).
+    aiThrough: 1,
+    aiLob: 1.02,
+    maxPass: 31,       // trần tốc độ bóng sệt khi chuyền (m/s)
+}
+
+export function kickPowerScale({ action, variant, restartType, isThrowIn, clearance, isAI = false }) {
+    if (isThrowIn) return 1
+    if (clearance) return KICK_POWER.clearance
+
+    if (action === 'shoot') {
+        if (restartType === 'free-kick') return KICK_POWER.freeKick
+        if (restartType === 'penalty') return KICK_POWER.penalty
+        if (variant === 'chip') return KICK_POWER.chip
+        if (variant === 'finesse') return KICK_POWER.finesse
+        return KICK_POWER.shoot
+    }
+
+    if (action === 'through') {
+        if (variant === 'lobbed') return KICK_POWER.lobbedThrough
+        return isAI ? KICK_POWER.aiThrough : KICK_POWER.through
+    }
+
+    if (action === 'lob') return isAI ? KICK_POWER.aiLob : KICK_POWER.lob
+
+    return KICK_POWER.pass
+}
+
+// ---- Phase 24: độ chính xác theo chỉ số ----
+// Cầu thủ giỏi giữ nguyên độ chuẩn, cầu thủ kém thì kém rõ. `miss` = 1 − độ
+// chính xác (0 khi chỉ số 99, ≈0.83 khi 50). Mũ `curve` > 1 làm sai số nhỏ ở
+// chỉ số cao và tăng nhanh ở chỉ số thấp.
+export const ACCURACY = {
+    // Người chơi sút: điểm bóng tới lệch ngẫu nhiên đều trong ±spread (m).
+    // Chỉ số 50 ≈ ±2.8m (trung bình lệch ~1.4m), 70 ≈ ±1.3m, 90 ≈ ±0.3m.
+    shot: { base: 0.15, scale: 3.6, curve: 1.6 },
+    // Sút xa (> 22m): lệch thêm mỗi mét = min + max × miss.
+    longRange: { from: 22, min: 0.02, max: 0.12 },
+    // Giữ lực > 80%: lệch thêm, người sút giỏi bị ảnh hưởng ít hơn.
+    overPower: { from: 0.8, perUnit: 5, min: 0.4, max: 0.9 },
+    // Máy sút: phân bố tam giác quanh giữa khung thành, ±spread (m).
+    aiShot: { base: 2.2, scale: 5.5, curve: 1.3 },
+    // Máy sút xoáy / má ngoài vào góc: lệch khỏi góc ±(base + scale × miss^curve).
+    aiCorner: { base: 0.3, scale: 2.2, curve: 1.3 },
+    // Độ bổng lệch thêm (m/s, 0…max) → người dứt điểm kém hay vọt xà.
+    shotLift: { scale: 2.2, curve: 1.5 },
+    // Giữ lực > 90%: nguy cơ vọt xà nhân với (min + (1 − kỹ năng) × max),
+    // kỹ năng = trung bình Finishing + Shot power.
+    sky: { min: 0.3, max: 1 },
+    // Chuyền / chọc khe / tạt: góc lệch tối đa (rad) và sai lực (±tỉ lệ).
+    // Chỉ số 50 ≈ ±0.156 rad, ±12% lực; 90 ≈ ±0.023 rad, ±2.6% lực.
+    passAngle: { base: 0.012, scale: 0.19, curve: 1.5 },
+    passPower: { base: 0.015, scale: 0.13, curve: 1.3 },
+}
+
+const curved = ({ base, scale, curve }, miss) => base + scale * Math.pow(Math.max(0, Math.min(1, miss)), curve)
+
+export const shotSpread = (accuracy) => curved(ACCURACY.shot, 1 - accuracy)
+export const aiShotSpread = (accuracy) => curved(ACCURACY.aiShot, 1 - accuracy)
+export const aiCornerError = (accuracy) => curved(ACCURACY.aiCorner, 1 - accuracy)
+export const shotLiftError = (accuracy) =>
+    ACCURACY.shotLift.scale * Math.pow(Math.max(0, 1 - accuracy), ACCURACY.shotLift.curve)
+export const passAngleError = (sloppiness) => curved(ACCURACY.passAngle, sloppiness)
+export const passPowerError = (sloppiness) => curved(ACCURACY.passPower, sloppiness)

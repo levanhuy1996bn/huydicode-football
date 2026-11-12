@@ -1,6 +1,7 @@
 import { clamp } from './constants'
 import { TEAMS } from '../data/teams'
 import { LEAGUE_TEAMS } from '../data/leagueData'
+import { ensureCardFields, playerIdOf } from '../services/cards'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
 const GENERIC_NAME = /^(Blue|Red) [A-Z]{2,3} \d+$/
@@ -85,6 +86,60 @@ function migrateStats(players, defaults) {
 // v2: đổi đội người chơi sang Manchester United (đội hình khác) → bản lưu cũ bỏ qua.
 export const ROSTER_STORAGE_KEY = 'ultimate-football-roster-save-v2'
 
+// ---- Phase 22: quy tắc đội hình ----
+// 11 đá chính (players) + tối đa 9 dự bị (substitutes, băng ghế trong trận)
+// + đội hình ngoài (reserves, không vào sân). Tổng tối đa 50 cầu thủ.
+// Cầu thủ đá chính và dự bị không bán được; chỉ bán cầu thủ ở đội hình ngoài.
+export const SQUAD_LIMITS = { starters: 11, bench: 9, total: 50 }
+
+export function squadOf(team) {
+    if (!team) return []
+
+    return [
+        ...(team.players || []),
+        ...(team.substitutes || []),
+        ...(team.reserves || []),
+    ]
+}
+
+export function squadGroupOf(team, playerId) {
+    if (team?.players?.some((player) => player.id === playerId)) return 'starter'
+    if (team?.substitutes?.some((player) => player.id === playerId)) return 'bench'
+    if (team?.reserves?.some((player) => player.id === playerId)) return 'reserve'
+
+    return null
+}
+
+// Save cũ: băng ghế không giới hạn, chưa có đội hình ngoài → dư ra bao nhiêu
+// người dự bị (từ người thứ 10) thì chuyển ra đội hình ngoài.
+export function normalizeSquad(team) {
+    const substitutes = [...(team.substitutes || [])]
+    const reserves = [...(team.reserves || [])]
+    const overflow = substitutes.splice(SQUAD_LIMITS.bench)
+
+    // Phase 23: mọi cầu thủ là một thẻ (playerId / cardId / upgrade / rarity).
+    return {
+        ...team,
+        players: (team.players || []).map(ensureCardFields),
+        substitutes: substitutes.map(ensureCardFields),
+        reserves: [...overflow, ...reserves].map(ensureCardFields),
+    }
+}
+
+// Phase 23: trong 20 người đá chính + dự bị không được có 2 thẻ cùng một
+// cầu thủ (playerId). Trả về thẻ đang gây trùng (nếu có) khi đưa `incoming`
+// vào đội hình thi đấu, bỏ qua các thẻ trong `leavingIds` (người rời đi).
+export function matchdayConflict(team, incoming, leavingIds = []) {
+    const target = playerIdOf(incoming)
+
+    return [...(team?.players || []), ...(team?.substitutes || [])].find(
+        (player) =>
+            player.id !== incoming.id &&
+            !leavingIds.includes(player.id) &&
+            playerIdOf(player) === target,
+    ) || null
+}
+
 export const RED_BASE_STRENGTH = 79
 
 export const OPPONENT_COLORS = [
@@ -145,10 +200,11 @@ export function buildMatchRoster(roster, opponent) {
 }
 
 export function createInitialRoster() {
-    return TEAMS.map((team) => ({
+    return TEAMS.map((team) => normalizeSquad({
         ...team,
         players: [...team.players],
         substitutes: [...team.substitutes],
+        reserves: [...(team.reserves || [])],
     }))
 }
 
@@ -176,16 +232,17 @@ export function loadSavedRoster() {
             )
 
             if (!savedTeam) {
-                return {
+                return normalizeSquad({
                     ...defaultTeam,
                     players: [...defaultTeam.players],
                     substitutes: [...defaultTeam.substitutes],
-                }
+                    reserves: [],
+                })
             }
 
             const defaults = [...defaultTeam.players, ...defaultTeam.substitutes]
 
-            return {
+            return normalizeSquad({
                 ...defaultTeam,
                 ...savedTeam,
                 // Tên / màu áo luôn lấy theo dữ liệu đội hiện tại.
@@ -198,7 +255,10 @@ export function loadSavedRoster() {
                 substitutes: Array.isArray(savedTeam.substitutes)
                     ? migrateStats(migrateNames(savedTeam.substitutes, defaults), defaults)
                     : [...defaultTeam.substitutes],
-            }
+                reserves: Array.isArray(savedTeam.reserves)
+                    ? migrateStats(migrateNames(savedTeam.reserves, defaults), defaults)
+                    : [],
+            })
         })
     } catch (error) {
         console.error('Unable to load saved roster:', error)

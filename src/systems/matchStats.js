@@ -18,6 +18,8 @@ export function createMatchStats() {
         // Phase 21
         passesCompleted: 0,
         xg: 0,
+        // Phase 23: cú sút bị chặn bởi cầu thủ (không tính thủ môn)
+        blocks: 0,
     })
 
     return {
@@ -47,6 +49,7 @@ function playerEntry(stats, playerId) {
             fouls: 0,
             passesCompleted: 0,
             xg: 0,
+            blocks: 0,
         }
     }
 

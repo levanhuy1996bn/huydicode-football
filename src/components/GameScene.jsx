@@ -1,13 +1,29 @@
 import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
 import SubstitutionBoard from './SubstitutionBoard'
+import ControlsPanel from './ControlsPanel'
 import DevelopmentScreen from './screens/DevelopmentScreen'
 import MatchSidePanel from './MatchSidePanel'
 import TopBar from './screens/TopBar'
 import HomeScreen from './screens/HomeScreen'
 import PreMatchScreen from './screens/PreMatchScreen'
 import PostMatchScreen from './screens/PostMatchScreen'
-import { formatMoney, getSquadValue } from '../services/clubService'
+import { formatMoney, getSquadValue, loadClub, saveClub } from '../services/clubService'
+import { applyMatchToClub, applySeasonBonus } from '../services/clubProgress'
+import CardsScreen from './screens/CardsScreen'
+import { resolveMatchKits } from '../data/kits'
+
+// Phase 24: gắn bộ áo của trận vào đội hình 3D (blue = đội người chơi,
+// red = đối thủ với id CLB `opponentClubId`).
+function applyKits(roster, kits, opponentClubId) {
+    return roster.map((team) => {
+        const entry = kits?.[team.id === 'blue' ? 'blue' : opponentClubId]
+
+        if (!entry) return team
+
+        return { ...team, color: entry.kit.shirt, kit: entry.kit, keeperKit: entry.keeper }
+    })
+}
 import { buildMatchSummary } from '../systems/matchStats'
 import { applyMatchCondition } from '../systems/stamina'
 import { applyMatchProgression, progressOf } from '../systems/progression'
@@ -51,13 +67,17 @@ import {
 } from '../systems/constants'
 import {
     ROSTER_STORAGE_KEY,
+    SQUAD_LIMITS,
     buildMatchRoster,
     getOpponentColor,
     getPositionGroup,
     getRole,
     loadSavedRoster,
+    matchdayConflict,
+    squadOf,
 } from '../systems/roster'
 import { USER_TEAM } from '../data/leagueData'
+import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 
 // Màn hình trận đấu: giao diện (scoreboard, bảng điều khiển, giải đấu, CLB).
 // Engine trận đấu nằm trong src/systems, scene 3D nằm trong MatchWorld.jsx.
@@ -85,6 +105,14 @@ function saveSettings(settings) {
 
 export default function GameScene() {
     const [roster, setRoster] = useState(loadSavedRoster)
+    // Phase 23: CLB (ngân sách EP, hợp đồng, cấp độ, XP, kho thẻ) do GameScene
+    // giữ để thưởng sau trận, tab CARDS và màn TRANSFERS dùng chung một bản.
+    const [club, setClub] = useState(loadClub)
+    const clubReportRef = useRef(null)
+
+    useEffect(() => {
+        saveClub(club)
+    }, [club])
     const chargeHudRef = useRef(null)
 
     const [selectedId, setSelectedId] = useState(() => {
@@ -149,6 +177,9 @@ export default function GameScene() {
     // Phase 21: thay người (dòng thời gian) và bảng thống kê trực tiếp.
     const [subEvents, setSubEvents] = useState([])
     const [isLiveStatsOpen, setIsLiveStatsOpen] = useState(false)
+    // Phase 22: bảng hướng dẫn phím (thay nút NAMES).
+    const [isControlsOpen, setIsControlsOpen] = useState(false)
+    const resumeAfterControlsRef = useRef(false)
     const [forfeit, setForfeit] = useState(null) // null | 'league' | 'friendly'
     const [isQuitOpen, setIsQuitOpen] = useState(false)
 
@@ -215,10 +246,24 @@ export default function GameScene() {
     const opponentTeam =
         getTeamById(opponentId) || getTeamById('red')
 
+    // Phase 24: bộ áo đã chọn trước trận (theo trận), mặc định tránh trùng màu.
+    const [kitChoice, setKitChoice] = useState({ fixtureId: null, slots: {} })
+    const kitsForFixture = (fixture) =>
+        fixture
+            ? resolveMatchKits(
+                fixture.homeTeamId,
+                fixture.awayTeamId,
+                kitChoice.fixtureId === fixture.id ? kitChoice.slots : null,
+            )
+            : resolveMatchKits('blue', 'red')
+
+    const matchKits = kitsForFixture(activeFixture)
+
     // Đội hình 3D của đối thủ theo đúng đội trong vòng đấu.
     const matchRoster = useMemo(
-        () => buildMatchRoster(roster, opponentTeam),
-        [roster, opponentTeam],
+        () => applyKits(buildMatchRoster(roster, opponentTeam), matchKits, opponentTeam?.id || 'red'),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [roster, opponentTeam, activeFixture?.id, kitChoice],
     )
 
     const opponentNameRef = useRef('OPPONENT')
@@ -408,7 +453,7 @@ export default function GameScene() {
         if (matchStatus !== 'fulltime') return
 
         const blue = roster.find((team) => team.id === 'blue')
-        const allBlue = [...(blue?.players || []), ...(blue?.substitutes || [])]
+        const allBlue = squadOf(blue)
 
         const summary = buildMatchSummary({
             stats: statsRef.current?.stats,
@@ -448,6 +493,60 @@ export default function GameScene() {
             const updatedById = new Map(progressed.map((player) => [player.id, player]))
 
             progressionReportRef.current = reports
+            clubReportRef.current = null
+
+            // Phase 22: thống kê cầu thủ cả mùa (cả hai đội) cho trận giải đấu.
+            // Bỏ trận (xử thua 0–3) thì không ghi số liệu cầu thủ.
+            const fixture = league.fixtures.find((item) => item.id === activeFixtureId)
+
+            if (!forfeit && fixture && !fixture.played) {
+                const entries = userMatchEntries({
+                    stats: statsRef.current?.stats,
+                    bluePlayers: summary.ratings,
+                    redPlayers: matchRoster.find((team) => team.id === 'red')?.players || [],
+                    opponentClubId: opponentId,
+                    blueScore,
+                    redScore,
+                })
+
+                setLeague((current) => recordUserMatchStats(current, activeFixtureId, entries))
+
+                // Phase 23: XP CLB + tiền thưởng (EP); lên cấp thì thêm thẻ EP
+                // và gói cầu thủ vào kho. Trận cuối mùa: thưởng theo thứ hạng.
+                const rewarded = applyMatchToClub(club, {
+                    goalsFor: blueScore,
+                    goalsAgainst: redScore,
+                    opponentStrength: opponentTeam?.strength,
+                })
+                let nextClub = rewarded.club
+                let seasonReward = null
+
+                const remainingUserFixtures = league.fixtures.filter(
+                    (item) =>
+                        !item.played &&
+                        item.id !== fixture.id &&
+                        (item.homeTeamId === 'blue' || item.awayTeamId === 'blue'),
+                ).length
+
+                if (remainingUserFixtures === 0) {
+                    const isHome = fixture.homeTeamId === 'blue'
+                    const finalLeague = recordUserFixtureResult(
+                        league,
+                        fixture.id,
+                        isHome ? blueScore : redScore,
+                        isHome ? redScore : blueScore,
+                    )
+                    const position =
+                        getLeagueStandings(finalLeague.fixtures).findIndex((row) => row.teamId === 'blue') + 1
+                    const bonus = applySeasonBonus(nextClub, league.season || 2026, position)
+
+                    nextClub = bonus.club
+                    seasonReward = bonus.bonus
+                }
+
+                clubReportRef.current = { ...rewarded.report, seasonReward, budget: nextClub.budget }
+                setClub(nextClub)
+            }
 
             setRoster((current) =>
                 current.map((team) =>
@@ -457,6 +556,9 @@ export default function GameScene() {
                             ...team,
                             players: team.players.map((player) => updatedById.get(player.id) || player),
                             substitutes: (team.substitutes || []).map(
+                                (player) => updatedById.get(player.id) || player,
+                            ),
+                            reserves: (team.reserves || []).map(
                                 (player) => updatedById.get(player.id) || player,
                             ),
                         },
@@ -470,6 +572,7 @@ export default function GameScene() {
             subEvents,
             shots: [...(statsRef.current?.stats?.shots || [])],
             progression: progressionReportRef.current || [],
+            clubReport: clubReportRef.current,
         })
         // Chỉ chụp một lần khi vừa hết trận.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -598,7 +701,12 @@ export default function GameScene() {
             current.map((team) =>
                 team.id !== 'blue'
                     ? team
-                    : { ...team, players: rested(team.players), substitutes: rested(team.substitutes) },
+                    : {
+                        ...team,
+                        players: rested(team.players),
+                        substitutes: rested(team.substitutes),
+                        reserves: rested(team.reserves || []),
+                    },
             ),
         )
 
@@ -815,6 +923,127 @@ export default function GameScene() {
         return { ok: true, message }
     }
 
+    // Phase 22: trước trận, chuyển cầu thủ giữa đá chính / dự bị (tối đa 9) /
+    // đội hình ngoài. source / target: { id, zone } với zone 'pitch' | 'bench'
+    // | 'reserves'; target.id = null khi thả vào tiêu đề khu vực.
+    const moveSquadPlayer = (source, target) => {
+        const blueTeam = roster.find((team) => team.id === 'blue')
+        const fail = (message) => ({ ok: false, message })
+
+        if (!blueTeam) return fail('Team not found.')
+
+        const reserves = blueTeam.reserves || []
+        const find = (zone, id) =>
+            (zone === 'pitch' ? blueTeam.players : zone === 'bench' ? blueTeam.substitutes : reserves)
+                .find((player) => player.id === id)
+
+        const mover = find(source.zone, source.id)
+
+        if (!mover) return fail('Player not found.')
+
+        // Đội hình ngoài ↔ sân: dùng chung luật với thay người trước trận,
+        // người rời sân ra đội hình ngoài.
+        if ((source.zone === 'reserves' && target.zone === 'pitch') || (source.zone === 'pitch' && target.zone === 'reserves')) {
+            const starter = source.zone === 'pitch' ? mover : find('pitch', target.id)
+            const reserve = source.zone === 'reserves' ? mover : find('reserves', target.id)
+
+            if (!starter || !reserve) return fail('Drop the reserve player onto a starter.')
+
+            const duplicate = matchdayConflict(blueTeam, reserve, [starter.id])
+
+            if (duplicate) {
+                return fail(`${duplicate.name} is already in the matchday squad (another card of the same player).`)
+            }
+
+            if ((getPositionGroup(starter.position) === 'GK') !== (getPositionGroup(reserve.position) === 'GK')) {
+                return fail('A goalkeeper can only be replaced by a goalkeeper.')
+            }
+
+            setRoster((current) =>
+                current.map((team) =>
+                    team.id !== 'blue'
+                        ? team
+                        : {
+                            ...team,
+                            players: team.players.map((player) =>
+                                player.id === starter.id
+                                    ? { ...reserve, position: starter.position, x: starter.x, z: starter.z }
+                                    : player,
+                            ),
+                            reserves: (team.reserves || []).map((player) =>
+                                player.id === reserve.id ? { ...starter, x: 0, z: 60 } : player,
+                            ),
+                        },
+                ),
+            )
+
+            if (selectedId === starter.id) setSelectedId(reserve.id)
+
+            return { ok: true, message: `${reserve.name} starts, ${starter.name} moves to the reserves.` }
+        }
+
+        // Dự bị ↔ đội hình ngoài.
+        if (
+            (source.zone === 'bench' && target.zone === 'reserves') ||
+            (source.zone === 'reserves' && target.zone === 'bench')
+        ) {
+            const toBench = source.zone === 'reserves'
+            const other = target.id ? find(target.zone, target.id) : null
+
+            // Người đi vào băng ghế: mover (từ đội hình ngoài) hoặc other (đổi chỗ).
+            const joining = toBench ? mover : other
+            const leaving = toBench ? other : mover
+
+            if (joining) {
+                const duplicate = matchdayConflict(blueTeam, joining, leaving ? [leaving.id] : [])
+
+                if (duplicate) {
+                    return fail(`${duplicate.name} is already in the matchday squad (another card of the same player).`)
+                }
+            }
+
+            if (!other && toBench && blueTeam.substitutes.length >= SQUAD_LIMITS.bench) {
+                return fail(`The bench is full (${SQUAD_LIMITS.bench} players). Drop onto a bench player to swap.`)
+            }
+
+            setRoster((current) =>
+                current.map((team) => {
+                    if (team.id !== 'blue') return team
+
+                    let substitutes = [...(team.substitutes || [])]
+                    let teamReserves = [...(team.reserves || [])]
+
+                    if (toBench) {
+                        teamReserves = teamReserves.filter((player) => player.id !== mover.id)
+                        substitutes = other
+                            ? substitutes.map((player) => (player.id === other.id ? mover : player))
+                            : [...substitutes, mover]
+                        if (other) teamReserves = [...teamReserves, other]
+                    } else {
+                        substitutes = substitutes.filter((player) => player.id !== mover.id)
+                        teamReserves = other
+                            ? teamReserves.map((player) => (player.id === other.id ? mover : player))
+                            : [...teamReserves, mover]
+                        if (other) substitutes = [...substitutes, other]
+                    }
+
+                    return { ...team, substitutes, reserves: teamReserves }
+                }),
+            )
+
+            if (other) {
+                return { ok: true, message: `${toBench ? mover.name : other.name} joins the bench, ${toBench ? other.name : mover.name} moves to the reserves.` }
+            }
+
+            return {
+                ok: true,
+                message: toBench ? `${mover.name} joins the bench.` : `${mover.name} moves to the reserves.`,
+            }
+        }
+
+        return fail('Drag between the pitch, the bench and the reserves.')
+    }
+
     // Đổi vị trí hai cầu thủ đang trên sân (không tính lượt thay người).
     const swapStarters = (firstId, secondId) => {
         const blueTeam = roster.find((team) => team.id === 'blue')
@@ -884,12 +1113,31 @@ export default function GameScene() {
         }
     }
 
-    const cycleLabelMode = () => {
-        const next = labelMode === 'smart' ? 'all' : labelMode === 'all' ? 'off' : 'smart'
-
+    const changeLabelMode = (next) => {
         updateSettings({ labelMode: next })
         setActionMessage(`PLAYER NAMES: ${next.toUpperCase()}`)
     }
+
+    // CONTROLS: dừng trận trong lúc xem, đóng thì đá tiếp.
+    const openControls = () => {
+        if (matchStatus === 'playing') {
+            resumeAfterControlsRef.current = true
+            setMatchStatus('paused')
+        } else {
+            resumeAfterControlsRef.current = false
+        }
+
+        setIsControlsOpen(true)
+    }
+
+    const closeControls = useCallback(() => {
+        setIsControlsOpen(false)
+
+        if (resumeAfterControlsRef.current) {
+            resumeAfterControlsRef.current = false
+            setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
+        }
+    }, [])
 
     const openLeague = () => {
         setIsLeagueOpen(true)
@@ -935,6 +1183,15 @@ export default function GameScene() {
         else if (tab === 'development') openDevelopment()
         else if (tab === 'league') setIsLeagueOpen(true)
         else if (tab === 'club') setIsClubOpen(true)
+        else if (tab === 'cards') openCards()
+    }
+
+    // Phase 23: tab CARDS (mở gói cầu thủ, thẻ EP).
+    const openCards = () => {
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        setScreen('cards')
     }
 
     // Phase 19B: màn phát triển cầu thủ.
@@ -954,6 +1211,9 @@ export default function GameScene() {
                         ...team,
                         players: team.players.map((player) => (player.id === updated.id ? updated : player)),
                         substitutes: (team.substitutes || []).map((player) =>
+                            player.id === updated.id ? updated : player,
+                        ),
+                        reserves: (team.reserves || []).map((player) =>
                             player.id === updated.id ? updated : player,
                         ),
                     },
@@ -1031,10 +1291,10 @@ export default function GameScene() {
                     blueTeam.players.length,
             )
             : 0,
-        size: (blueTeam?.players.length || 0) + (blueTeam?.substitutes.length || 0),
+        size: squadOf(blueTeam).length,
         value: formatMoney(getSquadValue(roster)),
         // Phase 19B: tổng điểm chỉ số chưa cộng của cả đội.
-        unspentPoints: [...(blueTeam?.players || []), ...(blueTeam?.substitutes || [])]
+        unspentPoints: squadOf(blueTeam)
             .reduce((sum, player) => sum + progressOf(player).unspentPoints, 0),
     }
 
@@ -1050,10 +1310,29 @@ export default function GameScene() {
         ? getTeamById(opponentIdOf(prematchFixture))
         : null
 
+    const prematchKits = kitsForFixture(prematchFixture)
+
     const prematchRoster = useMemo(
-        () => (prematchOpponent ? buildMatchRoster(roster, prematchOpponent) : roster),
-        [roster, prematchOpponent],
+        () =>
+            prematchOpponent
+                ? applyKits(buildMatchRoster(roster, prematchOpponent), prematchKits, prematchOpponent.id)
+                : roster,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [roster, prematchOpponent, prematchFixture?.id, kitChoice],
     )
+
+    // Đổi bộ áo của một đội (người chơi hoặc máy) cho trận sắp đá.
+    const changeKit = (clubId, slot) => {
+        if (!prematchFixture) return
+
+        setKitChoice((current) => ({
+            fixtureId: prematchFixture.id,
+            slots: {
+                ...(current.fixtureId === prematchFixture.id ? current.slots : prematchKits.slots),
+                [clubId]: slot,
+            },
+        }))
+    }
 
     const selectedPlayerProfile = matchRoster
         .flatMap((team) => [...team.players, ...(team.substitutes || [])])
@@ -1069,6 +1348,8 @@ export default function GameScene() {
                 season={league.season || 2026}
                 record={blueRow ? { position: positionOf('blue'), points: blueRow.points } : null}
                 onNavigate={navigate}
+                cardsCount={(club.inventory || []).length}
+                clubLevel={club.level || 0}
             />
 
             {screen === 'home' && (
@@ -1105,6 +1386,9 @@ export default function GameScene() {
                     onTacticChange={changeTactic}
                     onFormationChange={changeFormation}
                     onEditLineup={openLineupEditor}
+                    kits={prematchKits}
+                    blueKitTeam={prematchRoster.find((team) => team.id === 'blue')}
+                    onKitChange={changeKit}
                     onKickOff={kickOff}
                     onBack={goHome}
                 />
@@ -1130,6 +1414,17 @@ export default function GameScene() {
                     onOpenLeague={() => setIsLeagueOpen(true)}
                     onNewSeason={createNewSeason}
                     onOpenDevelopment={openDevelopment}
+                    onOpenCards={openCards}
+                />
+            )}
+
+            {screen === 'cards' && (
+                <CardsScreen
+                    club={club}
+                    onClubChange={setClub}
+                    team={blueTeam}
+                    onRosterChange={setRoster}
+                    onOpenTransfers={() => setIsClubOpen(true)}
                 />
             )}
 
@@ -1386,11 +1681,11 @@ export default function GameScene() {
                 )}
 
                 <button
-                    onClick={cycleLabelMode}
+                    onClick={openControls}
                     style={matchButtonStyle}
-                    title="Player names above heads"
+                    title="Key guide and player-name display"
                 >
-                    NAMES: {labelMode.toUpperCase()}
+                    CONTROLS
                 </button>
 
                 {matchStatus !== 'fulltime' && (
@@ -1402,6 +1697,15 @@ export default function GameScene() {
                     </button>
                 )}
             </div>
+
+            {/* Phase 22: hướng dẫn phím + chế độ tên cầu thủ (dừng trận). */}
+            {isControlsOpen && (
+                <ControlsPanel
+                    labelMode={labelMode}
+                    onLabelModeChange={changeLabelMode}
+                    onClose={closeControls}
+                />
+            )}
 
             {/* Phase 21: thống kê trực tiếp (không dừng trận). */}
             {isLiveStatsOpen && (matchStatus === 'playing' || matchStatus === 'goal') && (
@@ -1418,7 +1722,7 @@ export default function GameScene() {
                 <StatusOverlay title="GOAL!" subtitle={goalMessage} />
             )}
 
-            {matchStatus === 'paused' && (
+            {matchStatus === 'paused' && !isControlsOpen && (
                 <StatusOverlay
                     title="PAUSED"
                     subtitle="Press RESUME to continue"
@@ -1480,7 +1784,6 @@ export default function GameScene() {
                     onNextMatch={() => openPrematch(nextFixture)}
                     onSummary={openSummary}
                     onOpenLeague={openLeague}
-                    onReplay={restartMatch}
                     onNewSeason={createNewSeason}
                 />
             )}
@@ -1523,13 +1826,6 @@ export default function GameScene() {
                 </div>
             </div>
 
-            <div className="canvas-hint">
-                Arrows move/aim · E sprint · Hold S/W/A/D for power, release
-                to pass/through/lob/shoot · Hold C shield the ball ·
-                Defending: S/Q switch, hold D
-                contain, D+E press, hold W teammate press · Space tackle · A
-                (or Ctrl) slide · Throw-in: S short, A long · Free kick / penalty: arrows aim, D shoot · ZD finesse, QD chip, CD trivela, DD low shot, ZS driven pass, QW lobbed through
-            </div>
 
             <div className="action-indicator">
                 {actionMessage}
@@ -1563,6 +1859,8 @@ export default function GameScene() {
                     <ClubManagementPanel
                         roster={roster}
                         onRosterChange={setRoster}
+                        club={club}
+                        onClubChange={setClub}
                         isOpen
                         hideTrigger
                         onOpenChange={(open) => setIsClubOpen(open)}
@@ -1583,6 +1881,8 @@ export default function GameScene() {
                             substitutePlayer(outId, inId, { prematch: lineupMode === 'prematch' })
                         }
                         onSwap={swapStarters}
+                        onMoveSquad={moveSquadPlayer}
+                        benchLimit={SQUAD_LIMITS.bench}
                         onClose={closeSubstitutions}
                     />
                 </div>

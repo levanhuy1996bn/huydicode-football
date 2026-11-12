@@ -4,11 +4,12 @@ const TABS = [
     ['home', 'HOME'],
     ['prematch', 'PLAY'],
     ['development', 'SQUAD'],
+    ['cards', 'CARDS'],
     ['league', 'LEAGUE'],
-    ['club', 'CLUB'],
+    ['club', 'TRANSFERS'],
 ]
 
-export default function TopBar({ screen, inMatch, season, record, onNavigate }) {
+export default function TopBar({ screen, inMatch, season, record, onNavigate, cardsCount = 0, clubLevel = 0 }) {
     return (
         <header className="topbar">
             <div className="brand">
@@ -34,12 +35,16 @@ export default function TopBar({ screen, inMatch, season, record, onNavigate }) 
                             onClick={() => onNavigate(key)}
                         >
                             {label}
+                            {key === 'cards' && cardsCount > 0 && (
+                                <span className="nav-badge" aria-label={`${cardsCount} unopened`}>{cardsCount}</span>
+                            )}
                         </button>
                     ))
                 )}
             </nav>
 
             <div className="season-label">
+                <span className="season-label__level" title="Club level">CLUB LV <b>{clubLevel}</b></span>
                 SEASON <b>{season}/{String((season + 1) % 100).padStart(2, '0')}</b>
                 {record && (
                     <span className="season-label__record">

@@ -44,7 +44,7 @@ export function LevelBadge({ player, compact = false }) {
 
 export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
     const players = useMemo(
-        () => [...(team?.players || []), ...(team?.substitutes || [])],
+        () => [...(team?.players || []), ...(team?.substitutes || []), ...(team?.reserves || [])],
         [team],
     )
     const [selectedId, setSelectedId] = useState(() => {

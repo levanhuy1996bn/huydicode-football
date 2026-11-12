@@ -2,6 +2,52 @@ import { USER_TEAM } from '../../data/leagueData'
 import { Scoreline } from '../MatchOverlays'
 import { shortPlayerName } from '../../utils/names'
 import { MatchTimeline, ShotMap, StatComparison, TopPerformers } from '../MatchStatsPanel'
+import { formatMoney } from '../../services/clubService'
+import { PACK_TYPES } from '../../services/cards'
+
+// Phase 23: XP CLB, tiền thưởng, lên cấp và phần thưởng của trận vừa đá.
+function ClubRewardCard({ report, onOpenCards }) {
+    if (!report) return null
+
+    const gained = report.levelsGained || []
+
+    return (
+        <div className={`home-card club-reward${gained.length ? ' is-levelup' : ''}`}>
+            <div className="home-card__head">
+                <span>CLUB REWARDS</span>
+                {(gained.length > 0 || report.seasonReward) && (
+                    <button type="button" className="link-btn" onClick={onOpenCards}>
+                        OPEN IN CARDS →
+                    </button>
+                )}
+            </div>
+            <div className="club-reward__row">
+                <div><span>CLUB XP</span><b>+{report.xp}</b></div>
+                <div><span>PRIZE MONEY</span><b>+{formatMoney(report.prize)}</b></div>
+                <div><span>BUDGET</span><b>{formatMoney(report.budget)}</b></div>
+                <div className="club-reward__level">
+                    <span>CLUB LEVEL {report.level}</span>
+                    <div className="xp-bar xp-bar--large">
+                        <i style={{ width: `${Math.min(100, (report.xpNow / report.xpToNext) * 100)}%` }} />
+                    </div>
+                    <small>{report.xpNow} / {report.xpToNext} XP</small>
+                </div>
+            </div>
+            {gained.map((entry) => (
+                <div className="club-reward__levelup" key={entry.level}>
+                    <b>LEVEL UP! · LEVEL {entry.level}</b>
+                    <span>{formatMoney(entry.ep)} card + {PACK_TYPES[entry.pack]?.label} added to CARDS</span>
+                </div>
+            ))}
+            {report.seasonReward && (
+                <div className="club-reward__levelup">
+                    <b>SEASON {report.seasonReward.season} FINISHED · #{report.seasonReward.position}</b>
+                    <span>{formatMoney(report.seasonReward.amount)} card added to CARDS</span>
+                </div>
+            )}
+        </div>
+    )
+}
 
 // Màn sau trận: tỉ số, thống kê hai đội, điểm cầu thủ đội người chơi + cầu thủ
 // xuất sắc nhất trận, rồi về sảnh / trận tiếp theo / bảng xếp hạng.
@@ -27,6 +73,7 @@ export default function PostMatchScreen({
     onOpenLeague,
     onNewSeason,
     onOpenDevelopment,
+    onOpenCards,
 }) {
     if (!summary) {
         return (
@@ -169,6 +216,8 @@ export default function PostMatchScreen({
                     </div>
                 </div>
             )}
+
+            <ClubRewardCard report={summary.clubReport} onOpenCards={onOpenCards} />
 
             {summary.progression?.length > 0 && (
                 <div className="home-card progression-card">

@@ -427,3 +427,102 @@
         font-size: 9px;
     }
 }
+
+/* ---- Phase 22: tóm tắt trên bảng xếp hạng, thống kê cầu thủ, lịch đấu đội nhà ---- */
+.league-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    background: #192533;
+}
+
+.league-summary div { display: grid; gap: 2px; }
+.league-summary span { color: #8292a5; font-size: 9px; letter-spacing: 1px; }
+.league-summary strong { font-size: 15px; }
+.league-summary .league-primary-button { margin-left: auto; }
+
+.league-champion-banner {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(255, 196, 61, .14);
+    color: #ffd36b;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.league-stat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.league-chip {
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    color: #c4cfdc;
+    background: #1a2736;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .8px;
+    cursor: pointer;
+}
+
+.league-chip.active { color: #fff; border-color: var(--user-color); background: var(--user-color-soft); }
+
+.league-player-table th button {
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+}
+
+.league-player-table th.is-sorted { color: #fff; }
+.league-player-pos { margin-left: 6px; color: #8292a5; font-size: 9px; font-weight: 700; }
+
+.league-fixture.league-fixture--user {
+    grid-template-columns: 34px 24px minmax(0, 1fr) 55px 52px;
+}
+
+.league-fixture.is-next {
+    border-color: var(--user-color);
+    background: var(--user-color-soft);
+}
+
+.league-fixture-round { color: #8292a5; font-size: 10px; font-weight: 800; }
+
+.league-fixture-venue {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 900;
+    background: #263548;
+}
+
+.league-fixture-venue--home { background: rgba(126, 224, 129, .18); color: #9be89d; }
+
+.league-result {
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.league-result--W { background: #2f8a55; }
+.league-result--D { background: #6b7280; }
+.league-result--L { background: #a53d33; }
+
+@media (max-width: 560px) {
+    .league-summary .league-primary-button { margin-left: 0; width: 100%; }
+}

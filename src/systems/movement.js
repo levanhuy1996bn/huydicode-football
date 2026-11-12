@@ -55,6 +55,9 @@ export function moveAIPlayer(ctx, item, target, speedScale, dt) {
     // Người đang ném biên đứng yên tại vạch.
     if (ctx.state.restart?.playerId === item.id) return
 
+    // Giao bóng: người đứng cạnh bóng chờ đường chuyền.
+    if (ctx.state.restart?.partnerId === item.id) return
+
     // Đứng trong hàng rào đá phạt: giữ nguyên vị trí tới khi bóng được đá.
     if (ctx.state.restart?.wall?.includes(item.id)) return
 
