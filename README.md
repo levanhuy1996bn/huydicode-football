@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28 and 28B — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29 (mobile, graphics, sound, performance), 30 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28 and 28B — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29 (mobile, graphics, sound, performance) — the last planned phase; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -373,8 +373,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 28 | Quick simulation: 5 instant matches per day (league and cups), 2D replay with commentary, rewards ×0.7 | ✅ Done (2026-11-12) |
 | 28B | Trophy room: titles won as a manager (kept when changing club), a different trophy per competition, difficulty star, career table | ✅ Done (2026-11-12) |
 | 29 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
-| 30 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
 | Backlog | Individual player skills / traits | 💤 Later |
+| Backlog | Card seasons and real player data (was Phase 30, moved to the backlog on 2026-11-12) | 💤 Later |
 
 ### Status check (2026-11-09)
 
@@ -915,8 +915,8 @@ Plan (as agreed):
 
 - **Club level and XP:** the club earns XP after every match (win > draw > loss, bonus for a clean sheet and a big win). The XP needed per level grows level by level. The post-match screen shows XP gained, the level bar and a LEVEL UP message.
 - **Match prize money:** paid after every match into the club budget (EP), based on result, goal difference and opponent strength. End-of-season bonus by league position.
-- **Player catalog** (`src/data/playerCatalog.js`): **500 default players created by the project itself** (fictional names, no real-world data). Each has a `playerId`, name, nationality, age, position, the six main stats, rarity (Bronze / Silver / Gold) and value. The current transfer market players move into this catalog, and the transfer market draws from it. Real data comes later in Phase 30 with the same structure.
-- **Two ids per player:** `playerId` = the person; `cardId` = one card the club owns. Several cards can share a `playerId` (duplicates now, card seasons in Phase 30).
+- **Player catalog** (`src/data/playerCatalog.js`): **500 default players created by the project itself** (fictional names, no real-world data). Each has a `playerId`, name, nationality, age, position, the six main stats, rarity (Bronze / Silver / Gold) and value. The current transfer market players move into this catalog, and the transfer market draws from it. Real data (backlog, formerly Phase 30) would use the same structure.
+- **Two ids per player:** `playerId` = the person; `cardId` = one card the club owns. Several cards can share a `playerId` (duplicates now, card seasons later — backlog).
 - **No duplicates in the matchday squad:** the 20 starters and substitutes can never contain two cards with the same `playerId`. Duplicate cards stay in the reserves.
 - **Cards tab (new):** an inventory of unopened rewards. Everything is opened whenever the player wants:
   - **Player packs:** opening one gives a random player from the catalog (by pack rarity). Cards from packs are **+1** for now. The new card goes to the reserves.
@@ -938,7 +938,7 @@ What was built:
 - **Club XP** (`services/clubProgress.js`): win 60, draw 35, loss 20, clean sheet +10, win by 3+ goals +15. Level 0 → 1 needs 50 XP, then +25 per level (75, 100, 125…). Only league matches count (forfeits and the pause-menu RESTART give nothing).
 - **Prize money** after each league match, straight into the budget: win 3,000,000 EP (+300,000 per goal of margin, max 4), draw 1,500,000, loss 600,000, clean sheet +250,000; × 0.8–1.4 by opponent strength (+3% per point above 79).
 - **Level rewards** go into the CARDS inventory: every level a 5,000,000 EP card + Player Pack; levels 5, 10, 15… a 10,000,000 EP card + Premium Player Pack. Several levels at once give all rewards.
-- **Season bonus** (EP card, once per season, after your last league match): champion 30,000,000 · 2nd–4th 15,000,000 · 5th–10th 8,000,000 · 11th–17th 4,000,000 · 18th–20th 2,000,000.
+- **Season bonus** (EP card, once per season, after your last league match): champion 30,000,000 · 2nd–4th 15,000,000 · 5th–10th 8,000,000 · 11th–17th 4,000,000 · 18th–20th 2,000,000. Second divisions pay half (since 2026-11-12, after Phase 28B), then × difficulty.
 - **Player catalog** (`data/playerCatalog.js`, generated with a fixed seed): the 20 old market players (ids `market-001…020` kept) + 480 new fictional players `p0001…p0480`, 20 nationalities. Gold 125 (OVR 75–90), Silver 175 (65–74), Bronze 200 (50–64). Value in EP ≈ 1,000,000 × 1.152^(OVR−60) × age factor; weekly wage = 0.3% of value. `transferMarket.js` now just re-exports the catalog.
 - **Cards** (`services/cards.js`): every owned player has `id` = `cardId` (unique), `playerId`, `upgrade` (+1) and `rarity`. Old saves get these fields automatically (old id kept as both). Buying on the market or opening a pack creates a new card with its own `cardId`.
   - The market hides players you already own (by `playerId`) and shows 48 at a time (SHOW MORE), with a rarity filter; OVR badges use the rarity colour.
@@ -1126,7 +1126,7 @@ Agreed on 2026-11-12.
 - **Transfer market:** 16,341 players (18 original United cards, ~15,800 world players, 500 catalog players as FREE AGENTS). New filters: country → league (current divisions) → club; search also matches the club name; cards show the player's club. Packs draw from the world players + free agents.
 - **3D matches:** the opponent is the real club with its squad (e.g. Liverpool: Alisson, Van Dijk, Wirtz, Isak, Salah…), name and kits.
 - **Old saves:** a league save from before Phase 26 is converted on first load: a new season in the real Premier League (next season number if a match had been played, so the season prize is not blocked). Squad, cards, EP, club level and inventory are untouched; a message "NEW WORLD · SEASON … · PREMIER LEAGUE" is shown once.
-- **Not done in 26A (by design):** season player stats only for your own league; second-division season prize money is the same as top league.
+- **Not done in 26A (by design):** season player stats only for your own league; second-division season prize money was the same as top league (changed to half on 2026-11-12, after Phase 28B).
 
 #### Phase 26B — Choose and change club ✅ (2026-11-12)
 
@@ -1298,14 +1298,12 @@ Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (
 - **Mobile performance:** lighter graphics preset (no shadows, lower pixel ratio), block page zoom and scroll, iOS Safari fixes.
 - **Visual polish, sound, performance optimisation and release preparation.**
 
-### Phase 30 — Card seasons and real player data (planned)
-
-- **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
-- **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
-
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
+- **Card seasons and real player data** (was Phase 30; moved to the backlog on 2026-11-12 because it is hard — mostly the data side):
+  - **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
+  - **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
 
 ### Ideas backlog (từ yêu cầu, tham khảo FIFA Online 4)
 
@@ -1350,7 +1348,7 @@ Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (
 | Mô phỏng nhanh 5 trận mỗi ngày, có hoạt cảnh, thưởng ×0.7 | Phase 28 ✅ |
 | Phòng truyền thống: danh hiệu của HLV (đổi CLB vẫn giữ), mỗi giải một kiểu cúp, sao độ khó, bảng sự nghiệp | Phase 28B ✅ |
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 29 |
-| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 30 |
+| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Backlog (trước là Phase 30) |
 | Skill riêng cho từng cầu thủ | Backlog |
 
 ---

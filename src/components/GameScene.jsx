@@ -658,7 +658,7 @@ export default function GameScene() {
                     )
                     const position =
                         getLeagueStandings(finalLeague.fixtures).findIndex((row) => isUserClub(row.teamId)) + 1
-                    const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward)
+                    const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward, LEAGUE_BY_ID.get(league.leagueId)?.tier || 1)
 
                     nextClub = bonus.club
                     seasonReward = bonus.bonus
@@ -1589,7 +1589,7 @@ export default function GameScene() {
             }
         } else if (getSeasonProgress(nextLeague.fixtures).completed) {
             const position = getLeagueStandings(nextLeague.fixtures).findIndex((row) => isUserClub(row.teamId)) + 1
-            const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward)
+            const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward, LEAGUE_BY_ID.get(league.leagueId)?.tier || 1)
 
             nextClub = bonus.club
             seasonReward = bonus.bonus

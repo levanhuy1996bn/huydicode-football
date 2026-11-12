@@ -53,7 +53,7 @@ function ClubRewardCard({ report, onOpenCards }) {
             )}
             {report.seasonReward && (
                 <div className="club-reward__levelup">
-                    <b>SEASON {report.seasonReward.season} FINISHED · #{report.seasonReward.position}</b>
+                    <b>SEASON {report.seasonReward.season} FINISHED · #{report.seasonReward.position}{report.seasonReward.tier >= 2 ? ' · DIVISION 2 (½ PRIZE)' : ''}</b>
                     <span>{formatMoney(report.seasonReward.amount)} card added to CARDS</span>
                 </div>
             )}

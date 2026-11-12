@@ -116,10 +116,14 @@ export function seasonBonus(position) {
     return 2000000
 }
 
-export function applySeasonBonus(club, season, position, rewardFactor = 1) {
+// Giải hạng hai: thưởng cuối mùa bằng 1/2 giải hạng nhất (sau Phase 28B).
+export const SECOND_DIVISION_PRIZE_FACTOR = 0.5
+
+export function applySeasonBonus(club, season, position, rewardFactor = 1, tier = 1) {
     if (club.seasonBonusPaid?.[season]) return { club, bonus: null }
 
-    const amount = Math.round((seasonBonus(position) * rewardFactor) / 100000) * 100000
+    const tierFactor = tier >= 2 ? SECOND_DIVISION_PRIZE_FACTOR : 1
+    const amount = Math.round((seasonBonus(position) * rewardFactor * tierFactor) / 100000) * 100000
 
     return {
         club: {
@@ -127,6 +131,6 @@ export function applySeasonBonus(club, season, position, rewardFactor = 1) {
             inventory: [...(club.inventory || []), epCard(amount, `Season ${season} · finished #${position}`)],
             seasonBonusPaid: { ...(club.seasonBonusPaid || {}), [season]: position },
         },
-        bonus: { amount, position, season },
+        bonus: { amount, position, season, tier },
     }
 }
