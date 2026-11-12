@@ -3028,3 +3028,19 @@ b.is-off-position::after {
     .nation-picker__body { grid-template-columns: 1fr; }
     .nation-picker__list { max-height: 36vh; }
 }
+
+/* ---- Phase 29F: máy đá thay — đếm ngược hiệp 2 ---- */
+.halftime-auto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ffd166;
+  background: rgba(255, 209, 102, 0.1);
+  font-size: 12px;
+  color: #e9f1ec;
+}
+.halftime-auto b { color: #ffd166; letter-spacing: 0.08em; white-space: nowrap; }
+.halftime-auto strong { color: #ffd166; font-size: 15px; }

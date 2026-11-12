@@ -130,6 +130,22 @@ export function findPassTarget(ctx, playerId, action, aim = null, receiverId = n
 
 // Mọi đồng đội có thể nhận bóng, đã chấm điểm (điểm thấp = tốt), kèm số liệu
 // cho AI cầm bóng (carrierAI.js): laneSlack, nearestOpponent, blockedLane.
+// Phase 29F: bị áp sát (đối thủ trong 2.2m) lúc sút thì kém chính xác hơn,
+// Composure cao gần như không bị ảnh hưởng: 50 → −5, 75 → −2.5, 99 → 0 điểm.
+function shotPressurePenalty(ctx, item, player) {
+    const nearest = ctx.players.reduce((best, other) => {
+        if (other.teamId === item.teamId) return best
+
+        const object = ctx.objects[other.id]
+
+        return object ? Math.min(best, Math.hypot(object.position.x - player.position.x, object.position.z - player.position.z)) : best
+    }, Infinity)
+
+    if (nearest > 2.2) return 0
+
+    return (1 - Math.min(1, skill01(attr(item, 'composure')))) * 6 * (1 - nearest / 2.2 * 0.5)
+}
+
 export function listPassCandidates(ctx, playerId, action, aim = null) {
     const { state, objects } = ctx
     const player = objects[playerId]
@@ -612,7 +628,8 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         const finishing = clamp(
             attr(item, 'finishing') * (1 - longRange) +
             attr(item, 'longShots') * longRange -
-            fatiguePenalty(state, playerId),
+            fatiguePenalty(state, playerId) -
+            shotPressurePenalty(ctx, item, player),
             40,
             130,
         )
@@ -1162,6 +1179,16 @@ function releaseKick(ctx, windup) {
         recordPlayer(state, playerId, 'passes')
         openPass(state, teamId, playerId)
 
+        const passSpot = windup.passTarget || windup.spaceReceiver?.spot
+
+        if (
+            !isKeeperRelease &&
+            passSpot &&
+            (action === 'lob' || Math.hypot(passSpot.x - player.position.x, passSpot.z - player.position.z) >= 25)
+        ) {
+            recordTeam(state, teamId, 'longPasses')
+        }
+
         if (state.stats) {
             state.stats.lastPasserId = playerId
             state.stats.lastPassTeam = teamId
@@ -1205,9 +1232,14 @@ function releaseKick(ctx, windup) {
     state.restart = null
 
     // Ghi nhớ đồng đội đang được chuyền bóng tới.
+    // Phase 29F: nhớ người chuyền (không cho người chuyền chạy lại nhặt bóng
+    // khi người nhận đang đón — teamAI.js).
+    state.looseReceive = null
+
     if (windup.passTarget) {
         state.pendingPass = {
             receiverId: windup.passTarget.receiverId,
+            passerId: playerId,
             targetX: windup.passTarget.x,
             targetZ: windup.passTarget.z,
             action,
@@ -1216,6 +1248,7 @@ function releaseKick(ctx, windup) {
     } else if (windup.spaceReceiver) {
         state.pendingPass = {
             receiverId: windup.spaceReceiver.id,
+            passerId: playerId,
             targetX: windup.spaceReceiver.spot.x,
             targetZ: windup.spaceReceiver.spot.z,
             action,
@@ -1273,7 +1306,7 @@ function releaseKick(ctx, windup) {
 
 const PICKUP_REACH = 1.5   // đỡ bóng chậm / bóng của đội mình
 const BLOCK_REACH = 0.9    // chặn bóng đang lăn của đối phương (đứng trên đường bóng)
-const CONTROL_SPEED = 17   // đồng đội khống chế ngay bóng chậm hơn mức này (Phase 22: 15 → 17 vì chuyền mạnh hơn)
+const CONTROL_SPEED = 19   // đồng đội khống chế ngay bóng chậm hơn mức này (Phase 22: 15 → 17, Phase 29F: 19 vì chuyền nhanh hơn 12%)
 const MOVING_BALL = 3.5    // m/s: chậm hơn thế coi như bóng "chết", ai gần thì lấy
 
 // Cầu thủ ở gần có thể đỡ/khống chế bóng tự do.
@@ -1316,10 +1349,14 @@ export function updateLooseBallPickup(ctx) {
         // "hút" được bóng, nên người áp sát luôn cắt được đường chuyền ngay
         // khi bóng vừa rời chân.
         const sameTeamAsKicker = item.teamId === reachTeam
+        // Phase 29F: người được chuyền tới / đang đón bóng tự do với tới xa
+        // hơn theo Ball control (tối đa +0.3m) — ít bị bóng lăn qua chân.
+        const receiving =
+            state.pendingPass?.receiverId === item.id || state.looseReceive?.id === item.id
         // Interceptions (Phase 19) nới tầm chặn bóng thêm tối đa 0.15m.
         const reach =
             sameTeamAsKicker || horizontalSpeed < MOVING_BALL
-                ? PICKUP_REACH
+                ? PICKUP_REACH + (receiving && sameTeamAsKicker ? Math.min(1, skill01(attr(item, 'ballControl'))) * 0.3 : 0)
                 : BLOCK_REACH + skill01(attr(item, 'interceptions')) * 0.15
 
         if (distance > reach) return

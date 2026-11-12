@@ -84,11 +84,19 @@ export function roleGroup(position) {
 }
 
 // 'key' | 'secondary' | 'other' của một chỉ số với vị trí của cầu thủ.
+// Phase 29F: Composure là chỉ số phụ của tiền đạo / tiền vệ tấn công / cánh
+// (giá 2 điểm) nhưng không nằm trong ROLE_ATTRIBUTES, để công thức OVR
+// (computeOverall chia cho tổng trọng số chỉ số chính + phụ) của cầu thủ đã
+// tập luyện từ trước không bị đổi.
+const EXTRA_SECONDARY = { ST: ['composure'], AM: ['composure'], WG: ['composure'] }
+
 export function attributeTier(position, key) {
-    const role = ROLE_ATTRIBUTES[roleGroup(position)]
+    const group = roleGroup(position)
+    const role = ROLE_ATTRIBUTES[group]
 
     if (role.key.includes(key)) return 'key'
     if (role.secondary.includes(key)) return 'secondary'
+    if (EXTRA_SECONDARY[group]?.includes(key)) return 'secondary'
 
     return 'other'
 }
@@ -170,6 +178,15 @@ export function upgradeAttribute(player, key) {
         next.baseOverall = player.overall
     } else {
         next.attributes = { ...next.attributes }
+
+        // Phase 29F: chỉ số mới (Composure) chưa có trong ảnh chụp cũ: bổ sung
+        // giá trị đang suy ra vào cả hai (mức tăng = 0).
+        if (next.attributes[key] === undefined || next.attributesBase[key] === undefined) {
+            const derived = getAttributes(player)[key] ?? player.overall ?? 70
+
+            next.attributesBase = { ...next.attributesBase, [key]: next.attributesBase[key] ?? derived }
+            next.attributes[key] = next.attributes[key] ?? next.attributesBase[key]
+        }
     }
 
     next.attributes[key] = (next.attributes[key] ?? 0) + 1
@@ -191,10 +208,12 @@ export function upgradeAttribute(player, key) {
     // Đồng bộ 6 chỉ số chính (hiển thị ở các bảng khác) = chỉ số gốc + mức
     // tăng trung bình của nhóm.
     ATTRIBUTE_GROUPS.forEach((group) => {
-        const gains = group.items.map(([item]) =>
-            (next.attributes[item] ?? 0) - (next.attributesBase[item] ?? 0),
-        )
-        const average = gains.reduce((sum, gain) => sum + gain, 0) / gains.length
+        // Phase 29F: bỏ qua chỉ số chưa có trong ảnh chụp cũ (Composure) để
+        // trung bình nhóm không bị pha loãng.
+        const gains = group.items
+            .filter(([item]) => next.attributesBase[item] !== undefined)
+            .map(([item]) => (next.attributes[item] ?? 0) - (next.attributesBase[item] ?? 0))
+        const average = gains.length ? gains.reduce((sum, gain) => sum + gain, 0) / gains.length : 0
         const base = next[`${group.key}Base`] ?? player[group.key]
 
         next[`${group.key}Base`] = base

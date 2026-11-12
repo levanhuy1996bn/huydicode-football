@@ -190,6 +190,9 @@ export function updateControlledPlayer(ctx, dt) {
     // bóng không còn bay tới người nhận, hoặc sau 0.6s. (Bản trước chỉ mở khi
     // nhả HẾT phím, nên nếu cứ giữ mũi tên thì cầu thủ nhận bóng xong vẫn
     // đứng im, chỉ chuyền/sút được.)
+    // Phase 29F: 0.6s → 2.5s. Trước đây giữ nguyên mũi tên đã ngắm thì sau
+    // 0.6s người nhận chạy theo mũi tên — tức là chạy RA XA quả bóng đang tới
+    // ("né bóng"), người vừa chuyền phải quay lại nhặt.
     const lock = state.steerLock
 
     if (lock) {
@@ -204,7 +207,7 @@ export function updateControlledPlayer(ctx, dt) {
             !direction ||
             !sameKeys ||
             !stillFlying ||
-            lock.time > 0.6
+            lock.time > 2.5
         ) {
             state.steerLock = null
         } else {

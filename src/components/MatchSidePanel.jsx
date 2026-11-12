@@ -274,7 +274,8 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
           ball with a tackle (Space) or a slide (A) — or by cutting out a bad
           pass. Tackle from the front or side: from behind it rarely works,
           and a missed standing tackle costs you balance. If you don't press
-          a key for 10 seconds the AI plays for you. Careless tackles —
+          a key for a while (Settings: 5 / 10 / 20 s) or click AUTO PLAY, the
+          AI plays for you — also into the second half. Careless tackles —
           especially slides from behind — give away free kicks, penalties and
           cards; two yellows is a red and your team plays a man down. Stay
           level with the last defender or you will be caught offside. Sprinting drains stamina quickly — tired

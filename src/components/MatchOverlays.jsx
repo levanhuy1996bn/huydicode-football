@@ -101,14 +101,29 @@ export function HalfTimeOverlay({
     onContinue,
     onOpenSubs,
     onQuit,
+    // Phase 29F: đếm ngược tự đá hiệp 2 khi máy đang đá thay (giây | null).
+    autoCountdown = null,
+    onCancelCountdown,
 }) {
     // Phase 21: hai thẻ — chỉnh đội / thống kê hiệp 1.
     const [tab, setTab] = useState('team')
+    const counting = autoCountdown !== null && autoCountdown !== undefined
 
     return (
         <div className="match-overlay match-overlay--right">
-            <div className="match-card">
+            {/* Bấm chuột vào bảng (đổi chiến thuật, thay người…) thì dừng đếm ngược. */}
+            <div className="match-card" onPointerDown={counting ? onCancelCountdown : undefined}>
                 <div className="match-card__eyebrow">HALF TIME</div>
+
+                {counting && (
+                    <div className="halftime-auto" role="status">
+                        <b>AUTO PLAY</b>
+                        <span>
+                            2nd half starts in <strong>{Math.max(0, autoCountdown)}</strong> s · press any key to take
+                            control, click to stay here
+                        </span>
+                    </div>
+                )}
 
                 <Scoreline
                     homeName={userTeam().name}
@@ -183,7 +198,7 @@ export function HalfTimeOverlay({
 
                 <div className="match-card__actions">
                     <button type="button" className="btn btn--primary" onClick={onContinue}>
-                        CONTINUE TO 2ND HALF
+                        CONTINUE TO 2ND HALF{counting ? ` (${Math.max(0, autoCountdown)})` : ''}
                     </button>
                     <button type="button" className="btn btn--ghost" onClick={onQuit}>
                         QUIT MATCH

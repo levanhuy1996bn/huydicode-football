@@ -2,7 +2,7 @@ import SimulationScreen from './screens/SimulationScreen'
 import TrophyRoomScreen from './screens/TrophyRoomScreen'
 import NewTrophyPopup from './NewTrophyPopup'
 import { awardTrophies } from '../services/trophyService'
-import { crowdStart, crowdStop, roar, whistle } from '../utils/matchSound'
+import { crowdStart, crowdStop, prepareCrowdSounds, roar, setCrowdVolume, whistle } from '../utils/matchSound'
 import FpsMeter from './FpsMeter'
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
@@ -145,7 +145,16 @@ const MatchCanvas = lazy(loadMatchCanvas)
 
 const SETTINGS_KEY = 'ultimate-football-settings-v1'
 // Phase 29B: graphics 'high' | 'low', showFps (đồng hồ FPS trong trận).
-const DEFAULT_SETTINGS = { matchDuration: MATCH_DURATION, labelMode: 'smart', graphics: 'high', showFps: false }
+// Phase 29F: crowdVolume 'off' | 'low' | 'medium', autoPlayDelay (giây không
+// bấm phím trước khi máy đá thay: 5 / 10 / 20).
+const DEFAULT_SETTINGS = {
+    matchDuration: MATCH_DURATION,
+    labelMode: 'smart',
+    graphics: 'high',
+    showFps: false,
+    crowdVolume: 'medium',
+    autoPlayDelay: 10,
+}
 
 function loadSettings() {
     try {
@@ -261,6 +270,15 @@ export default function GameScene() {
     const [whistlePending, setWhistlePending] = useState(null)
     const [addedTime, setAddedTime] = useState(0)
     const [autoPilot, setAutoPilot] = useState(false)
+    // Phase 29F: lệnh bật / tắt máy đá thay gửi engine (nút AUTO, màn nghỉ),
+    // đếm ngược tự đá hiệp 2 khi máy đang đá thay (giây | null).
+    const [autoPilotCommand, setAutoPilotCommand] = useState(null)
+    const [halftimeCountdown, setHalftimeCountdown] = useState(null)
+    const autoPilotRef = useRef(false)
+    autoPilotRef.current = autoPilot
+    const commandAutoPilot = useCallback((on) => {
+        setAutoPilotCommand({ on, nonce: `${Date.now()}-${Math.random()}` })
+    }, [])
 
     // Phase 29D: luân lưu tự đá. shootout = trạng thái cho bảng luân lưu,
     // shootoutCommand = lệnh gửi engine, shootoutResultRef = kết quả để lưu cúp.
@@ -275,6 +293,7 @@ export default function GameScene() {
         setWhistlePending(null)
         setAddedTime(0)
         setAutoPilot(false)
+        setHalftimeCountdown(null)
         setHalf(1)
         setGoalEvents([])
         setCardEvents([])
@@ -402,9 +421,19 @@ export default function GameScene() {
         const timer = setTimeout(() => {
             loadMatchCanvas().catch(() => {})
         }, 1500)
+        // Phase 29F: dựng sẵn tiếng khán giả (từng phần nhỏ, không làm giật).
+        const crowdTimer = setTimeout(prepareCrowdSounds, 3500)
 
-        return () => clearTimeout(timer)
+        return () => {
+            clearTimeout(timer)
+            clearTimeout(crowdTimer)
+        }
     }, [])
+
+    // Phase 29F: âm lượng khán giả theo Settings.
+    useEffect(() => {
+        setCrowdVolume(settings.crowdVolume || 'medium')
+    }, [settings.crowdVolume])
 
     // Phase 28B: trao cúp (vô địch giải khi đá xong mùa, C1 / C2 khi thắng
     // chung kết). Lần chạy đầu (mở game) chỉ ghi lặng lẽ — ví dụ danh hiệu
@@ -950,10 +979,40 @@ export default function GameScene() {
     }
 
     // Bấm Tiếp tục ở màn nghỉ: sang hiệp 2 (MatchWorld đổi sân, đối thủ giao bóng).
-    const continueSecondHalf = () => {
+    const continueSecondHalf = useCallback(() => {
+        setHalftimeCountdown(null)
         setHalf(2)
         setMatchStatus('playing')
-    }
+    }, [])
+
+    // Phase 29F: đang để máy đá thay khi hết hiệp 1 → đếm ngược 5 giây rồi tự
+    // đá hiệp 2. Bấm phím bất kỳ: dừng đếm, lấy lại quyền điều khiển; bấm chuột
+    // vào bảng nghỉ (đổi chiến thuật, thay người…): chỉ dừng đếm.
+    useEffect(() => {
+        setHalftimeCountdown(matchStatus === 'halftime' && autoPilotRef.current ? 5 : null)
+    }, [matchStatus])
+
+    useEffect(() => {
+        if (halftimeCountdown === null) return undefined
+
+        if (halftimeCountdown <= 0) {
+            continueSecondHalf()
+            return undefined
+        }
+
+        const timer = setTimeout(() => setHalftimeCountdown((value) => (value === null ? null : value - 1)), 1000)
+        const onKey = () => {
+            setHalftimeCountdown(null)
+            commandAutoPilot(false)
+        }
+
+        window.addEventListener('keydown', onKey)
+
+        return () => {
+            clearTimeout(timer)
+            window.removeEventListener('keydown', onKey)
+        }
+    }, [halftimeCountdown, continueSecondHalf, commandAutoPilot])
 
     const confirmQuit = () => {
         setWhistlePending(null)
@@ -1191,6 +1250,9 @@ export default function GameScene() {
                 setRedScore(red)
             },
             endMatch: () => handleWhistleDone('full'),
+            // Phase 29F: kiểm thử tự đá hiệp 2 khi máy đang đá thay.
+            halfTime: () => handleWhistleDone('half'),
+            stats: () => statsRef.current?.stats || null,
         }
     }
 
@@ -2145,6 +2207,8 @@ export default function GameScene() {
                             whistlePending={whistlePending}
                             onWhistleDone={handleWhistleDone}
                             onAutoPilotChange={setAutoPilot}
+                            idleLimit={settings.autoPlayDelay || 10}
+                            autoPilotCommand={autoPilotCommand}
                             isPlaying={isPlaying}
                             resetKey={resetKey}
                             onGoal={handleGoal}
@@ -2320,6 +2384,31 @@ export default function GameScene() {
                 </select>
             </div>
 
+            {/* Phase 29F: bật / tắt máy đá thay ngay (dưới ô chiến thuật). */}
+            {matchStatus === 'playing' && !shootout && (
+                <button
+                    type="button"
+                    className="auto-toggle"
+                    onClick={(event) => {
+                        // Bỏ focus: Space (tắc bóng) không bấm lại nút này.
+                        event.currentTarget.blur()
+                        commandAutoPilot(!autoPilot)
+                    }}
+                    style={{
+                        ...matchButtonStyle,
+                        position: 'absolute',
+                        top: 72,
+                        left: 16,
+                        zIndex: 10,
+                        ...(autoPilot ? { background: '#ffd166', color: '#0d1f16' } : {}),
+                    }}
+                    aria-pressed={autoPilot}
+                    title="Let the AI play for you (press any key to take control back)"
+                >
+                    AUTO PLAY {autoPilot ? 'ON' : 'OFF'}
+                </button>
+            )}
+
             {/* Bảng quản lý đội cũ (TeamManagementPanel) đã bỏ khỏi màn hình
                 trận: nó che sân và chặn click. Thay người dùng nút SUBS,
                 đổi sơ đồ ở màn nghỉ giữa hiệp / trước trận. */}
@@ -2465,6 +2554,8 @@ export default function GameScene() {
                     substitutionCount={substitutionCount}
                     maxSubstitutions={MAX_SUBSTITUTIONS}
                     onContinue={continueSecondHalf}
+                    autoCountdown={halftimeCountdown}
+                    onCancelCountdown={() => setHalftimeCountdown(null)}
                     onOpenSubs={openSubstitutions}
                     onQuit={() => setIsQuitOpen(true)}
                 />

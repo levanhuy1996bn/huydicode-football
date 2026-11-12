@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D and 29E — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -182,7 +182,7 @@ Details and test results for each phase are in the Development roadmap below.
 | A / D (keeper holding the ball) | Goalkeeper punt / long kick (hold to charge, arrows aim) |
 | Space | Standing tackle |
 | Ctrl | Sliding tackle (same as A when defending) |
-| Any key | Take back control when the AI is playing for you (it takes over after 10 s without a key press) |
+| Any key | Take back control when the AI is playing for you (it takes over after 5 / 10 / 20 s without a key press — Settings — or with the AUTO PLAY button) |
 | SUBS button | Open the drag-and-drop substitution board (pauses the match) |
 | STATS button | Show / hide live match stats (the match keeps running) |
 | CONTROLS button | Key guide and player-name display (SMART / ALL / OFF); pauses the match, Esc closes |
@@ -304,7 +304,8 @@ ultimate-football-manager-3d/
     ├── utils/
     │   ├── names.js          # shortPlayerName()
     │   ├── sound.js          # Web Audio: upgrade sounds, SOUND ON / OFF (Phase 25)
-    │   └── matchSound.js     # Web Audio: whistle, kicks, crowd, ooh, roar (Phase 29B)
+    │   ├── matchSound.js     # Web Audio: whistle, kicks, crowd, ooh, roar (Phase 29B, crowd reworked 29F)
+    │   └── crowdSynth.js     # crowd voices synthesised in code: murmur, "ooh", goal roar + applause (Phase 29F)
     └── components/
         ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen
         ├── GameScene.jsx
@@ -399,6 +400,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
 | 29E | World Cup: 32 national teams, squads called up from all clubs, nationality team color | ✅ Done (2026-11-12) |
+| 29F | AI and ball feel: long shots / long passes by stats, Composure attribute, receivers meet the ball, passes +12 % / shots +10 % faster, new crowd sound + crowd volume, reliable auto play (delay setting, AUTO PLAY button, second half starts by itself) | ✅ Done (2026-11-12) |
 | Backlog | Individual player skills / traits | 💤 Later |
 | Backlog | Card seasons and real player data (was Phase 30, moved to the backlog on 2026-11-12) | 💤 Later |
 
@@ -723,7 +725,7 @@ Reported after playing Phase 18; all four are fixed (see "Fixed" under each item
    - The AI opponents still decide for themselves: standing tackles, plus **sliding tackles** from 1.6–2.8 m, which happen more often for aggressive players. A successful slide knocks the ball away and floors the carrier. A miss leaves the slider on the ground.
    - "Call a teammate to press" moved from A to **W**.
 2. **"If I don't press anything for ~10 s, let the AI play."**
-   - After 10 s with no key pressed (holding a key counts as playing), the AI controls your whole team, including the selected player.
+   - After 10 s with no key pressed (holding a key counts as playing), the AI controls your whole team, including the selected player. (Phase 29F: 5 / 10 / 20 s in Settings, counted from the last key event, AUTO PLAY button.)
    - An "AUTO PLAY" badge shows while it does. Any key gives control back.
 3. **"Shooting and passing aren't smooth":** opponents closed down too fast, passes were half-hearted, and a full-power pass sometimes didn't happen at all.
    - **Full power, no pass:** while you held S, opponents rushed in and won the ball, and the charge was silently cancelled. Pressing is now a jockey: the first defender sprints to a goal-side spot, slows down within 6 m and holds about 1.2 m off, waiting for the right moment to tackle. If you do lose the ball while charging, the game now says "BALL LOST WHILE CHARGING".
@@ -1393,6 +1395,35 @@ Proposal approved and built on 2026-11-12. Code: `src/data/nations.js`, `src/dat
 - **Nationality team color (also in club matches, AI included):** 7 / 9 / all 11 starters of one nationality → **+1 / +2 / +3** main stats, stacking with card level color and club color (TEAM COLOR box: "Nation color"). A national team always has +3.
 - **Fixes found while testing:** `npm run dev` crashed at start since Phase 29B ("Cannot access 'lazy' before initialization" — the lazy 3D import sat between import lines); playing a second match in a row could throw a `removeChild` error when leaving the match (player name tags used drei `<Html>`, one React root per tag) — name tags are now plain DOM elements positioned every frame.
 
+### Phase 29F — AI and ball feel, crowd sound, auto play ✅ (2026-11-12)
+
+Playtest feedback on 2026-11-12, proposal approved the same day (crowd sound option A, Composure yes, ball speed as proposed, automatic second half only during auto play).
+
+- **Long shots and long passes (AI)** — the stats existed (Long shots, Long passing, Vision) but the AI almost never used them: it only considered shots up to 27 m and from ~22 m the shot value was already too low; a lofted pass outside the box could never reach the AI's "safe enough" threshold, so it nearly always played short.
+  - **Shooting range by Long shots:** 50 → ~25 m, 75 → ~29 m, 99 → 32 m; beyond 16 m the shot value falls more slowly for good long shooters (a 85+ long shooter with a clear sight of goal shoots from the edge of the box and a bit further).
+  - **Long passes by Long passing / Vision / tactic:** lofted passes are judged on how open the receiver is (≥ 6.5 m free for full safety) more than on the passing lane (the ball flies over players); new **switch of play** (long ball to an open player on the other flank, > 20 m across); long through balls up to 38 m for players with high Vision (counter-attacks, a bonus with direct tactics such as Counter Attack / Attacking); long through balls are often lofted over the back line. Long balls are still the risky option: in a 4-minute AI-vs-AI test about 1 pass in 6 was long (before: about 1 in 15), and many more shots came from 18–25 m.
+  - Match statistics now count `longPasses` (not shown on screen yet).
+- **New attribute: Composure** (Shooting group, shown in DETAILED ATTRIBUTES and trainable — a secondary stat, 2 points, for ST / CAM / wingers, 3 points for others):
+  - High Composure: shoots when there is a reasonable angle instead of passing again, also in the box with a defender on the line (blocked-shot value 0.4 → up to 0.62), shoots under pressure; inside 17 m the AI compares the shot (×1 to ×1.85 by Composure, extra for forwards) with the best pass and takes the shot if it is better — strikers no longer "walk the ball into the net" with one pass too many.
+  - Shooting with an opponent within 2.2 m costs accuracy: −5 points at Composure 50, −2.5 at 75, nothing at 99 (also for your own shots).
+  - Every player has it, derived like the other detailed attributes from the Shooting stat plus position (ST +4, CAM +2, wingers +1, CDM −1, full-backs −3, CB −4). Old saves: nothing to convert; players who were already trained get it the first time it is needed, without changing their OVR or Shooting stat.
+- **Receiving:**
+  - After your pass the receiver keeps running to meet the ball while you still hold the arrow keys you aimed with, for up to 2.5 s (was 0.6 s — after that the receiver ran in the direction of the held arrows, i.e. *away* from the ball, and the passer had to go back for it). Press a different direction to steer him yourself.
+  - A pass that stops short or is touched aside: the intended receiver goes to the loose ball for up to 1.6 s; the passer and other teammates do not chase it at the same time.
+  - The receiver's control reach grows with Ball control (up to +0.3 m), and teammates control cleanly up to 19 m/s (was 17) because passes are faster.
+- **Faster ball:** ground passes ×1.15 → ×1.29 (+12 %), through balls ×1.12 → ×1.25, AI through balls ×1.06, shots ×1.12 → ×1.23 (+10 %), finesse ×1.21, penalties ×1.15, ground-pass ceiling 31 → 35 m/s. Lofted passes, crosses, chips and free kicks over the wall are unchanged (their flight is aimed at a landing spot).
+- **Crowd sound** (`src/utils/crowdSynth.js`): the Phase 29B crowd was filtered noise in a 2-second loop whose volume and tone changed 4 times a second — it "bubbled". Now it is built from synthetic human voices (a pitched voice source through vowel formant filters):
+  - background murmur of 36 talking voices + a soft low noise bed, 7- and 6-second loops blended at the seams so the loop cannot be heard; volume rises and falls slowly (~1.5 s) as the ball nears a goal;
+  - "ooooh" for saves and near misses: 40 voices rising and falling; goal roar: 44 voices + applause (louder for your goals);
+  - built in small pieces in the background a few seconds after start (no stutter), no audio files;
+  - **Crowd volume** in Settings: OFF / LOW / MEDIUM (Sound OFF still mutes everything).
+- **Auto play:**
+  - **Delay setting:** Settings → *Auto play after* 5 / 10 / 20 s (was fixed 10 s).
+  - **More reliable:** idle time now counts from the last key press or release. Before, any key the browser still believed was held blocked auto play forever — e.g. on a Mac, a key released while ⌘ is held never sends its key-up. Held keys now count as play for at most 30 s without a new key event; releasing ⌘, switching tab or hiding the window clears all held keys.
+  - **AUTO PLAY ON / OFF button** under the team tactic box during the match: hand over to the AI at once (any key takes control back).
+  - **Second half starts by itself during auto play:** the half-time panel shows "AUTO PLAY · 2nd half starts in 5 s" and the CONTINUE button counts down; any key stops the countdown and gives you control, a click on the panel (tactics, substitutions…) just stops the countdown.
+- **Testing:** browser tests for auto play after 5 s idle, the AUTO PLAY button, the automatic second half and the key / click cancel paths, two consecutive matches, a 4-minute AI-vs-AI match with pass and shot breakdowns (compared with the old AI); Node tests for Composure, trained-player migration and kick power. To watch in playtests: goalkeepers face faster shots (their reach was not changed).
+
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
@@ -1445,13 +1476,17 @@ Proposal approved and built on 2026-11-12. Code: `src/data/nations.js`, `src/dat
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản | Phase 29A |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
+| AI sút xa, chuyền dài theo chỉ số; thêm chỉ số Composure (quyết đoán) để tiền đạo dứt điểm thay vì chuyền vòng vo | Phase 29F ✅ |
+| Người nhận bóng chủ động đón bóng, không né bóng; tăng tốc độ chuyền (+12%) và sút (+10%) | Phase 29F ✅ |
+| Đổi tiếng khán giả (không còn "sôi sùng sục"), thêm âm lượng khán giả | Phase 29F ✅ |
+| Auto Play ổn định hơn (chỉnh 5 / 10 / 20 giây, nút AUTO PLAY), máy đá thay thì tự đá hiệp 2 | Phase 29F ✅ |
 | Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Backlog (trước là Phase 30) |
 | Skill riêng cho từng cầu thủ | Backlog |
 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–28B (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–29F (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

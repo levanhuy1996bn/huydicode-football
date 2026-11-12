@@ -379,6 +379,37 @@ export default function HomeScreen({
                             ))}
                         </div>
                     </div>
+                    {/* Phase 29F */}
+                    <div className="setting-row">
+                        <span>Crowd volume</span>
+                        <div className="segmented">
+                            {[['off', 'OFF'], ['low', 'LOW'], ['medium', 'MEDIUM']].map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className={(settings.crowdVolume || 'medium') === value ? 'is-active' : ''}
+                                    onClick={() => onSettingsChange({ crowdVolume: value })}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="setting-row">
+                        <span>Auto play after</span>
+                        <div className="segmented">
+                            {[5, 10, 20].map((value) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className={(settings.autoPlayDelay || 10) === value ? 'is-active' : ''}
+                                    onClick={() => onSettingsChange({ autoPlayDelay: value })}
+                                >
+                                    {value} S
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="setting-row">
                         <span>FPS counter</span>
                         <div className="segmented">
@@ -396,7 +427,8 @@ export default function HomeScreen({
                     </div>
                     <p className="home-card__empty">
                         Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
-                        smoothing for weaker laptops and phones.
+                        smoothing for weaker laptops and phones. Auto play: the AI plays for you when no key is
+                        pressed for that long (press any key to take control back).
                     </p>
                 </div>
             </div>
