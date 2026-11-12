@@ -19,7 +19,8 @@ import {
     worldClub,
 } from '../data/world'
 import { DEFAULT_USER_CLUB, isUserClub, setUserClubId, userClubId } from './career'
-import { createCups, cupWinners } from './cupService'
+import { createCups, cupWinners, userCupRun } from './cupService'
+import { awardTrophies, careerEntry } from './trophyService'
 import { LEAGUE_STORAGE_KEY } from '../data/leagueData'
 import { ROSTER_STORAGE_KEY } from '../systems/roster'
 import {
@@ -288,17 +289,28 @@ export function advanceWorld(world, league) {
     const cups = cupWinners(league)
     const userTable = final(league.leagueId)
     const userPosition = userTable.indexOf(world.userClubId || userClubId()) + 1
+    const cupRun = userCupRun(league)
+    // Phase 28B: danh hiệu + sự nghiệp lưu vĩnh viễn (bản cũ: lấy từ lịch sử).
+    const withCareer = awardTrophies(world, league).world
     const entry = {
         season: world.season,
         champions,
         promoted,
         relegated,
-        user: { clubId: world.userClubId || userClubId(), leagueId: league.leagueId, position: userPosition },
+        user: {
+            clubId: world.userClubId || userClubId(),
+            leagueId: league.leagueId,
+            position: userPosition,
+            // Phase 28B: độ khó + thành tích cúp (bảng sự nghiệp ở TROPHIES).
+            difficulty: league.difficulty || null,
+            cupRun,
+        },
         ...(cups ? { cups } : {}),
     }
 
     return {
-        ...world,
+        ...withCareer,
+        career: [...withCareer.career, careerEntry(world, league, userPosition, cupRun)],
         season: world.season + 1,
         divisions,
         qualified: { season: world.season, byLeague: qualified },

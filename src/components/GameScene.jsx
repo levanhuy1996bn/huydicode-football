@@ -1,4 +1,7 @@
 import SimulationScreen from './screens/SimulationScreen'
+import TrophyRoomScreen from './screens/TrophyRoomScreen'
+import NewTrophyPopup from './NewTrophyPopup'
+import { awardTrophies } from '../services/trophyService'
 import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation } from '../services/quickSim'
 import {
     CUP_MATCH_FACTOR,
@@ -336,6 +339,21 @@ export default function GameScene() {
     useEffect(() => {
         saveWorld(world)
     }, [world])
+
+    // Phase 28B: trao cúp (vô địch giải khi đá xong mùa, C1 / C2 khi thắng
+    // chung kết). Lần chạy đầu (mở game) chỉ ghi lặng lẽ — ví dụ danh hiệu
+    // giành trước khi có phòng truyền thống — không hiện thông báo.
+    const [newTrophies, setNewTrophies] = useState([])
+    const trophyBootRef = useRef(true)
+
+    useEffect(() => {
+        const { world: awarded, added } = awardTrophies(world, league)
+
+        if (awarded !== world) setWorld(awarded)
+        if (added.length && !trophyBootRef.current) setNewTrophies((queue) => [...queue, ...added])
+
+        trophyBootRef.current = false
+    }, [world, league])
 
     // Thông báo một lần khi bản lưu cũ được chuyển sang thế giới mới.
     useEffect(() => {
@@ -1326,6 +1344,15 @@ export default function GameScene() {
         else if (tab === 'league') setIsLeagueOpen(true)
         else if (tab === 'club') setIsClubOpen(true)
         else if (tab === 'cards') openCards()
+        else if (tab === 'trophies') openTrophies()
+    }
+
+    // Phase 28B: phòng truyền thống.
+    const openTrophies = () => {
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        setScreen('trophies')
     }
 
     // Phase 23: tab CARDS (mở gói cầu thủ, thẻ EP).
@@ -1706,6 +1733,23 @@ export default function GameScene() {
                     red={simulation.red}
                     result={simulation.result}
                     onDone={() => setScreen('postmatch')}
+                />
+            )}
+
+            {screen === 'trophies' && (
+                <TrophyRoomScreen world={world} league={league} onBack={goHome} />
+            )}
+
+            {newTrophies.length > 0 && screen !== 'match' && screen !== 'simulation' && (
+                <NewTrophyPopup
+                    key={newTrophies[0].id}
+                    trophy={newTrophies[0]}
+                    remaining={newTrophies.length - 1}
+                    onClose={() => setNewTrophies((queue) => queue.slice(1))}
+                    onOpenRoom={() => {
+                        setNewTrophies([])
+                        openTrophies()
+                    }}
                 />
             )}
 

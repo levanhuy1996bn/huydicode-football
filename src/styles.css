@@ -2603,7 +2603,9 @@ b.is-off-position::after {
     margin-left: auto;
     align-self: center;
 }
-.prematch-actions .btn--large { min-width: 160px; }
+.prematch-actions .btn--large,
+.home-hero__actions .btn--large { min-width: 172px; justify-content: center; }
+.btn--sim.btn--large small { font-size: 12px; }
 
 .lineup__head-side { display: inline-flex; align-items: baseline; gap: 10px; }
 .lineup--right .lineup__head-side { flex-direction: row-reverse; }
@@ -2665,3 +2667,177 @@ b.is-off-position::after {
   .prematch-actions { width: 100%; margin-left: 0; }
   .prematch-actions .btn { flex: 1; }
 }
+
+/* ---- Phase 28B: phòng truyền thống (TROPHIES) ---- */
+.trophy-stats {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+}
+.trophy-stat {
+    display: grid;
+    gap: 2px;
+    padding: 12px 14px;
+    border: 1px solid #2b4839;
+    border-radius: 10px;
+    background: rgba(13,30,22,.75);
+}
+.trophy-stat b { font: 800 24px 'Barlow Condensed', Inter, sans-serif; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trophy-stat span { color: #7f998c; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+
+.trophy-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.trophy-shelves { display: grid; gap: 14px; }
+.trophy-shelf .home-card__head small { color: #7f998c; font-size: 11px; font-weight: 800; }
+.trophy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 8px;
+    padding: 12px 10px 14px;
+    border-radius: 8px;
+    /* kệ gỗ */
+    background:
+        linear-gradient(180deg, transparent calc(100% - 10px), #3a2a1b calc(100% - 10px), #24190f 100%),
+        radial-gradient(ellipse at 50% 0%, rgba(255,240,200,.07), transparent 70%),
+        rgba(0,0,0,.22);
+}
+.trophy-grid--big { grid-template-columns: repeat(2, minmax(140px, 200px)); justify-content: center; gap: 24px; }
+.trophy-tile {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: end;
+    gap: 4px;
+    padding: 6px 4px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #6f8a7b;
+    font: inherit;
+    cursor: pointer;
+}
+.trophy-tile small {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.trophy-tile.is-won small { color: #e6efe9; }
+.trophy-tile:hover { background: rgba(255,255,255,.04); }
+.trophy-tile.is-selected { border-color: #b9ed70; background: rgba(185,237,112,.08); }
+.trophy-tile.is-won .trophy-icon { filter: drop-shadow(0 4px 8px rgba(255,220,140,.18)); }
+.trophy-icon.is-empty { opacity: .55; }
+.trophy-count {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: #b9ed70;
+    color: #0b1a12;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.trophy-detail { position: sticky; top: 12px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.trophy-detail__icon {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    padding: 10px 0 4px;
+    border-radius: 10px;
+    background: radial-gradient(circle at 50% 45%, rgba(255,230,160,.16), transparent 65%);
+}
+.trophy-detail h2 { margin: 4px 0 0; font: 800 24px 'Barlow Condensed', Inter, sans-serif; letter-spacing: .5px; }
+.trophy-detail__sub { margin: 0; color: #82998e; font-size: 12px; }
+.trophy-detail__count { margin-top: 6px; color: #b9ed70; font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+.trophy-detail__count b { font-size: 16px; }
+.trophy-detail__empty { margin: 8px 0; color: #9fb4a6; font-size: 12px; line-height: 1.5; }
+.trophy-detail__legend { margin: 10px 0 0; color: #6f8a7b; font-size: 10px; line-height: 1.6; }
+.trophy-detail__legend i, .trophy-diff i { font-style: normal; }
+.trophy-wins { width: 100%; margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.trophy-wins li {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.04);
+    font-size: 12px;
+    text-align: left;
+}
+.trophy-wins__season { color: #b9ed70; font-weight: 800; }
+.trophy-wins__club { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+.trophy-diff { display: inline-flex; align-items: center; gap: 3px; color: #9fb4a6; font-size: 11px; white-space: nowrap; }
+
+.career-table-wrap { overflow-x: auto; }
+.career-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.career-table th { padding: 8px; color: #7f998c; font-size: 10px; letter-spacing: 1px; text-align: left; border-bottom: 1px solid #2b4839; }
+.career-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,.05); white-space: nowrap; }
+.career-table tr.is-live td { background: rgba(185,237,112,.05); }
+.career-live { margin-left: 8px; padding: 1px 6px; border-radius: 8px; background: rgba(185,237,112,.16); color: #b9ed70; font-size: 9px; font-weight: 800; }
+.career-champion { color: #ffd23f; font-weight: 800; }
+.career-empty { color: #7f998c; text-align: center; }
+
+/* Popup NEW TROPHY */
+.trophy-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 220;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(3,10,7,.78);
+    backdrop-filter: blur(3px);
+}
+.trophy-popup {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    width: min(420px, 100%);
+    padding: 26px 24px 22px;
+    border: 1px solid #6b5a2a;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #1b2a20, #0f1a14);
+    text-align: center;
+    animation: trophy-pop .45s cubic-bezier(.2,1.4,.4,1) both;
+}
+.trophy-popup > * { position: relative; }
+.trophy-popup__rays {
+    position: absolute !important;
+    top: -40%;
+    left: 50%;
+    width: 160%;
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    background: repeating-conic-gradient(from 0deg, rgba(255,215,120,.10) 0deg 8deg, transparent 8deg 20deg);
+    mask-image: radial-gradient(circle, #000 20%, transparent 62%);
+    animation: trophy-rays 14s linear infinite;
+}
+.trophy-popup__icon { animation: trophy-spin 3.2s ease-in-out infinite; filter: drop-shadow(0 8px 18px rgba(255,210,110,.35)); }
+.trophy-popup h2 { margin: 4px 0 0; font: 800 30px 'Barlow Condensed', Inter, sans-serif; letter-spacing: 1px; color: #ffe08a; }
+.trophy-popup__club { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-weight: 800; }
+.trophy-popup__diff { margin: 0; color: #9fb4a6; font-size: 12px; }
+.trophy-popup__diff i { font-style: normal; }
+.trophy-popup__actions { display: flex; gap: 10px; margin-top: 10px; }
+@keyframes trophy-pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes trophy-rays { to { transform: translateX(-50%) rotate(360deg); } }
+@keyframes trophy-spin { 0%, 100% { transform: perspective(400px) rotateY(-18deg); } 50% { transform: perspective(400px) rotateY(18deg); } }
+
+@media (max-width: 1100px) {
+    .trophy-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .trophy-layout { grid-template-columns: 1fr; }
+    .trophy-detail { position: static; }
+}
+@media (max-width: 760px) {
+    .trophy-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .trophy-grid { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+}
+.trophy-grid--big .trophy-count { left: 50%; margin-left: -74px; }
+.trophy-icon.is-empty { opacity: .8; }

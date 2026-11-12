@@ -351,7 +351,7 @@ export default function PreMatchScreen({
                 <div className="prematch-actions">
                     <button
                         type="button"
-                        className="btn btn--sim"
+                        className="btn btn--sim btn--large"
                         onClick={onSimulate}
                         disabled={!simsLeft || !onSimulate}
                         title="Quick simulation: instant result, rewards ×0.7 · 5 per day"

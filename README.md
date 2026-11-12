@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27 and 28 — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29 (mobile, graphics, sound, performance), 30 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28 and 28B — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29 (mobile, graphics, sound, performance), 30 (card seasons, real data). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -256,6 +256,7 @@ ultimate-football-manager-3d/
     │   ├── teamColor.js      # team color: card level color + club color of the XI (Phase 26D)
     │   ├── cupService.js     # C1 / C2: qualification, draw, groups, knockouts, shoot-outs, calendar (Phase 27)
     │   ├── quickSim.js       # quick simulation: team ratings, instant result, 5 per day (Phase 28)
+    │   ├── trophyService.js  # trophies + career: catalog of 38 trophies, awarding, backfill from history (Phase 28B)
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
@@ -310,6 +311,9 @@ ultimate-football-manager-3d/
         ├── FormationPicker.jsx   # formation tiles with mini pitch diagrams (after 26B)
         ├── CupPanel.jsx          # C1 / C2 tab: groups, bracket, your cup matches (Phase 27)
         ├── screens/SimulationScreen.jsx # quick simulation replay (Phase 28)
+        ├── screens/TrophyRoomScreen.jsx # TROPHIES: shelves, trophy details, career table (Phase 28B)
+        ├── TrophyIcon.jsx        # SVG trophy for each competition, difficulty star (Phase 28B)
+        ├── NewTrophyPopup.jsx    # "NEW TROPHY" pop-up (Phase 28B)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
         └── ...
 ```
@@ -367,6 +371,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 27 | C1 Champions Cup / C2 Challenge Cup: qualification from the league tables of all 18 countries, 8 groups × 4, two-legged knockouts, final, simulated shoot-outs, cup prizes | ✅ Done (2026-11-12) |
 | After 27 | Away goals rule in two-legged cup ties; out-of-position OVR shown lower (display only) | ✅ Done (2026-11-12) |
 | 28 | Quick simulation: 5 instant matches per day (league and cups), 2D replay with commentary, rewards ×0.7 | ✅ Done (2026-11-12) |
+| 28B | Trophy room: titles won as a manager (kept when changing club), a different trophy per competition, difficulty star, career table | ✅ Done (2026-11-12) |
 | 29 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
 | 30 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
 | Backlog | Individual player skills / traits | 💤 Later |
@@ -1252,6 +1257,28 @@ Agreed on 2026-11-12. Engine in `src/services/quickSim.js`, replay in `src/compo
 - **EDIT ✎** (lineup editor) moved into the header of your lineup card, next to the AVG; the old help paragraph became that button's tooltip.
 - Result: the middle column is about half as tall and the three columns line up (579 / 521 / 579 px at 1400 px wide).
 
+### Phase 28B — Trophy room ✅ (2026-11-12)
+
+Agreed on 2026-11-12. Data in `src/services/trophyService.js`, screen in `src/components/screens/TrophyRoomScreen.jsx`, trophies drawn in `src/components/TrophyIcon.jsx`.
+
+- **TROPHIES tab** in the top menu. **Titles belong to you as a manager, not to the club**: win the Premier League with Manchester United, move to Juventus, win Serie A — both trophies are on the shelf. Stored in the world save (`world.trophies`, `world.career`), never trimmed.
+- **Only titles count:** champions of any of the 36 leagues (18 first divisions, 18 second divisions), C1 Champions Cup, C2 Challenge Cup. Runner-up finishes, cup runs and promotions are shown in the career table instead.
+- **When a trophy is won:** the league title as soon as your last league match is played and you are first; C1 / C2 as soon as you win the final. Works for played and simulated matches. A **NEW TROPHY** pop-up (turning trophy, light rays, club, season, difficulty) appears after the match (not over the 3D match), with TROPHY ROOM / CONTINUE.
+- **A different trophy for every competition** (original SVG designs, not copies of real trophies):
+
+  | Competition | Trophy |
+  | --- | --- |
+  | C1 Champions Cup | Large silver cup with big handles |
+  | C2 Challenge Cup | Tall slim amber cup |
+  | 18 first divisions | 6 shapes (crown, shield, goblet, plate, obelisk, ball-topped) × 3 metals (gold for countries ranked 1–6, silver 7–12, rose gold 13–18), every base with the country's flag colours — 18 different trophies |
+  | 18 second divisions | Same shape as the country's first division, smaller, bronze |
+
+- **Difficulty star:** a trophy won on Hard gets a bronze star, Very hard a silver star, Legendary a gold star (the best one won is shown on the shelf; each win lists its own difficulty).
+- **Screen:** career numbers (trophies, league titles, cup titles, seasons, clubs, best C1 / C2 run); three wooden shelves (Continental, Top divisions, Second divisions) with ×N for repeat wins and dark silhouettes for trophies not won yet; click a trophy for its details (every season won, club crest, difficulty); career table season by season (club, league, position, cup run e.g. "C1 · Semi-final", difficulty), the current season marked IN PROGRESS.
+- **Old saves:** titles and seasons from before this phase are rebuilt once from the season history (the last 30 seasons); difficulty and cup runs older than this phase are not known, so they show "—" (cup wins are still found).
+
+Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (home).
+
 ### Phase 29 — Mobile, graphics, performance, sound and release (planned)
 
 - **Mobile controls** (reference: FC Mobile layout), landscape and full screen:
@@ -1321,6 +1348,7 @@ Agreed on 2026-11-12. Engine in `src/services/quickSim.js`, replay in `src/compo
 | Team color theo quốc tịch | Backlog |
 | Luật bàn thắng sân khách ở vòng đấu loại 2 lượt; đá trái vị trí thì OVR hiển thị giảm | Sau 27 ✅ |
 | Mô phỏng nhanh 5 trận mỗi ngày, có hoạt cảnh, thưởng ×0.7 | Phase 28 ✅ |
+| Phòng truyền thống: danh hiệu của HLV (đổi CLB vẫn giữ), mỗi giải một kiểu cúp, sao độ khó, bảng sự nghiệp | Phase 28B ✅ |
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 29 |
 | Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 30 |
 | Skill riêng cho từng cầu thủ | Backlog |
@@ -1328,7 +1356,7 @@ Agreed on 2026-11-12. Engine in `src/services/quickSim.js`, replay in `src/compo
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–28 (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–28B (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

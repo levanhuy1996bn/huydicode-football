@@ -720,3 +720,46 @@ export const leagueNameOf = (clubId, divisions) => {
 
     return entry ? LEAGUE_BY_ID.get(entry[0])?.name : ''
 }
+
+// ---- Phase 28B: thành tích cúp của người chơi trong mùa (bảng sự nghiệp) ----
+// result: 'winner' | 'runnerUp' | 'final' | 'sf' | 'qf' | 'r16' | 'group'
+// out: đã bị loại (true) hay vẫn còn trong cúp (false).
+export function userCupRun(league) {
+    const cupId = userCupOf(league)
+
+    if (!cupId) return null
+
+    const view = currentCupView(league, cupId)
+
+    if (!view) return null
+
+    const userIn = (tie) => tie.clubs.some((id) => isUserClub(id))
+
+    if (view.champion && isUserClub(view.champion)) return { cupId, result: 'winner', out: false }
+
+    for (const stage of ['final', 'sf', 'qf', 'r16']) {
+        const tie = (view.ties[stage] || []).find(userIn)
+
+        if (!tie) continue
+
+        const lost = tie.finished && tie.winner && !isUserClub(tie.winner)
+
+        if (stage === 'final' && lost) return { cupId, result: 'runnerUp', out: true }
+
+        return { cupId, result: stage, out: Boolean(lost) }
+    }
+
+    const groupDone = (view.ties.r16 || []).length > 0
+
+    return { cupId, result: 'group', out: groupDone }
+}
+
+export const CUP_RUN_LABELS = {
+    winner: 'Winner',
+    runnerUp: 'Runner-up',
+    final: 'Final',
+    sf: 'Semi-final',
+    qf: 'Quarter-final',
+    r16: 'Round of 16',
+    group: 'Group stage',
+}

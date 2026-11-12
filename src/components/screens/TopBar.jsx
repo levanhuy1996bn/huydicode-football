@@ -6,6 +6,7 @@ const TABS = [
     ['development', 'SQUAD'],
     ['cards', 'CARDS'],
     ['league', 'LEAGUE'],
+    ['trophies', 'TROPHIES'],
     ['club', 'TRANSFERS'],
 ]
 
