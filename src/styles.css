@@ -907,7 +907,7 @@ footer span { color: #789184; }
 .prematch-header h1 { font-size: 34px; }
 .prematch-header h1 span { color: #6f8a7b; font-size: 22px; margin: 0 8px; text-transform: lowercase; }
 .prematch-header p { margin: 6px 0 0; color: #82998e; font-size: 12px; }
-.prematch-body { display: grid; grid-template-columns: 1fr 300px 1fr; gap: 16px; align-items: start; }
+.prematch-body { display: grid; grid-template-columns: 1fr 340px 1fr; gap: 16px; align-items: start; }
 .prematch-setup { display: grid; gap: 12px; }
 .lineup { padding: 14px 16px; border-radius: 10px; border: 1px solid #2b4839; background: #10241b; }
 .lineup__head { --team: var(--user-color); display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 10px; border-bottom: 3px solid var(--team); font: 800 18px 'Barlow Condensed', Inter, sans-serif; letter-spacing: 1px; }
@@ -2068,4 +2068,98 @@ nav button { position: relative; }
 .club-picker .segmented button {
     font-size: 11px;
     padding: 6px 10px;
+}
+
+/* ---- Cập nhật sau 26B: chọn sơ đồ bằng sân nhỏ ---- */
+.formation-block {
+    margin: 4px 0 10px;
+}
+
+.formation-picker {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.formation-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 3px 6px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    color: #d6e2d9;
+    background: rgba(255,255,255,.03);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .15s;
+}
+
+.formation-tile:hover {
+    border-color: rgba(185,237,112,.45);
+    transform: translateY(-1px);
+}
+
+.formation-tile.is-active {
+    border-color: #b9ed70;
+    background: rgba(185,237,112,.13);
+    box-shadow: 0 0 0 1px rgba(185,237,112,.35) inset;
+}
+
+.formation-tile b {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .3px;
+    white-space: nowrap;
+}
+
+.formation-tile small {
+    max-width: 100%;
+    overflow: hidden;
+    color: #8fa597;
+    font-size: 9px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.formation-tile.is-active b {
+    color: #b9ed70;
+}
+
+.formation-diagram {
+    width: 100%;
+    max-width: 54px;
+    height: auto;
+}
+
+.formation-diagram__pitch {
+    fill: #1f6b3d;
+    stroke: rgba(255,255,255,.35);
+    stroke-width: 1;
+}
+
+.formation-diagram__line {
+    fill: none;
+    stroke: rgba(255,255,255,.28);
+    stroke-width: .8;
+}
+
+.formation-picker--compact {
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    margin-top: 0;
+}
+
+.formation-picker--compact .formation-diagram {
+    max-width: 38px;
+}
+
+.formation-picker--compact .formation-tile b {
+    font-size: 9px;
+}
+
+.halftime-settings__row--stack {
+    grid-template-columns: 1fr;
+    align-items: start;
 }

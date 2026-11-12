@@ -347,3 +347,133 @@ export function getPositionGroup(position) {
 
     return 'FW'
 }
+
+// ---- Đổi sơ đồ: xếp người vào ô hợp nhất ----
+// Trước đây cầu thủ thứ i nhận ô thứ i của sơ đồ mới, nên khi đổi 4 hậu vệ
+// sang 3 hậu vệ, hậu vệ phải có thể bị đẩy lên làm tiền vệ cánh. Giờ mỗi ô
+// (thủ môn → hậu vệ → tiền vệ → tiền đạo, ô biên trước) chọn người hợp nhất theo
+// VỊ TRÍ SỞ TRƯỜNG (naturalPosition — vị trí gốc của thẻ, giữ lại dù đã bị
+// xếp đá vị trí khác), rồi theo chỗ đang đứng. Trả về đội hình theo thứ tự ô.
+const SLOT_GROUP = (position) => {
+    const value = String(position || '').toUpperCase()
+
+    if (value === 'GK') return 0
+    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(value)) return 1
+    if (['CDM', 'CM', 'CAM', 'LM', 'RM', 'AM'].includes(value)) return 2
+
+    return 3
+}
+
+// Toạ độ "tự nhiên" của từng vị trí (đội mình, tấn công về z âm).
+const NATURAL_SPOT = {
+    GK: [0, 46], CB: [0, 35], LB: [-23, 32], RB: [23, 32], LWB: [-25, 18], RWB: [25, 18],
+    CDM: [0, 16], CM: [0, 8], CAM: [0, -9], AM: [0, -9], LM: [-22, 6], RM: [22, 6],
+    LW: [-21, -22], RW: [21, -22], ST: [0, -28], CF: [0, -14],
+}
+
+export const naturalPositionOf = (player) => player?.naturalPosition || player?.position
+
+// Đặt cầu thủ vào một ô (vị trí + toạ độ), nhớ vị trí sở trường.
+export const placeInSlot = (player, position, x, z) => ({
+    ...player,
+    naturalPosition: naturalPositionOf(player),
+    position,
+    x,
+    z,
+})
+
+// Bài toán gán tối ưu (thuật toán Hungary, n × n): tổng "độ lệch vị trí" nhỏ
+// nhất cho cả đội — không tham lam từng ô, nên khi thiếu người một tuyến thì
+// người phù hợp nhất (vd. tiền vệ trung tâm xuống đá trung vệ) được chọn.
+function solveAssignment(cost) {
+    const n = cost.length
+    const u = new Array(n + 1).fill(0)
+    const v = new Array(n + 1).fill(0)
+    const p = new Array(n + 1).fill(0)
+    const way = new Array(n + 1).fill(0)
+
+    for (let i = 1; i <= n; i += 1) {
+        p[0] = i
+        let j0 = 0
+        const minv = new Array(n + 1).fill(Infinity)
+        const used = new Array(n + 1).fill(false)
+
+        do {
+            used[j0] = true
+            const i0 = p[j0]
+            let delta = Infinity
+            let j1 = 0
+
+            for (let j = 1; j <= n; j += 1) {
+                if (used[j]) continue
+
+                const current = cost[i0 - 1][j - 1] - u[i0] - v[j]
+
+                if (current < minv[j]) {
+                    minv[j] = current
+                    way[j] = j0
+                }
+
+                if (minv[j] < delta) {
+                    delta = minv[j]
+                    j1 = j
+                }
+            }
+
+            for (let j = 0; j <= n; j += 1) {
+                if (used[j]) {
+                    u[p[j]] += delta
+                    v[j] -= delta
+                } else {
+                    minv[j] -= delta
+                }
+            }
+
+            j0 = j1
+        } while (p[j0] !== 0)
+
+        do {
+            const j1 = way[j0]
+            p[j0] = p[j1]
+            j0 = j1
+        } while (j0)
+    }
+
+    // result[row] = column
+    const result = new Array(n)
+
+    for (let j = 1; j <= n; j += 1) result[p[j] - 1] = j - 1
+
+    return result
+}
+
+function slotCost(player, [position, x, z]) {
+    const group = SLOT_GROUP(position)
+    const natural = String(naturalPositionOf(player) || '').toUpperCase()
+    const playerGroup = SLOT_GROUP(natural)
+    const [nx, nz] = NATURAL_SPOT[natural] || [player.x ?? 0, player.z ?? 0]
+    // Thủ môn chỉ vào ô thủ môn; lệch tuyến bị phạt nặng.
+    const groupCost = (group === 0) !== (playerGroup === 0) ? 10000 : Math.abs(group - playerGroup) * 60
+
+    return groupCost + Math.abs(nx - x) + Math.abs(nz - z) * 0.6 + Math.abs((player.x ?? 0) - x) * 0.1
+}
+
+export function assignFormation(players, formation) {
+    const size = Math.min(players.length, formation.length)
+
+    if (!size) return players
+
+    const starters = players.slice(0, size)
+    const slots = formation.slice(0, size)
+    const matrix = starters.map((player) => slots.map((slot) => slotCost(player, slot)))
+    const columnOf = solveAssignment(matrix)
+    const placed = new Array(size)
+
+    starters.forEach((player, row) => {
+        const [position, x, z] = slots[columnOf[row]]
+
+        placed[columnOf[row]] = placeInSlot(player, position, x, z)
+    })
+
+    return [...placed, ...players.slice(size)]
+}

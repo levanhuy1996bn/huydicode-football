@@ -1,4 +1,4 @@
-import { FORMATIONS } from '../data/teams'
+import FormationPicker from './FormationPicker'
 import { TACTICS } from '../systems/constants'
 import { useState } from 'react'
 import { userClubId, userTeam } from '../services/career'
@@ -164,20 +164,9 @@ export function HalfTimeOverlay({
                         )}
                     </p>
 
-                    <div className="halftime-settings__row">
+                    <div className="halftime-settings__row halftime-settings__row--stack">
                         <span>Formation</span>
-                        <div className="segmented">
-                            {Object.keys(FORMATIONS).map((key) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    className={key === formationKey ? 'is-active' : ''}
-                                    onClick={() => onFormationChange(key)}
-                                >
-                                    {key}
-                                </button>
-                            ))}
-                        </div>
+                        <FormationPicker value={formationKey} onChange={onFormationChange} compact />
                     </div>
 
                     <div className="halftime-settings__row">

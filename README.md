@@ -305,6 +305,7 @@ ultimate-football-manager-3d/
         ├── LeagueManagementPanel.jsx
         ├── ClubCrest.jsx         # generated SVG crest for every club (Phase 26A)
         ├── ClubPicker.jsx        # choose / change club (Phase 26B)
+        ├── FormationPicker.jsx   # formation tiles with mini pitch diagrams (after 26B)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
         └── ...
 ```
@@ -1128,6 +1129,13 @@ Agreed on 2026-11-12.
 - **Saves:** clubs use their real ids everywhere (Manchester United = `eng-manchester-united`); the world save stores `userClubId`. Old saves that used `blue` as United's id (league fixtures, tables, season player stats, world divisions, history, bought United cards `blue-p01…`) are converted on first load — season progress is kept, nothing is reset. The engine still names the two sides of the pitch `blue` (you) and `red` (opponent): renaming those internal side ids would touch every engine file without changing anything for the player, so only the club identity was separated from them.
 - **Crests** (generated, `ClubCrest.jsx`) on the home screen (next match, mini table, settings), pre-match title, in-match scoreboard, half-time / full-time / post-match scorelines, league tables, results and fixtures.
 
+#### Quick updates after 26B ✅ (2026-11-12)
+
+- **Season difficulty picker** shows only the level names (Easy / Normal / Hard / Very hard / Legendary); the card levels and reward multipliers are no longer printed on the buttons or in the pre-match header (they still apply, see Phase 26C; the post-match reward card still shows the multiplier).
+- **11 formations** (was 3): 4-3-3, 4-4-2, 4-2-3-1 + **4-1-4-1, 4-1-2-1-2 (diamond), 4-3-2-1 (Christmas tree), 4-4-1-1, 4-2-2-2, 3-5-2, 3-4-3, 5-3-2** (`FORMATIONS` / `FORMATION_INFO` in `src/data/teams.js`). The engine works from roles and coordinates, so the new shapes need no engine change.
+- **New formation picker** (`src/components/FormationPicker.jsx`): a grid of tiles, each with a mini pitch showing the 11 positions (keeper yellow, defenders blue, midfielders green, forwards red) and the formation's name; used on the pre-match screen (4 per row, the pre-match middle column is a bit wider) and, smaller, at half-time.
+- **Smarter switching between formations** (`assignFormation` in `src/systems/roster.js`): players used to take the new slots by list order, so going from four to three at the back could push a full-back into midfield. Now every player keeps a **natural position** (`naturalPosition`, the card's own position, kept when he is moved elsewhere by a formation, substitution or swap) and the whole XI is assigned at once with the lowest total "out of position" cost (Hungarian algorithm): same line first, then the closest side / height. Example from the default United XI: 4-3-3 → 3-5-2 puts Herrera (LB) at LWB, Montenegro (RW) at RWB, the CBs + Mendoza in a back three; going back to 4-3-3 restores the original XI exactly.
+
 ### Phase 26C — Height / weight and season difficulty ✅ (2026-11-12)
 
 Agreed on 2026-11-12 (done before 26B). No birth year / age changes: age stays as it is and is not used.
@@ -1245,6 +1253,7 @@ Agreed on 2026-11-12 (FC Online-style team color, done before 26B). Logic in `sr
 | Nâng cấp thẻ bằng 2 thẻ cùng cầu thủ (+1 → +10), thất bại từ +5 chỉ tụt 1 cấp | Phase 25 ✅ |
 | Thêm giải đấu khác (18 nước × 2 hạng, 720 CLB thật, lên / xuống hạng) | Phase 26A ✅ |
 | Cho chọn / đổi CLB (lần đầu, đầu mùa, Settings; CLB cũ thành AI) | Phase 26B ✅ |
+| Độ khó chỉ hiện tên mức; thêm sơ đồ (4-1-4-1, kim cương, 4-3-2-1, 4-4-1-1, 4-2-2-2, 3-5-2, 3-4-3, 5-3-2), màn chọn sơ đồ có sân nhỏ | Sau 26B ✅ |
 | Chiều cao, cân nặng của cầu thủ (ảnh hưởng thể hình 3D, sức mạnh, khéo léo, bóng bổng, tầm với thủ môn) | Phase 26C ✅ |
 | Độ khó mỗi mùa: tăng cấp thẻ + của cầu thủ đối thủ, thưởng nhiều hơn khi khó hơn | Phase 26C ✅ |
 | Team color kiểu FO4: cả 11 người đá chính cùng bậc thẻ (theo người thấp nhất) và cùng CLB thì được cộng chỉ số, đội AI cũng có | Phase 26D ✅ |

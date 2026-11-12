@@ -84,6 +84,8 @@ import {
 import {
     ROSTER_STORAGE_KEY,
     SQUAD_LIMITS,
+    assignFormation,
+    placeInSlot,
     buildMatchRoster,
     getOpponentColor,
     getPositionGroup,
@@ -872,20 +874,8 @@ export default function GameScene() {
             current.map((team) => {
                 if (team.id !== 'blue') return team
 
-                const updatedPlayers = team.players.map((player, index) => {
-                    const slot = formation[index]
-
-                    if (!slot) return player
-
-                    const [position, x, z] = slot
-
-                    return {
-                        ...player,
-                        position,
-                        x,
-                        z,
-                    }
-                })
+                // Mỗi ô của sơ đồ mới nhận người cùng nhóm vị trí, gần nhất.
+                const updatedPlayers = assignFormation(team.players, formation)
 
                 return {
                     ...team,
@@ -952,12 +942,7 @@ export default function GameScene() {
             current.map((team) => {
                 if (team.id !== 'blue') return team
 
-                const newStartingPlayer = {
-                    ...incoming,
-                    position: outgoing.position,
-                    x: outgoing.x,
-                    z: outgoing.z,
-                }
+                const newStartingPlayer = placeInSlot(incoming, outgoing.position, outgoing.x, outgoing.z)
 
                 const newSubstitute = {
                     ...outgoing,
@@ -1164,11 +1149,11 @@ export default function GameScene() {
                     ...team,
                     players: team.players.map((player) => {
                         if (player.id === firstId) {
-                            return { ...player, position: second.position, x: second.x, z: second.z }
+                            return placeInSlot(player, second.position, second.x, second.z)
                         }
 
                         if (player.id === secondId) {
-                            return { ...player, position: first.position, x: first.x, z: first.z }
+                            return placeInSlot(player, first.position, first.x, first.z)
                         }
 
                         return player

@@ -1,8 +1,9 @@
+import FormationPicker from '../FormationPicker'
 import ClubCrest from '../ClubCrest'
 import TeamColorPanel from '../TeamColorPanel'
 import { teamColorOf, withTeamColor } from '../../services/teamColor'
 import { isUserClub, userClubId, userTeam } from '../../services/career'
-import { FORMATIONS } from '../../data/teams'
+import { FORMATION_INFO } from '../../data/teams'
 import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
 import { KIT_LABELS, KIT_SLOTS, kitsClash, kitsOf } from '../../data/kits'
@@ -94,10 +95,8 @@ export function DifficultyPicker({ difficulty, locked, onChange }) {
                         className={difficulty.id === item.id ? 'is-active' : ''}
                         disabled={locked && difficulty.id !== item.id}
                         onClick={() => !locked && onChange?.(item.id)}
-                        title={`Opponent cards around +${item.upgrade} · rewards ×${item.reward}`}
                     >
                         <b>{item.label}</b>
-                        <small>+{item.upgrade} · ×{item.reward}</small>
                     </button>
                 ))}
             </div>
@@ -193,7 +192,7 @@ export default function PreMatchScreen({
                     <p>
                         League position: {userTeam().shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
                         {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
-                        {difficulty && <> · Difficulty {difficulty.label.toUpperCase()} (cards ~+{difficulty.upgrade})</>}
+                        {difficulty && <> · Difficulty {difficulty.label.toUpperCase()}</>}
                     </p>
                 </div>
             </div>
@@ -211,20 +210,15 @@ export default function PreMatchScreen({
                     <div className="home-card">
                         <div className="home-card__head"><span>TEAM SETUP</span></div>
 
-                        <div className="setting-row">
-                            <span>Formation</span>
-                            <div className="segmented">
-                                {Object.keys(FORMATIONS).map((key) => (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        className={blueTeam.formationKey === key ? 'is-active' : ''}
-                                        onClick={() => onFormationChange(key)}
-                                    >
-                                        {key}
-                                    </button>
-                                ))}
+                        <div className="formation-block">
+                            <div className="kit-section__head">
+                                <span>Formation</span>
+                                <small>
+                                    {blueTeam.formationKey}
+                                    {FORMATION_INFO[blueTeam.formationKey] ? ` · ${FORMATION_INFO[blueTeam.formationKey].note}` : ''}
+                                </small>
                             </div>
+                            <FormationPicker value={blueTeam.formationKey} onChange={onFormationChange} />
                         </div>
 
                         <label className="setting-row">
