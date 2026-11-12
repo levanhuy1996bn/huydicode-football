@@ -1,5 +1,6 @@
 
 import CupPanel from './CupPanel'
+import WorldCupPanel from './WorldCupPanel'
 import { fixtureLabel, fixtureShortLabel, nextUserFixture, userCalendar } from '../services/cupService'
 import { useMemo, useState } from 'react'
 import './LeagueManagementPanel.css'
@@ -32,6 +33,8 @@ const TABS = [
     // Phase 27: hai cúp
     { id: 'c1', label: 'CHAMPIONS CUP' },
     { id: 'c2', label: 'CHALLENGE CUP' },
+    // Phase 29E
+    { id: 'wc', label: 'WORLD CUP' },
 ]
 
 // Cột thống kê cầu thủ. minApps: số trận tối thiểu để được xếp hạng ở cột tỉ lệ.
@@ -73,8 +76,10 @@ export default function LeagueManagementPanel({
                                                   onClose,
                                                   onStartFixture,
                                                   onNewSeason,
+                                                  initialTab = 'table',
+                                                  worldCupNext = null,
                                               }) {
-    const [activeTab, setActiveTab] = useState('table')
+    const [activeTab, setActiveTab] = useState(initialTab)
     const [sortKey, setSortKey] = useState('goals')
     const [clubFilter, setClubFilter] = useState('all') // 'all' | 'mine'
 
@@ -526,6 +531,12 @@ export default function LeagueManagementPanel({
                                 })}
                             </div>
                         </section>
+                    )}
+                    {activeTab === 'wc' && (
+                        <WorldCupPanel
+                            world={world}
+                            onPlay={worldCupNext ? () => onStartFixture(worldCupNext) : null}
+                        />
                     )}
                     {(activeTab === 'c1' || activeTab === 'c2') && (
                         <CupPanel

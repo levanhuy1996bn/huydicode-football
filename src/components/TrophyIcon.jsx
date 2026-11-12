@@ -122,6 +122,20 @@ function Body({ shape, metal, line }) {
                     <path d="M47 36 V90" stroke={SHINE} strokeWidth="1.5" strokeLinecap="round" />
                 </>
             )
+        case 'orbit':
+            // Phase 29E: World Cup — quả cầu trên thân cúp xoắn, hai vòng quỹ đạo.
+            return (
+                <>
+                    <path d={FOOT} fill={metal} />
+                    <path d="M44 94 C44 84 41 76 43 68 C45 60 55 60 57 68 C59 76 56 84 56 94 Z" fill={metal} />
+                    <path d="M45 92 C49 84 51 76 47 68" fill="none" stroke={SHADE} strokeWidth="1.5" />
+                    <circle cx="50" cy="40" r="22" fill={metal} />
+                    <ellipse cx="50" cy="40" rx="31" ry="9" fill="none" stroke={metal} strokeWidth="3.2" transform="rotate(-22 50 40)" />
+                    <ellipse cx="50" cy="40" rx="31" ry="9" fill="none" stroke={line} strokeWidth="2" transform="rotate(28 50 40)" />
+                    <path d="M36 30 C40 22 48 19 55 20" fill="none" stroke={SHINE} strokeWidth="2.2" strokeLinecap="round" />
+                    <path d="M42 64 H58" stroke={line} strokeWidth="2.5" />
+                </>
+            )
         case 'globe':
         default:
             return (

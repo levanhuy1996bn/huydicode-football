@@ -63,7 +63,8 @@ export const CUP_PRIZES = {
 }
 
 // Hệ số tiền thưởng / XP của một trận cúp so với trận giải.
-export const CUP_MATCH_FACTOR = { c1: 1.5, c2: 1.25 }
+// Phase 29E: trận World Cup thưởng ×1.5 như C1.
+export const CUP_MATCH_FACTOR = { c1: 1.5, c2: 1.25, wc: 1.5 }
 
 // ---- Suất dự ----
 // [hạng nước từ, đến, vị trí trong giải] — thứ tự = thứ tự ưu tiên.
@@ -591,9 +592,18 @@ export function findUserFixture(league, fixtureId) {
     )
 }
 
+// Phase 29E: nhãn vòng World Cup.
+const WC_LABELS = { r16: 'ROUND OF 16', qf: 'QUARTER-FINAL', sf: 'SEMI-FINAL', third: 'THIRD-PLACE MATCH', final: 'FINAL' }
+const WC_SHORT = { r16: 'R16', qf: 'QF', sf: 'SF', third: '3RD', final: 'FINAL' }
+
 export function fixtureLabel(fixture) {
     if (!fixture) return ''
     if (!fixture.competition) return `ROUND ${fixture.round}`
+    if (fixture.competition === 'wc') {
+        return fixture.stage === 'group'
+            ? `WORLD CUP ${fixture.edition} · GROUP ${fixture.group} · MD ${fixture.matchday}`
+            : `WORLD CUP ${fixture.edition} · ${WC_LABELS[fixture.round] || ''}`
+    }
 
     const cup = CUPS[fixture.competition]?.short || fixture.competition.toUpperCase()
 
@@ -608,6 +618,7 @@ const STAGE_SHORT = { r16: 'R16', qf: 'QF', sf: 'SF' }
 
 export function fixtureShortLabel(fixture) {
     if (!fixture?.competition) return `R${fixture?.round ?? ''}`
+    if (fixture.competition === 'wc') return fixture.stage === 'group' ? `WC MD${fixture.matchday}` : `WC ${WC_SHORT[fixture.round] || ''}`
 
     const cup = CUPS[fixture.competition]?.short || fixture.competition.toUpperCase()
 

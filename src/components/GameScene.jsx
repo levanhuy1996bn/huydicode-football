@@ -7,9 +7,6 @@ import FpsMeter from './FpsMeter'
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
-// Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
-const loadMatchCanvas = () => import('./MatchCanvas')
-const MatchCanvas = lazy(loadMatchCanvas)
 import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation } from '../services/quickSim'
 import {
     CUP_MATCH_FACTOR,
@@ -29,7 +26,23 @@ import { epCard, playerPack, protectionCard } from '../services/cards'
 import ClubCrest from './ClubCrest'
 import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
-import { isUserClub, userClubId, userTeam } from '../services/career'
+import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
+import NationPicker from './NationPicker'
+import { nationStrength, nationalTeamForMatch, suggestedNation } from '../services/nationalTeams'
+import {
+    WC_PRIZES,
+    WC_ROUND_LABELS,
+    WC_STANDING_LABELS,
+    createWorldCup,
+    describeWorldCupResult,
+    editionOf,
+    findWorldCupFixture,
+    isWorldCupSeason,
+    nextWorldCupFixture,
+    recordWorldCupResult,
+    simulateWholeWorldCup,
+    wcShootoutNeeded,
+} from '../services/worldCupService'
 import { teamColorOf, withTeamColor } from '../services/teamColor'
 import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
@@ -46,6 +59,7 @@ import { applyMatchToClub, applySeasonBonus } from '../services/clubProgress'
 import { DEFAULT_DIFFICULTY, difficultyOf } from '../services/difficulty'
 import CardsScreen from './screens/CardsScreen'
 import { resolveMatchKits } from '../data/kits'
+
 
 // Phase 24: gắn bộ áo của trận vào đội hình 3D (blue = đội người chơi,
 // red = đối thủ với id CLB `opponentClubId`).
@@ -120,6 +134,11 @@ import {
     squadOf,
 } from '../systems/roster'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
+
+
+// Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
+const loadMatchCanvas = () => import('./MatchCanvas')
+const MatchCanvas = lazy(loadMatchCanvas)
 
 // Màn hình trận đấu: giao diện (scoreboard, bảng điều khiển, giải đấu, CLB).
 // Engine trận đấu nằm trong src/systems, scene 3D nằm trong MatchWorld.jsx.
@@ -275,6 +294,22 @@ export default function GameScene() {
     const [world, setWorld] = useState(boot.world)
     const [league, setLeague] = useState(boot.league)
 
+    // Phase 29E: World Cup. Trong lúc đá World Cup (wcSession), đội của người
+    // chơi là đội tuyển: career.setMatchSide đổi tên / huy hiệu / isUserClub, và
+    // state `roster` tạm thay bằng đội tuyển (đội hình CLB giữ ở clubRosterRef,
+    // không bị lưu đè — xem effect lưu đội hình) cho tới khi rời World Cup.
+    const [wcSession, setWcSession] = useState(null)
+    const wcSessionRef = useRef(null)
+    wcSessionRef.current = wcSession
+    const clubRosterRef = useRef(null)
+    const [nationPicker, setNationPicker] = useState(false)
+
+    setMatchSide(wcSession?.nationId || null)
+
+    const worldCup = world.worldCup || null
+    const worldCupThisSeason = worldCup && worldCup.season === league.season ? worldCup : null
+    const findFixture = (id) => findUserFixture(league, id) || findWorldCupFixture(worldCup, id)
+
     // Phase 27: lịch chung giải + cúp (cupService).
     const [activeFixtureId, setActiveFixtureId] = useState(
         () => nextUserFixture(boot.league)?.id || null,
@@ -296,8 +331,9 @@ export default function GameScene() {
     const cupInfoRef = useRef(null)
 
     const activeFixture = useMemo(
-        () => findUserFixture(league, activeFixtureId),
-        [league, activeFixtureId],
+        () => findFixture(activeFixtureId),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [league, activeFixtureId, worldCup],
     )
 
     const opponentId = activeFixture
@@ -337,6 +373,9 @@ export default function GameScene() {
 
     // Lưu đội hình chính, dự bị, sơ đồ và cầu thủ mua/bán.
     useEffect(() => {
+        // Phase 29E: đang dùng đội tuyển → không lưu đè đội hình CLB.
+        if (wcSessionRef.current) return
+
         try {
             localStorage.setItem(
                 ROSTER_STORAGE_KEY,
@@ -591,7 +630,12 @@ export default function GameScene() {
 
         const { league: currentLeague, activeFixture: fixture, blueScore: blue, redScore: red } = shootoutInfoRef.current
 
-        if (fixture?.competition && !fixture.played) {
+        if (fixture?.competition === 'wc' && !fixture.played) {
+            if (wcShootoutNeeded(fixture, blue, red)) {
+                beginShootout(fixture)
+                return
+            }
+        } else if (fixture?.competition && !fixture.played) {
             const isHome = isUserClub(fixture.homeTeamId)
 
             if (cupShootoutNeeded(currentLeague, fixture.id, isHome ? blue : red, isHome ? red : blue)) {
@@ -613,13 +657,31 @@ export default function GameScene() {
             return
         }
 
-        const fixture = findUserFixture(league, activeFixtureId)
+        const fixture = findFixture(activeFixtureId)
 
         if (!fixture || fixture.played) {
             return
         }
 
         recordedFixtureRef.current = activeFixtureId
+
+        // Phase 29E: trận World Cup ghi vào world.worldCup.
+        if (fixture.competition === 'wc') {
+            const isHomeWc = isUserClub(fixture.homeTeamId)
+
+            setWorld((current) => ({
+                ...current,
+                worldCup: recordWorldCupResult(
+                    current.worldCup,
+                    activeFixtureId,
+                    isHomeWc ? blueScore : redScore,
+                    isHomeWc ? redScore : blueScore,
+                    playedShootout(activeFixtureId),
+                ),
+            }))
+            setActionMessage('FULL TIME - RESULT SAVED')
+            return
+        }
 
         const homeGoals =
             isUserClub(fixture.homeTeamId)
@@ -706,10 +768,11 @@ export default function GameScene() {
 
             // Phase 22: thống kê cầu thủ cả mùa (cả hai đội) cho trận giải đấu.
             // Bỏ trận (xử thua 0–3) thì không ghi số liệu cầu thủ.
-            const fixture = findUserFixture(league, activeFixtureId)
-            const isCup = Boolean(fixture?.competition)
+            const fixture = findFixture(activeFixtureId)
+            const isWc = fixture?.competition === 'wc'
+            const isCup = Boolean(fixture?.competition) && !isWc
 
-            if (!forfeit && fixture && !fixture.played && !isCup) {
+            if (!forfeit && fixture && !fixture.played && !isCup && !isWc) {
                 const entries = userMatchEntries({
                     stats: statsRef.current?.stats,
                     bluePlayers: summary.ratings,
@@ -739,6 +802,20 @@ export default function GameScene() {
                 cupInfo = describeUserCupResult(after, fixture.id)
             }
 
+            // Phase 29E: kết quả World Cup sau trận.
+            if (isWc && fixture && !fixture.played) {
+                const isHome = isUserClub(fixture.homeTeamId)
+                const after = recordWorldCupResult(
+                    worldCup,
+                    fixture.id,
+                    isHome ? blueScore : redScore,
+                    isHome ? redScore : blueScore,
+                    playedShootout(fixture.id),
+                )
+
+                cupInfo = describeWorldCupResult(after, fixture.id)
+            }
+
             cupInfoRef.current = cupInfo
 
             // Thưởng (trận giải và trận cúp; bỏ trận thì không có).
@@ -749,13 +826,28 @@ export default function GameScene() {
                 const rewarded = applyMatchToClub(club, {
                     goalsFor: blueScore,
                     goalsAgainst: redScore,
-                    opponentStrength: opponentTeam?.strength,
+                    opponentStrength: isWc ? nationStrength(opponentId) : opponentTeam?.strength,
                     // Phase 27: trận cúp thưởng nhiều hơn (C1 ×1.5, C2 ×1.25).
                     rewardFactor: difficulty.reward * (isCup ? CUP_MATCH_FACTOR[fixture.competition] : 1),
                 })
                 let nextClub = rewarded.club
                 let seasonReward = null
                 let cupReward = null
+
+                if (isWc && cupInfo?.prizeStage) {
+                    const prize = Math.round((WC_PRIZES[cupInfo.prizeStage] * difficulty.reward) / 100000) * 100000
+                    const label = cupInfo.prizeStage === 'champion'
+                        ? `World Cup ${worldCup.edition} winners`
+                        : cupInfo.prizeStage === 'third'
+                            ? `World Cup ${worldCup.edition} · third place`
+                            : `World Cup ${worldCup.edition} · ${WC_ROUND_LABELS[cupInfo.prizeStage]}`
+                    const items = [epCard(prize, label)]
+
+                    if (cupInfo.prizeStage === 'champion') items.push(playerPack('premium', label), protectionCard(label))
+
+                    nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
+                    cupReward = { amount: prize, label, pack: cupInfo.prizeStage === 'champion' }
+                }
 
                 if (isCup) {
                     const prize = Math.round(
@@ -782,7 +874,7 @@ export default function GameScene() {
                         (isUserClub(item.homeTeamId) || isUserClub(item.awayTeamId)),
                 ).length
 
-                if (!isCup && remainingUserFixtures === 0) {
+                if (!isCup && !isWc && remainingUserFixtures === 0) {
                     const isHome = isUserClub(fixture.homeTeamId)
                     const finalLeague = recordUserFixtureResult(
                         league,
@@ -995,10 +1087,38 @@ export default function GameScene() {
     const [clubPicker, setClubPicker] = useState(() => (boot.firstRun ? { mode: 'start' } : null))
     const seasonComplete = getSeasonProgress(league.fixtures).completed
 
+    // Phase 29E: World Cup sau mùa 2026/27, 2030/31…: phải đá xong (hoặc bỏ
+    // qua) mới sang mùa mới.
+    const worldCupDue = seasonComplete && isWorldCupSeason(league.season) && !worldCupThisSeason
+    const worldCupPending = worldCupDue || worldCupThisSeason?.status === 'active'
+
     const createNewSeason = useCallback(() => {
         setIsLeagueOpen(false)
+
+        if (worldCupPending) {
+            setActionMessage('PLAY OR SKIP THE WORLD CUP FIRST')
+            setScreen('home')
+            return
+        }
+
         setClubPicker({ mode: 'season' })
-    }, [])
+    }, [worldCupPending])
+
+    const startWorldCup = (nationId) => {
+        setNationPicker(false)
+        setWorld((current) => ({ ...current, worldCup: createWorldCup(league.season, nationId) }))
+        setActionMessage(`WORLD CUP ${editionOf(league.season)} · YOU MANAGE ${getTeamById(nationId)?.name?.toUpperCase()}`)
+    }
+
+    const skipWorldCup = () => {
+        const clubBlue = (clubRosterRef.current || roster).find((team) => team.id === 'blue')
+        const base = worldCupThisSeason || createWorldCup(league.season, suggestedNation(clubBlue?.players || [], null))
+        const done = simulateWholeWorldCup(base)
+
+        exitWorldCupSession()
+        setWorld((current) => ({ ...current, worldCup: done }))
+        setActionMessage(`WORLD CUP ${done.edition} SIMULATED · CHAMPIONS ${getTeamById(done.champion)?.name?.toUpperCase()}`)
+    }
 
     const openChangeClub = useCallback(() => {
         setClubPicker({ mode: seasonComplete ? 'season' : 'change' })
@@ -1081,16 +1201,19 @@ export default function GameScene() {
     const isPlaying = matchStatus === 'playing' || (matchStatus === 'shootout' && !shootout?.done)
 
     // Trận tiếp theo của đội người chơi trong lịch (sau khi kết quả đã được ghi).
+    // Phase 29E: hết mùa CLB mà World Cup đang diễn ra → trận tiếp theo là trận World Cup.
     const nextFixture = useMemo(
-        () => nextUserFixture(league),
-        [league],
+        () => nextUserFixture(league) || (worldCupThisSeason ? nextWorldCupFixture(worldCupThisSeason) : null),
+        [league, worldCupThisSeason],
     )
 
     const nextOpponent = nextFixture
         ? getTeamById(
-            isUserClub(nextFixture.homeTeamId)
-                ? nextFixture.awayTeamId
-                : nextFixture.homeTeamId,
+            nextFixture.competition === 'wc'
+                ? nextFixture.homeTeamId === worldCup?.nationId ? nextFixture.awayTeamId : nextFixture.homeTeamId
+                : isUserClub(nextFixture.homeTeamId)
+                    ? nextFixture.awayTeamId
+                    : nextFixture.homeTeamId,
         )
         : null
 
@@ -1455,14 +1578,46 @@ export default function GameScene() {
     // ---- Điều hướng giữa các màn hình ngoài trận ----
     const prematchFixture = useMemo(
         () =>
-            findUserFixture(league, prematchFixtureId) ||
+            findFixture(prematchFixtureId) ||
             nextFixture ||
             null,
-        [league, prematchFixtureId, nextFixture],
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [league, prematchFixtureId, nextFixture, worldCup],
     )
+
+    // Phase 29E: vào / rời chế độ World Cup (đội tuyển thay cho đội CLB).
+    const enterWorldCupSession = () => {
+        if (wcSessionRef.current || !worldCup) return
+
+        const clubBlue = roster.find((team) => team.id === 'blue')
+
+        clubRosterRef.current = roster
+        setRoster(roster.map((team) =>
+            team.id === 'blue'
+                ? nationalTeamForMatch(clubBlue, worldCup.nationId, {
+                    userCards: squadOf(clubBlue),
+                    formationKey: clubBlue?.formationKey,
+                })
+                : team,
+        ))
+        setWcSession({ nationId: worldCup.nationId })
+        wcSessionRef.current = { nationId: worldCup.nationId }
+    }
+
+    const exitWorldCupSession = () => {
+        if (!wcSessionRef.current) return
+
+        if (clubRosterRef.current) setRoster(clubRosterRef.current)
+        clubRosterRef.current = null
+        setWcSession(null)
+        wcSessionRef.current = null
+    }
 
     const openPrematch = (fixture) => {
         const target = fixture && !fixture.played ? fixture : nextFixture
+
+        if (target?.competition === 'wc') enterWorldCupSession()
+        else exitWorldCupSession()
 
         setPrematchFixtureId(target?.id || null)
         setIsLeagueOpen(false)
@@ -1475,6 +1630,7 @@ export default function GameScene() {
     }
 
     const goHome = () => {
+        exitWorldCupSession()
         setIsLeagueOpen(false)
         setIsClubOpen(false)
         setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
@@ -1491,13 +1647,17 @@ export default function GameScene() {
         else if (tab === 'prematch') openPrematch(nextFixture)
         else if (tab === 'development') openDevelopment()
         else if (tab === 'league') setIsLeagueOpen(true)
-        else if (tab === 'club') setIsClubOpen(true)
+        else if (tab === 'club') {
+            exitWorldCupSession()
+            setIsClubOpen(true)
+        }
         else if (tab === 'cards') openCards()
         else if (tab === 'trophies') openTrophies()
     }
 
     // Phase 28B: phòng truyền thống.
     const openTrophies = () => {
+        exitWorldCupSession()
         setIsLeagueOpen(false)
         setIsClubOpen(false)
         setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
@@ -1506,6 +1666,7 @@ export default function GameScene() {
 
     // Phase 23: tab CARDS (mở gói cầu thủ, thẻ EP).
     const openCards = () => {
+        exitWorldCupSession()
         setIsLeagueOpen(false)
         setIsClubOpen(false)
         setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
@@ -1514,6 +1675,7 @@ export default function GameScene() {
 
     // Phase 19B: màn phát triển cầu thủ.
     const openDevelopment = () => {
+        exitWorldCupSession()
         setIsLeagueOpen(false)
         setIsClubOpen(false)
         setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
@@ -1565,7 +1727,23 @@ export default function GameScene() {
     const opponentIdOf = (fixture) =>
         isUserClub(fixture.homeTeamId) ? fixture.awayTeamId : fixture.homeTeamId
 
-    const homeNextMatch = nextFixture && nextOpponent
+    // Phase 29E: khối World Cup ở sảnh (chọn đội tuyển / trận tiếp theo / kết quả).
+    const wcHomeInfo = worldCupDue
+        ? { phase: 'due', edition: editionOf(league.season) }
+        : worldCupThisSeason
+            ? {
+                phase: worldCupThisSeason.status === 'done' ? 'done' : 'active',
+                edition: worldCupThisSeason.edition,
+                nationId: worldCupThisSeason.nationId,
+                fixture: nextFixture?.competition === 'wc' ? nextFixture : null,
+                opponentId: nextFixture?.competition === 'wc' ? nextOpponent?.id : null,
+                standing: WC_STANDING_LABELS[worldCupThisSeason.finalStanding] || null,
+                champion: worldCupThisSeason.champion,
+                skipped: Boolean(worldCupThisSeason.skipped),
+            }
+            : null
+
+    const homeNextMatch = nextFixture && nextOpponent && nextFixture.competition !== 'wc'
         ? {
             fixture: nextFixture,
             isHome: isUserClub(nextFixture.homeTeamId),
@@ -1844,6 +2022,11 @@ export default function GameScene() {
                     onOpenDevelopment={openDevelopment}
                     onNewSeason={createNewSeason}
                     onChangeClub={openChangeClub}
+                    worldCup={wcHomeInfo}
+                    onChooseNation={() => setNationPicker(true)}
+                    onPlayWorldCup={() => openPrematch(nextFixture)}
+                    onSkipWorldCup={skipWorldCup}
+                    onOpenWorldCup={() => setIsLeagueOpen('wc')}
                     simsLeft={simsLeft}
                     onSimulate={() => runQuickSimulation(nextFixture)}
                 />
@@ -1868,7 +2051,7 @@ export default function GameScene() {
                     difficultyLocked={difficultyLocked}
                     onDifficultyChange={changeDifficulty}
                     simsLeft={simsLeft}
-                    onSimulate={() => runQuickSimulation(prematchFixture)}
+                    onSimulate={prematchFixture?.competition === 'wc' ? null : () => runQuickSimulation(prematchFixture)}
                     onKickOff={kickOff}
                     onBack={goHome}
                 />
@@ -2377,6 +2560,8 @@ export default function GameScene() {
                     onClose={() => setIsLeagueOpen(false)}
                     onStartFixture={openPrematch}
                     onNewSeason={createNewSeason}
+                    initialTab={isLeagueOpen === 'wc' ? 'wc' : 'table'}
+                    worldCupNext={worldCupThisSeason?.status === 'active' ? nextFixture : null}
                 />
             )}
 
@@ -2400,6 +2585,20 @@ export default function GameScene() {
             )}
 
             {/* Phase 26B: chọn / đổi CLB */}
+            {/* Phase 29E: chọn đội tuyển cho World Cup */}
+            {nationPicker && (
+                <NationPicker
+                    edition={editionOf(league.season)}
+                    suggestedId={suggestedNation(
+                        (clubRosterRef.current || roster).find((team) => team.id === 'blue')?.players || [],
+                        getTeamById(userClubId())?.countryId,
+                    )}
+                    userCards={squadOf((clubRosterRef.current || roster).find((team) => team.id === 'blue'))}
+                    onConfirm={startWorldCup}
+                    onCancel={() => setNationPicker(false)}
+                />
+            )}
+
             {clubPicker && (
                 <ClubPicker
                     mode={clubPicker.mode}

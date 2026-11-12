@@ -179,6 +179,19 @@ function Body({ shape, metal, accent }) {
                     <mesh position={[0, 1.25, 0]} rotation={[0, Math.PI / 4, 0]} material={accent}><boxGeometry args={[0.36, 0.06, 0.36]} /></mesh>
                 </>
             )
+        case 'orbit':
+            return (
+                <>
+                    <Lathe material={metal} points={[...FOOT, [0.12, 1.0], [0.18, 1.25], [0.13, 1.45], [0.22, 1.6], [0, 1.62]]} />
+                    <mesh position={[0, 2.08, 0]} material={metal}><sphereGeometry args={[0.48, 40, 28]} /></mesh>
+                    <mesh position={[0, 2.08, 0]} rotation={[Math.PI / 2 - 0.35, 0.4, 0]} material={metal}>
+                        <torusGeometry args={[0.7, 0.035, 10, 64]} />
+                    </mesh>
+                    <mesh position={[0, 2.08, 0]} rotation={[Math.PI / 2 + 0.45, -0.5, 0]} material={accent}>
+                        <torusGeometry args={[0.7, 0.03, 10, 64]} />
+                    </mesh>
+                </>
+            )
         case 'globe':
         default:
             return (

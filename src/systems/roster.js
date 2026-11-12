@@ -1,6 +1,7 @@
 import { TEAMS } from '../data/teams'
 import { worldClub } from '../data/world'
 import { BENCH_COUNT, STARTER_COUNT, worldSquad } from '../data/worldSquads'
+import { nationalSquad } from '../services/nationalTeams'
 import { applyUpgradeLevel } from '../services/upgrade'
 import { aiUpgradeFor, difficultyOf } from '../services/difficulty'
 import { ensureCardFields, playerIdOf } from '../services/cards'
@@ -169,7 +170,8 @@ export function getOpponentColor(teamId) {
 export function buildMatchRoster(roster, opponent, { difficulty = null, season = 0 } = {}) {
     if (!opponent || opponent.id === 'red') return roster
 
-    const squad = worldSquad(opponent.id)
+    // Phase 29E: đối thủ là đội tuyển quốc gia → 22 người được gọi lên tuyển.
+    const squad = opponent.isNation ? nationalSquad(opponent.id) : worldSquad(opponent.id)
 
     if (!squad.length) return roster
 
@@ -197,6 +199,8 @@ export function buildMatchRoster(roster, opponent, { difficulty = null, season =
         height: player.height,
         weight: player.weight,
         clubId: player.clubId,
+        // Phase 29E: quốc tịch → team color quốc tịch của đội AI.
+        nationality: player.nationality || null,
         condition: 100,
     })
 

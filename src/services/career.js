@@ -11,6 +11,17 @@ export const DEFAULT_USER_CLUB = MAN_UTD_ID
 export const ORIGINAL_SQUAD_CLUB = MAN_UTD_ID
 
 let current = DEFAULT_USER_CLUB
+// Phase 29E: trong lúc đá World Cup, "đội của người chơi" là đội tuyển quốc
+// gia ('nat-xxx'): tên, huy hiệu, áo, isUserClub… dùng đội tuyển. CLB vẫn được
+// giữ nguyên (managedClubId) và quay lại khi rời World Cup.
+let matchSide = null
+
+export function setMatchSide(teamId) {
+    matchSide = teamId || null
+}
+
+export const matchSideId = () => matchSide
+export const managedClubId = () => current
 
 export const normalizeClubId = (clubId) => LEGACY_CLUB_ALIASES[clubId] || clubId
 
@@ -21,6 +32,6 @@ export function setUserClubId(clubId) {
     return current
 }
 
-export const userClubId = () => current
-export const userTeam = () => worldClub(current)
-export const isUserClub = (clubId) => normalizeClubId(clubId) === current
+export const userClubId = () => matchSide || current
+export const userTeam = () => worldClub(matchSide || current)
+export const isUserClub = (clubId) => normalizeClubId(clubId) === (matchSide || current)

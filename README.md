@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C and 29D — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29E (World Cup with national teams, nationality team color), then 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D and 29E — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -252,6 +252,8 @@ ultimate-football-manager-3d/
     │   ├── worldClubs.js     # 18 countries × 2 divisions × 20 real clubs: colours + real-name stars (Phase 26A)
     │   ├── world.js          # parses the world data: leagues, clubs, ids, strengths (Phase 26A)
     │   ├── worldSquads.js    # deterministic 22-player squad per club (Phase 26A)
+    │   ├── nations.js        # 32 national teams as virtual clubs (Phase 29E)
+    │   ├── starNationality.js # nationality of the 351 real-name stars (Phase 29E)
     │   ├── namePools.js      # fictional first / last names per nationality (Phase 26A)
     │   ├── starPhysique.js   # approximate height / weight of the real-name stars (Phase 26C)
     │   └── ...
@@ -266,7 +268,9 @@ ultimate-football-manager-3d/
     │   ├── teamColor.js      # team color: card level color + club color of the XI (Phase 26D)
     │   ├── cupService.js     # C1 / C2: qualification, draw, groups, knockouts, shoot-outs, calendar (Phase 27)
     │   ├── quickSim.js       # quick simulation: team ratings, instant result, 5 per day (Phase 28)
-    │   ├── trophyService.js  # trophies + career: catalog of 38 trophies, awarding, backfill from history (Phase 28B)
+    │   ├── trophyService.js  # trophies + career: catalog of 39 trophies, awarding, backfill from history (Phase 28B)
+    │   ├── nationalTeams.js  # national squads: nationality pools, call-ups, strength (Phase 29E)
+    │   ├── worldCupService.js # World Cup: draw, groups, knockouts, simulation, results, prizes (Phase 29E)
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
@@ -326,6 +330,8 @@ ultimate-football-manager-3d/
         ├── screens/TrophyRoomScreen.jsx # TROPHIES: shelves, trophy details, career table (Phase 28B)
         ├── TrophyIcon.jsx        # SVG trophy for each competition, difficulty star (Phase 28B)
         ├── NewTrophyPopup.jsx    # "NEW TROPHY" pop-up (Phase 28B)
+        ├── NationPicker.jsx      # choose your national team for the World Cup (Phase 29E)
+        ├── WorldCupPanel.jsx     # WORLD CUP tab: groups, bracket, your matches (Phase 29E)
         ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B)
         ├── Stadium.jsx           # stands with crowd, boards, floodlights (Phase 29B)
         ├── Trophy3D.jsx          # 3D turning trophy with SVG fallback; TrophyCanvas.jsx = WebGL part (Phase 29B)
@@ -392,7 +398,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
-| 29E | World Cup: 32 national teams, squads called up from all clubs, nationality team color | 🔜 Planned (before 29A) |
+| 29E | World Cup: 32 national teams, squads called up from all clubs, nationality team color | ✅ Done (2026-11-12) |
 | Backlog | Individual player skills / traits | 💤 Later |
 | Backlog | Card seasons and real player data (was Phase 30, moved to the backlog on 2026-11-12) | 💤 Later |
 
@@ -1218,7 +1224,7 @@ Agreed on 2026-11-12 (FC Online-style team color, done before 26B). Logic in `sr
 - **Substitutions recompute at once** (11 at +5 = silver; bring on a +3 → bronze; bring on a +1 → no card color; bring on a player from another club → no club color). A red card does not remove team color (the sent-off player still counts).
 - **AI teams have team color too, same rules.** An AI XI is always 11 from one club (+3); its card color comes from the difficulty: Easy none (+3 total), Normal / Hard bronze (+4), Very hard silver (+5), Legendary gold (+7).
 - **Shown:** TEAM COLOR box on the SQUAD screen (starting XI), in the lineup board (updates while dragging players), under both lineups on the pre-match screen (OVR there includes the bonus, green ▲, tooltip "Base 85 + 3 team color"), and "TEAM COLOR +N" in the in-match player profile. The box also says what is missing, e.g. "2 players below +5 → Silver (+2)". Card lists, the market and the upgrade screen keep showing base stats.
-- Idea for later: nationality team color (needs nationalities for the real-name stars) → Phase 29E.
+- Idea for later: nationality team color (needs nationalities for the real-name stars) → done in Phase 29E.
 
 ### Phase 27 — C1 / C2 club cups ✅ (2026-11-12)
 
@@ -1372,19 +1378,20 @@ Requested and built on 2026-11-12. Code: `src/systems/shootout.js` (engine), `sr
 - **Saved like before:** the real kicks are stored as the tie's shoot-out (`results[fixtureId].shootout`, `played: true`), so the post-match box ("Penalties 5–6" + every kick), the cup bracket and the history show them; the shoot-out does not count in match statistics (shots, xG, saves). Quitting during the shoot-out = 0–3 forfeit (tie lost).
 - **Testing:** an end-to-end browser test plays a whole shoot-out (through sudden death) and the simulate path; it uses a test-only hook that exists only in builds made with `VITE_E2E=1`.
 
-### Phase 29E — World Cup and national teams (planned, before 29A)
+### Phase 29E — World Cup and national teams ✅ (2026-11-12)
 
-Requested on 2026-11-12 (README only, no code yet; details below are the proposal, to confirm before coding).
+Proposal approved and built on 2026-11-12. Code: `src/data/nations.js`, `src/data/starNationality.js`, `src/services/nationalTeams.js`, `src/services/worldCupService.js`, `src/components/NationPicker.jsx`, `src/components/WorldCupPanel.jsx`; World Cup mode in `GameScene.jsx`.
 
-- **National teams, players already in the game:** the 15,840 club players already have a nationality, so most squads are called up from the existing players; only a few players are added where a nation is short.
-  - **32 nations:** the 18 league countries (England, Italy, Spain, Germany, France, Belgium, Portugal, Brazil, Netherlands, Argentina, USA, Mexico, Japan, Croatia, Poland, Denmark, Sweden, Turkey) + Ghana (already in the data) + 13 more (e.g. Uruguay, Colombia, Morocco, Senegal, Nigeria, Korea Republic, Switzerland, Australia, Serbia, Ecuador, Cameroon, Vietnam, Canada); the 13 get small generated squads (~23 players each) plus the catalog players of that nationality.
-  - **Call-ups:** the best 23 of each nationality from every club (including your own cards, with their +level), chosen automatically; you can change your nation's squad and lineup.
-  - **Data fix:** the real-name stars currently store a country code (`eng`, `bra`…) instead of a nationality name — normalise them so they are called up correctly.
-- **Format (like the real tournament):** 8 groups of 4 (one match against each), top 2 → round of 16, quarter-finals, semi-finals, third-place match, final — single matches; a level knockout match goes to a **penalty shoot-out you take yourself (Phase 29D)**.
-- **When:** every 4 seasons in the summer break between two club seasons (first one after the 2026/27 season), with a WORLD CUP tab to follow it; you choose which nation to manage (default: the nation with most players in your XI).
-- **Kits and crests:** national colours for home / away / third kits and a simple flag-style crest, generated like the club ones.
-- **Rewards:** EP prize per round, a **World Cup trophy** (a new, original 39th design) in the TROPHIES room, player XP; club condition is reset for the new season as usual.
-- **Nationality team color (FC Online-style, also in club matches):** starters of the same nationality give extra main stats — suggestion: 7 of 11 → +1, 9 → +2, all 11 → +3 — stacking with card level color and club color; shown in the TEAM COLOR box and applied to AI teams too. In World Cup matches every national team has the full +3.
+- **When:** every 4 years in the summer break — after the 2026/27, 2030/31… seasons (World Cup 2027, 2031…). When the club season is over the home screen shows **WORLD CUP 2027 · CHOOSE YOUR NATION** (or **SKIP WORLD CUP**); START NEW SEASON is available again once the World Cup is finished or skipped.
+- **32 nations:** the 18 league countries + Ghana + Uruguay, Morocco, Colombia, Switzerland, Senegal, Serbia, Nigeria, Korea Republic, Ecuador, Cameroon, Canada, Australia, Vietnam. Each nation is a "virtual club" (`nat-xxx`) so crests, kits, names and the 3D match work like club matches; kit colours are the national colours.
+- **Players:** every one of the 15,840 club players already had a nationality; the 351 real-name stars now have one too (`starNationality.js`, e.g. Kane → England, Salah → Egypt — stars from countries outside the 32 can still count for nationality team color). The 13 nations without a league in the game get 22 generated players each (new name pools for Morocco, Korea, Serbia, Vietnam), plus catalog players of that nationality.
+- **Call-ups:** for each nation the best player for each of the 22 squad slots (same 4-3-3 + bench layout as AI clubs: right position first, then same position group) from all clubs; **your own cards (with their +level) replace the base player when better**. The nation picker shows all 32 nations by strength (starting XI average), how many of your cards each has, the suggested nation (most players in your XI) and the starting XI.
+- **Format:** 8 groups of 4 drawn from 4 strength pots, 3 group matches, top 2 → round of 16 (A1–B2, C1–D2…), quarter-finals, semi-finals, third-place match, final — single matches at a neutral venue; a level knockout match goes to the **penalty shoot-out you take yourself (Phase 29D)**. Other matches are simulated deterministically from team strength.
+- **Playing:** PLAY MATCH on the home screen (or LEAGUE → **WORLD CUP** tab) opens the usual pre-match screen with your national team (formation, tactic, kits, EDIT lineup) against the opponent's national squad (with the season difficulty). During the World Cup your club squad is set aside untouched and comes back when you leave (national matches do not change your cards' condition or XP). Quick simulation is not offered for World Cup matches. **SIMULATE REST** / **SKIP WORLD CUP** simulate the remaining matches (no trophy or prizes then). When you are knocked out, the rest of the tournament is simulated at once.
+- **WORLD CUP tab** (LEAGUE screen): your matches, the 8 groups, the knockout bracket (round of 16 → final, third place) with penalties, the champion.
+- **Rewards:** every match gives club XP and prize money like a C1 match (×1.5); reaching the round of 16 5,000,000 EP, quarter-final 8,000,000, semi-final 12,000,000, final 18,000,000, third place 3,000,000, **champions 35,000,000 + Premium pack + Upgrade Protection** (× difficulty). Winning gives the **World Cup trophy** — a new, 39th design (golden globe with two orbit rings, also in 3D) on the **International & Continental** shelf of the TROPHIES room, listed with the year and the nation; the career numbers show WORLD CUPS.
+- **Nationality team color (also in club matches, AI included):** 7 / 9 / all 11 starters of one nationality → **+1 / +2 / +3** main stats, stacking with card level color and club color (TEAM COLOR box: "Nation color"). A national team always has +3.
+- **Fixes found while testing:** `npm run dev` crashed at start since Phase 29B ("Cannot access 'lazy' before initialization" — the lazy 3D import sat between import lines); playing a second match in a row could throw a `removeChild` error when leaving the match (player name tags used drei `<Html>`, one React root per tag) — name tags are now plain DOM elements positioned every frame.
 
 ### Backlog
 
@@ -1431,7 +1438,7 @@ Requested on 2026-11-12 (README only, no code yet; details below are the proposa
 | Chiều cao, cân nặng của cầu thủ (ảnh hưởng thể hình 3D, sức mạnh, khéo léo, bóng bổng, tầm với thủ môn) | Phase 26C ✅ |
 | Độ khó mỗi mùa: tăng cấp thẻ + của cầu thủ đối thủ, thưởng nhiều hơn khi khó hơn | Phase 26C ✅ |
 | Team color kiểu FO4: cả 11 người đá chính cùng bậc thẻ (theo người thấp nhất) và cùng CLB thì được cộng chỉ số, đội AI cũng có | Phase 26D ✅ |
-| World Cup 32 đội tuyển quốc gia (gọi cầu thủ từ các CLB), team color theo quốc tịch | Phase 29E |
+| World Cup 32 đội tuyển quốc gia (gọi cầu thủ từ các CLB), team color theo quốc tịch | Phase 29E ✅ |
 | Luật bàn thắng sân khách ở vòng đấu loại 2 lượt; đá trái vị trí thì OVR hiển thị giảm | Sau 27 ✅ |
 | Mô phỏng nhanh 5 trận mỗi ngày, có hoạt cảnh, thưởng ×0.7 | Phase 28 ✅ |
 | Phòng truyền thống: danh hiệu của HLV (đổi CLB vẫn giữ), mỗi giải một kiểu cúp, sao độ khó, bảng sự nghiệp | Phase 28B ✅ |
