@@ -1,19 +1,13 @@
 import { useEffect, useRef } from 'react'
 
+const BLOCKED_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']
+
 export function useKeyboard() {
   const keys = useRef({})
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      const blockedKeys = [
-        'ArrowUp',
-        'ArrowDown',
-        'ArrowLeft',
-        'ArrowRight',
-        'Space',
-      ]
-
-      if (blockedKeys.includes(event.code)) {
+      if (BLOCKED_KEYS.includes(event.code)) {
         event.preventDefault()
       }
 
@@ -21,33 +15,39 @@ export function useKeyboard() {
     }
 
     const onKeyUp = (event) => {
-      const blockedKeys = [
-        'ArrowUp',
-        'ArrowDown',
-        'ArrowLeft',
-        'ArrowRight',
-        'Space',
-      ]
-
-      if (blockedKeys.includes(event.code)) {
+      if (BLOCKED_KEYS.includes(event.code)) {
         event.preventDefault()
+      }
+
+      // Phase 29F: trên Mac, phím thả ra trong lúc đang giữ ⌘ không có keyup
+      // → thả ⌘ thì coi như thả hết (tránh phím bị "kẹt" ở trạng thái giữ).
+      if (event.key === 'Meta' || event.code === 'MetaLeft' || event.code === 'MetaRight') {
+        keys.current = {}
+        return
       }
 
       keys.current[event.code] = false
     }
 
-    const onBlur = () => {
+    const clear = () => {
       keys.current = {}
+    }
+
+    // Phase 29F: ẩn tab / thu nhỏ cửa sổ cũng bỏ hết phím đang giữ.
+    const onVisibility = () => {
+      if (document.hidden) clear()
     }
 
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
-    window.addEventListener('blur', onBlur)
+    window.addEventListener('blur', clear)
+    document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('blur', onBlur)
+      window.removeEventListener('blur', clear)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 

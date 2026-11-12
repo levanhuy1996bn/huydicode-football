@@ -18,7 +18,7 @@ import {
 // Phase 28B: phòng truyền thống — kệ cúp (C1, C2, 18 giải hạng nhất, 18 giải
 // hạng hai), chi tiết từng cúp, số liệu và bảng sự nghiệp theo mùa.
 const SHELVES = [
-    ['CONTINENTAL', (entry) => entry.kind === 'c1' || entry.kind === 'c2'],
+    ['INTERNATIONAL & CONTINENTAL', (entry) => entry.kind === 'wc' || entry.kind === 'c1' || entry.kind === 'c2'],
     ['TOP DIVISIONS', (entry) => entry.kind === 'top'],
     ['SECOND DIVISIONS', (entry) => entry.kind === 'second'],
 ]
@@ -78,6 +78,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                     ['TROPHIES', summary.trophies],
                     ['LEAGUE TITLES', summary.leagueTitles],
                     ['CUP TITLES', summary.cupTitles],
+                    ['WORLD CUPS', summary.worldCups],
                     ['SEASONS', summary.seasons],
                     ['CLUBS', summary.clubs],
                     ['BEST C1', summary.bestC1 ? cupRunLabel(summary.bestC1).replace('C1 · ', '') : '—'],
@@ -98,7 +99,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                                 <span>{title}</span>
                                 <small>{cabinet.filter(test).filter((entry) => entry.count).length}/{cabinet.filter(test).length}</small>
                             </div>
-                            <div className={`trophy-grid${title === 'CONTINENTAL' ? ' trophy-grid--big' : ''}`}>
+                            <div className={`trophy-grid${title.includes('CONTINENTAL') ? ' trophy-grid--big' : ''}`}>
                                 {cabinet.filter(test).map((entry) => (
                                     <button
                                         key={entry.id}
@@ -111,7 +112,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                                             trophy={entry}
                                             won={entry.count > 0}
                                             star={entry.bestStar}
-                                            size={title === 'CONTINENTAL' ? 92 : 54}
+                                            size={title.includes('CONTINENTAL') ? 92 : 54}
                                         />
                                         {entry.count > 1 && <span className="trophy-count">×{entry.count}</span>}
                                         <small>{entry.name}</small>
@@ -138,7 +139,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                                 <ol className="trophy-wins">
                                     {selected.wins.map((win) => (
                                         <li key={win.id}>
-                                            <span className="trophy-wins__season">{seasonLabel(win.season)}</span>
+                                            <span className="trophy-wins__season">{win.edition ? win.edition : seasonLabel(win.season)}</span>
                                             <span className="trophy-wins__club">
                                                 <ClubCrest clubId={win.clubId} size={18} />
                                                 {worldClub(win.clubId)?.name || win.clubId}

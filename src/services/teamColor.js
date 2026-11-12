@@ -7,11 +7,14 @@
 // 2. Team color CLB: cả 11 người cùng một CLB thật → +3. CLB của thẻ = CLB
 //    của cầu thủ (thẻ Saka = Arsenal; đội hình gốc = Man United; cầu thủ tự do
 //    không thuộc CLB nào).
-// Hai loại cộng dồn, cộng vào 6 chỉ số chính (+ OVR) của cả 11 người, chỉ
+// 3. Phase 29E — team color quốc tịch: 7 / 9 / 11 người đá chính cùng quốc
+//    tịch → +1 / +2 / +3 (đội tuyển quốc gia luôn đủ 11 → +3).
+// Các loại cộng dồn, cộng vào 6 chỉ số chính (+ OVR) của cả 11 người, chỉ
 // trong trận — không ghi vào thẻ. Thẻ đỏ không làm mất team color (người bị
 // đuổi vẫn được tính). Đội AI cũng có team color như đội người chơi.
 import { CLUB_BY_ID, worldClub } from '../data/world'
 import { ORIGINAL_SQUAD_CLUB, normalizeClubId } from './career'
+import { nationalityOf } from '../data/starNationality'
 
 export const UPGRADE_COLORS = [
     { id: 'diamond', label: 'Diamond', min: 10, bonus: 6 },
@@ -21,6 +24,12 @@ export const UPGRADE_COLORS = [
 ]
 
 export const CLUB_COLOR_BONUS = 3
+// Phase 29E: số người cùng quốc tịch → điểm cộng.
+export const NATION_COLORS = [
+    { min: 11, bonus: 3 },
+    { min: 9, bonus: 2 },
+    { min: 7, bonus: 1 },
+]
 export const TEAM_COLOR_SIZE = 11
 
 const MAIN_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical']
@@ -74,7 +83,20 @@ export function teamColorOf(players = []) {
     const [topClubId, topCount] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] || [null, 0]
     const clubActive = full && topClubId && topCount === list.length
 
-    const bonus = (upgrade?.bonus || 0) + (clubActive ? CLUB_COLOR_BONUS : 0)
+    // Quốc tịch đông nhất trong đội hình (Phase 29E).
+    const nationCounts = new Map()
+
+    list.forEach((player) => {
+        const nationality = nationalityOf(player)
+
+        if (nationality) nationCounts.set(nationality, (nationCounts.get(nationality) || 0) + 1)
+    })
+
+    const [topNation, nationCount] = [...nationCounts.entries()].sort((a, b) => b[1] - a[1])[0] || [null, 0]
+    const nationTier = full ? NATION_COLORS.find((tier) => nationCount >= tier.min) || null : null
+    const nextNationTier = [...NATION_COLORS].reverse().find((tier) => tier.min > nationCount) || null
+
+    const bonus = (upgrade?.bonus || 0) + (clubActive ? CLUB_COLOR_BONUS : 0) + (nationTier?.bonus || 0)
 
     return {
         size: list.length,
@@ -89,6 +111,15 @@ export function teamColorOf(players = []) {
                 count: topCount,
                 active: Boolean(clubActive),
                 bonus: clubActive ? CLUB_COLOR_BONUS : 0,
+            }
+            : null,
+        nation: topNation
+            ? {
+                nationality: topNation,
+                count: nationCount,
+                active: Boolean(nationTier),
+                bonus: nationTier?.bonus || 0,
+                next: nextNationTier,
             }
             : null,
         bonus,

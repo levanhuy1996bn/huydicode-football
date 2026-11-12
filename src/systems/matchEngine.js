@@ -12,6 +12,7 @@ import { recordPossession } from './matchStats'
 import { updateDuels, updateShield } from './duels'
 import { updateStamina } from './stamina'
 import { isDeadBall, startWhistle } from './whistle'
+import { stepShootout } from './shootout'
 
 function tickTimers(state, dt) {
     Object.keys(state.timers).forEach((key) => {
@@ -28,13 +29,25 @@ function tickTimers(state, dt) {
 }
 
 // Người chơi không bấm phím trong chừng này giây → máy đá thay.
+// Phase 29F: chỉnh được trong Settings (5 / 10 / 20 giây → ctx.idleLimit).
 export const IDLE_LIMIT = 10
+// Phím đang "giữ" chỉ được tính là đang chơi trong chừng này giây kể từ sự
+// kiện phím cuối cùng. Giữ phím thật thì trình duyệt gửi keydown lặp lại liên
+// tục (reset đồng hồ); phím bị "kẹt" (mất keyup, ví dụ thả phím lúc đang giữ
+// ⌘ trên Mac) thì không → trước đây máy không bao giờ đá thay.
+export const HELD_KEY_GRACE = 30
 
 // Một bước logic trận đấu với dt cố định.
 export function stepMatch(ctx, dt) {
     const { state } = ctx
 
     if (!ctx.ballRef.current) return
+
+    // Phase 29D: loạt sút luân lưu chạy vòng lặp riêng.
+    if (state.shootout) {
+        stepShootout(ctx, dt)
+        return
+    }
 
     // Đã hết giờ và bóng chết: thổi còi (xem whistle.js). Sau bàn thắng /
     // bóng ra ngoài thì chờ hết nhịp ăn mừng / đặt bóng (goalCooldown) trước.
@@ -63,38 +76,55 @@ export function stepMatch(ctx, dt) {
     }
 }
 
-// Đếm thời gian người chơi không bấm phím (đang giữ phím cũng tính là đang chơi).
+// Đếm thời gian từ lần bấm / thả phím cuối cùng (Phase 29F: trước đây đếm
+// "không có phím nào đang giữ", nên một phím kẹt làm máy không bao giờ đá thay).
 function updateIdle(ctx, dt) {
     const { state } = ctx
-    const pressed = ctx.keys?.current || {}
-    const holding = Object.values(pressed).some(Boolean)
-
-    if (holding || ctx.autoPlay) {
-        state.idleTime = 0
-        return
-    }
 
     state.idleTime = (state.idleTime || 0) + dt
 
-    if (!state.autoPilot && state.idleTime >= IDLE_LIMIT) {
-        state.autoPilot = true
+    if (state.autoPilot || ctx.autoPlay) return
+
+    const limit = ctx.idleLimit || IDLE_LIMIT
+    const pressed = ctx.keys?.current || {}
+    const holding = Object.values(pressed).some(Boolean)
+
+    // Đang giữ phím (dẫn bóng giữ mũi tên…): chờ tới HELD_KEY_GRACE.
+    if (state.idleTime < limit || (holding && state.idleTime < Math.max(limit, HELD_KEY_GRACE))) return
+
+    if (holding && ctx.keys) ctx.keys.current = {}
+
+    setAutoPilot(ctx, true)
+}
+
+// Bật / tắt máy đá thay (không bấm phím đủ lâu, hoặc nút AUTO trong trận).
+export function setAutoPilot(ctx, on) {
+    const { state } = ctx
+
+    if (Boolean(state.autoPilot) === Boolean(on)) return
+
+    state.autoPilot = Boolean(on)
+    state.idleTime = 0
+
+    if (on) {
         state.charge = null
-        ctx.onAutoPilotChange?.(true)
         ctx.onActionMessage('AUTO PLAY - PRESS ANY KEY TO TAKE CONTROL')
+    } else {
+        ctx.onActionMessage('YOU HAVE CONTROL')
     }
+
+    ctx.onAutoPilotChange?.(state.autoPilot)
 }
 
 // Người chơi bấm phím bất kỳ: lấy lại quyền điều khiển.
 export function noteUserInput(ctx) {
-    const { state } = ctx
+    ctx.state.idleTime = 0
+    setAutoPilot(ctx, false)
+}
 
-    state.idleTime = 0
-
-    if (state.autoPilot) {
-        state.autoPilot = false
-        ctx.onAutoPilotChange?.(false)
-        ctx.onActionMessage('YOU HAVE CONTROL')
-    }
+// Thả phím: vẫn là đang chơi (đếm lại thời gian chờ), không đổi chế độ.
+export function noteKeyActivity(ctx) {
+    ctx.state.idleTime = 0
 }
 
 function stepPlay(ctx, dt) {

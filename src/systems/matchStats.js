@@ -20,6 +20,8 @@ export function createMatchStats() {
         xg: 0,
         // Phase 23: cú sút bị chặn bởi cầu thủ (không tính thủ môn)
         blocks: 0,
+        // Phase 29F: chuyền dài (bóng bổng / chọc khe ≥ 25m), chưa hiện trên giao diện
+        longPasses: 0,
     })
 
     return {

@@ -29,14 +29,27 @@ import {
 import { attachBallToPlayer } from '../systems/ball'
 import { resetPositions } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
+import { startShootout, stopShootout } from '../systems/shootout'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
-import { noteUserInput, stepMatch } from '../systems/matchEngine'
+import { noteKeyActivity, noteUserInput, setAutoPilot, stepMatch } from '../systems/matchEngine'
 import { userTeam } from '../services/career'
 
-function FixedCamera({ ballRef }) {
+// Phase 29D: phạt đền / luân lưu → camera thấp sau lưng người sút, nhìn về
+// khung thành. Trả về đội đang sút hoặc null.
+function penaltyViewTeam(state) {
+    if (!state) return null
+    if (state.shootout?.current) return state.shootout.current.team
+    if (state.restart?.type === 'penalty') return state.restart.teamId
+    if (state.penaltyCam && (state.elapsed || 0) < state.penaltyCam.until) return state.penaltyCam.teamId
+
+    return null
+}
+
+function FixedCamera({ ballRef, matchState }) {
     const { camera, size } = useThree()
     const target = useRef(new THREE.Vector3(0, 0, 0))
     const initialized = useRef(false)
+    const penaltyView = useRef(false)
 
     useEffect(() => {
         camera.fov = 38
@@ -48,6 +61,28 @@ function FixedCamera({ ballRef }) {
 
     useFrame((_, delta) => {
         const ballPosition = ballRef.current?.translation()
+        const penaltyTeam = penaltyViewTeam(matchState)
+
+        if (penaltyTeam) {
+            // Đội sút tấn công về phía nào (giống matchState.attackDir).
+            const base = penaltyTeam === 'blue' ? -1 : 1
+            const attack = matchState.sidesSwapped ? -base : base
+            const spotZ = attack * (52.5 - 11)
+            const blend = 1 - Math.exp(-(penaltyView.current ? 3.5 : 2.2) * delta)
+
+            // Hơi lệch sang phải, cao ~3.6m, lùi 13m sau chấm phạt đền: thấy
+            // trọn người sút (thấp, bên trái màn hình) và cả khung thành.
+            camera.position.lerp(new THREE.Vector3(-attack * 1.6, 3.6, spotZ - attack * 13), blend)
+            target.current.lerp(new THREE.Vector3(0, 0.9, attack * 50.5), blend)
+            camera.lookAt(target.current)
+            penaltyView.current = true
+            return
+        }
+
+        if (penaltyView.current) {
+            // Vừa xong quả phạt đền: trở lại camera cạnh sân mượt mà.
+            penaltyView.current = false
+        }
 
         const targetX = clamp(
             (ballPosition?.x || 0) * 0.62,
@@ -415,6 +450,14 @@ export default function MatchWorld({
     onCard,
     // Phase 29B: chất lượng đồ hoạ ('high' | 'low').
     quality = 'high',
+    // Phase 29D: luân lưu tự đá — lệnh { type: 'start' | 'stop', nonce, first, kicks }.
+    shootoutCommand = null,
+    onShootoutUpdate,
+    onShootoutEnd,
+    // Phase 29F: số giây không bấm phím trước khi máy đá thay; lệnh bật / tắt
+    // máy đá thay từ nút AUTO ({ on, nonce }).
+    idleLimit = 10,
+    autoPilotCommand = null,
 }) {
     const keys = useKeyboard()
 
@@ -516,6 +559,9 @@ export default function MatchWorld({
         onSentOff: (id) => setSentOff((list) => (list.includes(id) ? list : [...list, id])),
         // Phase 29B: âm thanh trận đấu (còi, chạm bóng, cứu thua, sút trượt).
         onSound: matchSoundEvent,
+        onShootoutUpdate,
+        onShootoutEnd,
+        idleLimit,
     })
     // Người đang điều khiển: engine có thể tự đổi (nhận bóng, giao bóng, S/Q)
     // trước khi React kịp render lại. Chỉ đồng bộ từ prop khi prop THAY ĐỔI,
@@ -616,6 +662,8 @@ export default function MatchWorld({
         state.sidesSwapped = shouldSwap
 
         if (shouldSwap) {
+            // Phase 29F: đếm lại thời gian chờ máy đá thay từ đầu hiệp 2.
+            state.idleTime = 0
             halftimeRecovery(state)
             resetPositions(ctx, 'red')
             state.timers.goalCooldown = 1
@@ -638,6 +686,9 @@ export default function MatchWorld({
         state.stats = createMatchStats()
         resetMatchProgress(state)
         resetStamina(ctx)
+        // Phase 29F: trận mới — người chơi điều khiển lại từ đầu.
+        state.autoPilot = false
+        state.idleTime = 0
 
         resetPositions(ctx, 'blue')
         onActionMessage('MATCH RESTARTED')
@@ -648,6 +699,8 @@ export default function MatchWorld({
     useEffect(() => {
         const onKeyDown = (event) => {
             if (!ctx.isPlaying) return
+            // Phase 29D: luân lưu chỉ dùng D (sút) và phím mũi tên.
+            if (ctx.state.shootout && event.code !== 'KeyD' && !event.code.startsWith('Arrow')) return
 
             // Bấm phím bất kỳ: lấy lại quyền điều khiển nếu máy đang đá thay.
             noteUserInput(ctx)
@@ -660,6 +713,7 @@ export default function MatchWorld({
                 return
             }
 
+            noteKeyActivity(ctx)
             handleKeyUp(ctx, event)
         }
 
@@ -676,6 +730,31 @@ export default function MatchWorld({
             window.removeEventListener('blur', onBlur)
         }
     }, [ctx])
+
+    // Phase 29F: nút AUTO / màn nghỉ giữa hiệp bật / tắt máy đá thay.
+    const autoPilotNonce = useRef(null)
+
+    useEffect(() => {
+        if (!autoPilotCommand || autoPilotNonce.current === autoPilotCommand.nonce) return
+
+        autoPilotNonce.current = autoPilotCommand.nonce
+        setAutoPilot(ctx, autoPilotCommand.on)
+    }, [autoPilotCommand, ctx])
+
+    // Phase 29D: bắt đầu / dừng loạt luân lưu theo lệnh từ GameScene.
+    const shootoutNonce = useRef(null)
+
+    useEffect(() => {
+        if (!shootoutCommand || shootoutNonce.current === shootoutCommand.nonce) return
+
+        shootoutNonce.current = shootoutCommand.nonce
+
+        if (shootoutCommand.type === 'start') {
+            startShootout(ctx, { first: shootoutCommand.first, kicks: shootoutCommand.kicks || [] })
+        } else {
+            stopShootout(ctx)
+        }
+    }, [shootoutCommand, ctx])
 
     // Vòng lặp chính: chạy 1 bước logic ngay TRƯỚC mỗi bước vật lý của
     // Rapier (Physics timeStep = FIXED_STEP). Logic và vật lý luôn đi cùng
@@ -732,7 +811,7 @@ export default function MatchWorld({
                 shadow-mapSize={[2048, 2048]}
             />
 
-            <FixedCamera ballRef={ballRef} />
+            <FixedCamera ballRef={ballRef} matchState={state} />
 
             <Stadium
                 quality={quality}

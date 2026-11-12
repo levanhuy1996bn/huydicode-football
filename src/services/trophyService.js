@@ -46,6 +46,8 @@ export const FLAG_COLORS = {
 const countriesByRank = [...COUNTRIES].sort((a, b) => a.rank - b.rank)
 
 export const TROPHY_CATALOG = [
+    // Phase 29E: World Cup — mẫu cúp thứ 39 (quả cầu có hai vòng quỹ đạo).
+    { id: 'wc', kind: 'wc', name: 'World Cup', subtitle: 'International · every 4 years', shape: 'orbit', metal: 'gold', flag: ['#0b6e4f', '#d8b04a'] },
     { id: 'c1', kind: 'c1', name: CUPS.c1.name, subtitle: 'Continental · C1', shape: 'bigears', metal: 'silver', flag: ['#1d3c8f', '#d8b04a'] },
     { id: 'c2', kind: 'c2', name: CUPS.c2.name, subtitle: 'Continental · C2', shape: 'tall', metal: 'amber', flag: ['#7a1f1f', '#f08a24'] },
     ...countriesByRank.map((country, index) => ({
@@ -170,6 +172,18 @@ export function awardTrophies(world, league) {
         if (currentCupView(league, cupId)?.champion === clubId) award(cupId)
     })
 
+    // Phase 29E: vô địch World Cup cùng đội tuyển của người chơi.
+    const wc = base.worldCup
+
+    if (wc?.status === 'done' && !wc.skipped && wc.champion && wc.champion === wc.nationId) {
+        const id = trophyId(wc.season, 'wc', wc.nationId)
+
+        if (!known.has(id)) {
+            known.add(id)
+            added.push({ id, competitionId: 'wc', season: wc.season, edition: wc.edition, clubId: wc.nationId, difficulty: league.difficulty || null })
+        }
+    }
+
     if (!added.length) return { world: base, added }
 
     return { world: { ...base, trophies: [...base.trophies, ...added] }, added }
@@ -217,7 +231,8 @@ export function careerSummary(world, liveRow = null) {
 
     return {
         trophies: trophies.length,
-        leagueTitles: trophies.filter((trophy) => !CUPS[trophy.competitionId]).length,
+        leagueTitles: trophies.filter((trophy) => !CUPS[trophy.competitionId] && trophy.competitionId !== 'wc').length,
+        worldCups: trophies.filter((trophy) => trophy.competitionId === 'wc').length,
         cupTitles: trophies.filter((trophy) => CUPS[trophy.competitionId]).length,
         seasons: rows.length,
         clubs: new Set(rows.map((row) => row.clubId)).size,

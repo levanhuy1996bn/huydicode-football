@@ -1,7 +1,6 @@
 
-import { useEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { shortPlayerName } from '../utils/names'
 import { bodyScale } from '../systems/physique'
@@ -26,6 +25,63 @@ const BUSY_STATES = new Set(['slide', 'fallen', 'diveLow', 'diveMid', 'diveHigh'
 
 const clamp = (value, min, max) =>
     Math.max(min, Math.min(max, value))
+
+// Sau Phase 29E: thẻ tên trên đầu cầu thủ là một <div> thường gắn vào khung
+// canvas, vị trí cập nhật mỗi frame. Trước đây dùng <Html> của drei (mỗi thẻ
+// một React root riêng): khi cầu thủ rời sân / đổi đối thủ trong lúc canvas
+// đang chạy, React 19 báo "synchronously unmount a root while rendering" rồi
+// lỗi removeChild khi rời trận. Không còn React root phụ thì không còn lỗi.
+function NameTag({ height, number, name, color, selected, labelRef, staminaRef }) {
+    const anchor = useRef(null)
+    const { gl, camera, size } = useThree()
+    const point = useMemo(() => new THREE.Vector3(), [])
+    const element = useMemo(() => {
+        const wrapper = document.createElement('div')
+
+        wrapper.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:6;will-change:transform'
+        wrapper.innerHTML =
+            '<div class="player-tag" style="display:none"><b></b><span></span><i class="player-tag__stamina"><s></s></i></div>'
+        return wrapper
+    }, [])
+
+    useLayoutEffect(() => {
+        const target = gl.domElement.parentNode
+
+        target?.appendChild(element)
+        labelRef.current = element.firstChild
+        staminaRef.current = element.querySelector('s')
+
+        return () => {
+            element.parentNode?.removeChild(element)
+            labelRef.current = null
+            staminaRef.current = null
+        }
+    }, [gl, element, labelRef, staminaRef])
+
+    useLayoutEffect(() => {
+        const tag = element.firstChild
+
+        tag.className = `player-tag${selected ? ' player-tag--selected' : ''}`
+        tag.style.setProperty('--tag-color', color)
+        tag.querySelector('b').textContent = number ?? ''
+        tag.querySelector('span').textContent = name
+    }, [element, selected, color, number, name])
+
+    useFrame(() => {
+        if (!anchor.current) return
+
+        anchor.current.getWorldPosition(point)
+        point.project(camera)
+
+        const x = (point.x * 0.5 + 0.5) * size.width
+        const y = (-point.y * 0.5 + 0.5) * size.height
+
+        element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`
+        element.style.visibility = point.z < 1 ? '' : 'hidden'
+    })
+
+    return <group ref={anchor} position={[0, height, 0]} />
+}
 
 // Chữ trắng trên áo tối, chữ tối trên áo sáng.
 function contrastColor(hex) {
@@ -323,24 +379,15 @@ export default function Player({
                 onSelect?.(player.id)
             }}
         >
-            <Html
-                position={[0, 2.25 * body.height, 0]}
-                center
-                zIndexRange={[6, 0]}
-                style={{ pointerEvents: 'none' }}
-            >
-                <div
-                    ref={labelRef}
-                    className={`player-tag${isSelected ? ' player-tag--selected' : ''}`}
-                    style={{ '--tag-color': teamColor, display: 'none' }}
-                >
-                    <b>{player.number}</b>
-                    <span>{shortPlayerName(player.name, 12)}</span>
-                    <i className="player-tag__stamina">
-                        <s ref={staminaRef} />
-                    </i>
-                </div>
-            </Html>
+            <NameTag
+                height={2.25 * body.height}
+                number={player.number}
+                name={shortPlayerName(player.name, 12)}
+                color={teamColor}
+                selected={isSelected}
+                labelRef={labelRef}
+                staminaRef={staminaRef}
+            />
 
             {isSelected && (
                 <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, 0]}>

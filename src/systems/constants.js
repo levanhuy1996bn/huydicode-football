@@ -117,23 +117,27 @@ export const facingVector = (rotationY) =>
 // Phase 22: chuyền và sút mạnh hơn (playtest: "lực chuyền, lực sút quá yếu").
 // Hệ số nhân vào tốc độ bóng lúc rời chân, sau khi đã tính lực theo khoảng
 // cách / thanh lực. Chỉnh ở đây để cân lại toàn bộ trận đấu.
+// Phase 29F: playtest "tốc độ bóng vẫn thấp" → chuyền sệt / chọc khe +12%,
+// sút +10%, trần chuyền sệt 31 → 35 m/s. Bóng bổng (chuyền dài, tạt, sút lốp,
+// đá phạt qua hàng rào) giữ nguyên vì quỹ đạo đã căn theo điểm rơi.
 export const KICK_POWER = {
-    pass: 1.15,        // chuyền ngắn (S), cả chuyền căng ZS
-    through: 1.12,     // chọc khe (W) của người chơi (tự canh lực bằng thanh lực)
+    pass: 1.29,        // chuyền ngắn (S), cả chuyền căng ZS (Phase 22: 1.15)
+    through: 1.25,     // chọc khe (W) của người chơi (1.12)
     lob: 1.06,         // chuyền bổng / tạt (A) của người chơi — độ bổng giữ nguyên
     lobbedThrough: 1.05, // chọc khe bổng (QW)
-    shoot: 1.12,       // sút thường / sút mạnh / sút chìm / trivela
-    finesse: 1.1,      // sút xoáy ZD
+    shoot: 1.23,       // sút thường / sút mạnh / sút chìm / trivela (1.12)
+    finesse: 1.21,     // sút xoáy ZD (1.1)
     chip: 1,           // sút lốp QD: giữ nguyên để không vọt xà
     freeKick: 1.04,    // sút phạt qua hàng rào
-    penalty: 1.08,
+    penalty: 1.15,     // (1.08)
     clearance: 1.04,
     keeper: 1.04,      // thủ môn ném / phát bóng
     // Máy chọc khe / tạt vào khoảng trống theo khoảng cách đã tính sẵn: tăng
     // lực nhiều thì bóng lăn quá người nhận ra biên (mô phỏng: ném biên +60%).
-    aiThrough: 1,
+    // Phase 29F: chọc khe +6% (người nhận chạy đà kịp; không +12% như chuyền).
+    aiThrough: 1.06,
     aiLob: 1.02,
-    maxPass: 31,       // trần tốc độ bóng sệt khi chuyền (m/s)
+    maxPass: 35,       // trần tốc độ bóng sệt khi chuyền (m/s) (31)
 }
 
 export function kickPowerScale({ action, variant, restartType, isThrowIn, clearance, isAI = false }) {

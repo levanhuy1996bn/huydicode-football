@@ -78,6 +78,12 @@ function CupResultBox({ info }) {
     const outcome =
         info.outcome === 'champion'
             ? `${info.cupName.toUpperCase()} WINNERS!`
+            : info.outcome === 'thirdPlace'
+                ? 'Third place!'
+                : info.outcome === 'fourthPlace'
+                    ? 'Fourth place'
+                    : info.outcome === 'toThirdPlace'
+                        ? 'Into the third-place match'
             : info.outcome === 'advanced'
                 ? `Through to ${NEXT_STAGE[info.stage]}`
                 : info.outcome === 'eliminated'

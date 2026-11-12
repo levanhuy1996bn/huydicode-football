@@ -3,6 +3,8 @@ import { isMuted, setMuted } from '../../utils/sound'
 import { SIM_DAILY_LIMIT } from '../../services/quickSim'
 import { fixtureLabel } from '../../services/cupService'
 import ClubCrest from '../ClubCrest'
+import { worldClub } from '../../data/world'
+import { nationStrength } from '../../services/nationalTeams'
 import { isUserClub, userClubId, userTeam } from '../../services/career'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
 // trận tiếp theo, bảng xếp hạng thu gọn, kết quả gần nhất, đội hình,
@@ -60,6 +62,12 @@ export default function HomeScreen({
     onChangeClub,
     simsLeft = 0,
     onSimulate,
+    // Phase 29E: World Cup
+    worldCup = null,
+    onChooseNation,
+    onPlayWorldCup,
+    onSkipWorldCup,
+    onOpenWorldCup,
 }) {
     const [muted, setMutedState] = useState(isMuted)
     const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
@@ -115,8 +123,62 @@ export default function HomeScreen({
                             </button>
                         </div>
                     </>
+                ) : worldCup?.phase === 'due' ? (
+                    <>
+                        <div className="home-hero__eyebrow">SEASON COMPLETE · SUMMER BREAK</div>
+                        <div className="home-hero__title">WORLD CUP {worldCup.edition}</div>
+                        <p className="home-hero__text">
+                            32 nations, 8 groups of 4, then knockout rounds. Choose the national team you will manage — the best
+                            players of that nation are called up from every club, your own cards included.
+                        </p>
+                        <div className="home-hero__actions">
+                            <button type="button" className="btn btn--primary btn--large" onClick={onChooseNation}>
+                                CHOOSE YOUR NATION
+                            </button>
+                            <button type="button" className="btn" onClick={onSkipWorldCup} title="Simulate the whole tournament (no trophy or prizes)">
+                                SKIP WORLD CUP
+                            </button>
+                        </div>
+                    </>
+                ) : worldCup?.phase === 'active' && worldCup.fixture ? (
+                    <>
+                        <div className="home-hero__eyebrow">
+                            NEXT MATCH · {fixtureLabel(worldCup.fixture)} · NEUTRAL VENUE
+                        </div>
+                        <div className="home-hero__teams">
+                            <TeamBadge
+                                side="home"
+                                clubId={worldCup.nationId}
+                                name={worldClub(worldCup.nationId)?.name}
+                                strength={nationStrength(worldCup.nationId)}
+                            />
+                            <div className="home-hero__vs">VS</div>
+                            <TeamBadge
+                                side="away"
+                                clubId={worldCup.opponentId}
+                                name={worldClub(worldCup.opponentId)?.name}
+                                strength={nationStrength(worldCup.opponentId)}
+                            />
+                        </div>
+                        <div className="home-hero__actions">
+                            <button type="button" className="btn btn--primary btn--large" onClick={onPlayWorldCup}>
+                                PLAY MATCH
+                            </button>
+                            <button type="button" className="btn" onClick={onOpenWorldCup}>WORLD CUP</button>
+                            <button type="button" className="btn" onClick={onSkipWorldCup} title="Simulate the rest of the tournament (no trophy or prizes)">
+                                SIMULATE REST
+                            </button>
+                        </div>
+                    </>
                 ) : (
                     <>
+                        {worldCup?.phase === 'done' && (
+                            <div className="home-hero__wc">
+                                World Cup {worldCup.edition}: {worldClub(worldCup.nationId)?.name} · {worldCup.standing || '—'}
+                                {worldCup.skipped ? ' (simulated)' : ''} · champions <b>{worldClub(worldCup.champion)?.name}</b>{' '}
+                                <button type="button" className="link-btn" onClick={onOpenWorldCup}>DETAILS →</button>
+                            </div>
+                        )}
                         <div className="home-hero__eyebrow">SEASON COMPLETE</div>
                         <div className="home-hero__title">
                             {champion ? `${champion.name} ARE CHAMPIONS` : 'SEASON FINISHED'}
@@ -317,6 +379,37 @@ export default function HomeScreen({
                             ))}
                         </div>
                     </div>
+                    {/* Phase 29F */}
+                    <div className="setting-row">
+                        <span>Crowd volume</span>
+                        <div className="segmented">
+                            {[['off', 'OFF'], ['low', 'LOW'], ['medium', 'MEDIUM']].map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className={(settings.crowdVolume || 'medium') === value ? 'is-active' : ''}
+                                    onClick={() => onSettingsChange({ crowdVolume: value })}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="setting-row">
+                        <span>Auto play after</span>
+                        <div className="segmented">
+                            {[5, 10, 20].map((value) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className={(settings.autoPlayDelay || 10) === value ? 'is-active' : ''}
+                                    onClick={() => onSettingsChange({ autoPlayDelay: value })}
+                                >
+                                    {value} S
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="setting-row">
                         <span>FPS counter</span>
                         <div className="segmented">
@@ -334,7 +427,8 @@ export default function HomeScreen({
                     </div>
                     <p className="home-card__empty">
                         Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
-                        smoothing for weaker laptops and phones.
+                        smoothing for weaker laptops and phones. Auto play: the AI plays for you when no key is
+                        pressed for that long (press any key to take control back).
                     </p>
                 </div>
             </div>

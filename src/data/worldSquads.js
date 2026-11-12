@@ -10,6 +10,7 @@ import { COUNTRY_NAMING, FOREIGN_POOLS, NAME_POOLS, POOL_NATIONALITY } from './n
 import { baseStats } from './teams'
 import { STAR_PHYSIQUE } from './starPhysique'
 import { generatePhysique } from '../systems/physique'
+import { STAR_NATIONALITY } from './starNationality'
 
 // [vị trí, số áo, nhóm]: 0–10 đá chính, 11–19 dự bị, 20–21 dự bị xa.
 export const SQUAD_TEMPLATE = [
@@ -39,15 +40,20 @@ export const wageOf = (value) => Math.max(2000, Math.round((value * 0.003) / 100
 function pickName(club, slot, used) {
     for (let attempt = 0; attempt < 12; attempt += 1) {
         const seed = `${club.id}:${slot}:${attempt}`
-        const local = hash01(`${seed}:nat`) < 0.7
+        // Phase 29E: đội tuyển tự sinh (club.isNation) → 100% người trong nước.
+        const local = club.isNation || hash01(`${seed}:nat`) < 0.7
         const poolKey = local
-            ? COUNTRY_NAMING[club.countryId] || 'en'
+            ? club.naming || COUNTRY_NAMING[club.countryId] || 'en'
             : FOREIGN_POOLS[hashString(`${seed}:pool`) % FOREIGN_POOLS.length]
         const pool = NAME_POOLS[poolKey]
         const first = pool.first[hashString(`${seed}:f`) % pool.first.length]
         const last = pool.last[hashString(`${seed}:l`) % pool.last.length]
         // Cầu thủ Brazil hay dùng một tên: ~25% chỉ lấy tên gọi.
-        const name = poolKey === 'br' && hash01(`${seed}:mono`) < 0.25 ? first : `${first} ${last}`
+        const name = poolKey === 'br' && hash01(`${seed}:mono`) < 0.25
+            ? first
+            : poolKey === 'vn' || poolKey === 'kr'
+                ? `${last} ${first}` // họ đứng trước
+                : `${first} ${last}`
 
         if (!used.has(name)) {
             used.add(name)
@@ -128,7 +134,7 @@ function buildSquad(club) {
         const position = star ? star.position : slotPosition
         const overall = star ? star.overall : overallFor(club, slot)
         const identity = star
-            ? { name: star.name, nationality: null }
+            ? { name: star.name, nationality: STAR_NATIONALITY.get(star.name) || null }
             : pickName(club, slot, usedNames)
         const id = `${club.id}-p${String(slot + 1).padStart(2, '0')}`
         const value = valueOf(overall)
@@ -148,8 +154,8 @@ function buildSquad(club) {
             nationality: identity.nationality || null,
             star: Boolean(star),
             slot,
-            clubId: club.id,
-            club: club.name,
+            clubId: club.isNation ? null : club.id,
+            club: club.isNation ? 'Free agent' : club.name,
             countryId: club.countryId,
             value,
             wage: wageOf(value),
@@ -180,4 +186,17 @@ export function allWorldPlayers() {
     allPlayers = WORLD_CLUBS.flatMap((club) => worldSquad(club.id))
 
     return allPlayers
+}
+
+// Phase 29E: cầu thủ tự sinh cho đội tuyển các nước không có giải trong game
+// (22 người, tên theo kho tên của nước đó, không thuộc CLB nào).
+const nationCache = new Map()
+
+export function generatedNationSquad(nation) {
+    if (nationCache.has(nation.id)) return nationCache.get(nation.id)
+
+    const squad = buildSquad(nation)
+
+    nationCache.set(nation.id, squad)
+    return squad
 }

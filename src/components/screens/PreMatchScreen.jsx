@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { nationStrength } from '../../services/nationalTeams'
 import { SIM_DAILY_LIMIT } from '../../services/quickSim'
 import { naturalPositionOf, positionPenalty } from '../../systems/roster'
 import { fixtureLabel } from '../../services/cupService'
@@ -333,7 +334,7 @@ export default function PreMatchScreen({
                 <button type="button" className="link-btn" onClick={onBack}>← HOME</button>
                 <div>
                     <div className="home-hero__eyebrow">
-                        PRE-MATCH · {fixtureLabel(fixture)} · {fixture.stage === 'final' ? 'NEUTRAL VENUE' : isHome ? 'HOME' : 'AWAY'}
+                        PRE-MATCH · {fixtureLabel(fixture)} · {fixture.stage === 'final' || fixture.competition === 'wc' ? 'NEUTRAL VENUE' : isHome ? 'HOME' : 'AWAY'}
                     </div>
                     <h1 className="prematch-title">
                         <ClubCrest clubId={userClubId()} size={40} />
@@ -341,8 +342,17 @@ export default function PreMatchScreen({
                         <ClubCrest clubId={opponentInfo?.id} size={40} />
                     </h1>
                     <p>
-                        League position: {userTeam().shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
-                        {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
+                        {fixture.competition === 'wc' ? (
+                            <>
+                                World Cup {fixture.edition} · {userTeam().shortName} {nationStrength(userClubId())} · {opponentInfo?.shortName}{' '}
+                                {nationStrength(opponentInfo?.id)} (starting XI average)
+                            </>
+                        ) : (
+                            <>
+                                League position: {userTeam().shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
+                                {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
+                            </>
+                        )}
                         {difficulty && <> · Difficulty {difficulty.label.toUpperCase()}</>}
                     </p>
                 </div>

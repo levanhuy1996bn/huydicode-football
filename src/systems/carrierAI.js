@@ -76,15 +76,20 @@ function pressureFactor(nearest) {
 }
 
 // Giá trị cú sút 0..1 (≈ khả năng đáng để sút).
-function evaluateShot(owner, direction, opponents) {
+// Phase 29F: tầm sút theo Long shots (50 → ~25m, 75 → ~29m, 99 → 32m; trước
+// đây ai cũng chỉ ≤ 27m và từ 22m trở ra gần như không sút), Composure làm
+// cú sút bị chắn ít mất giá trị hơn (dám sút qua người).
+function evaluateShot(owner, direction, opponents, skills = {}) {
+    const { longSkill = 0.5, composure = 0.5 } = skills
+    const maxRange = 24 + Math.min(1, longSkill) * 8
     const goalZ = direction * FIELD.lineZ
     const depth = (goalZ - owner.position.z) * direction
 
-    if (depth < 1 || depth > 27) return 0
+    if (depth < 1 || depth > maxRange) return 0
 
     const distance = Math.hypot(owner.position.x, depth)
 
-    if (distance > 27) return 0
+    if (distance > maxRange) return 0
 
     // Góc nhìn thấy khung thành.
     const angle =
@@ -92,7 +97,8 @@ function evaluateShot(owner, direction, opponents) {
         Math.atan2(-FIELD.goalHalfWidth - owner.position.x, depth)
 
     const angleFactor = clamp(angle / 0.42, 0.12, 1)
-    const distanceFactor = clamp(1.45 - distance / 24, 0, 1)
+    // Gần (≤ 16m) như cũ; xa hơn thì người sút xa giỏi giảm chậm hơn.
+    const distanceFactor = clamp(1.45 - distance / (distance > 16 ? 22 + Math.min(1, longSkill) * 12 : 24), 0, 1)
 
     // Có hậu vệ đứng chắn ngay trên đường sút.
     const lineX = 0 - owner.position.x
@@ -115,13 +121,19 @@ function evaluateShot(owner, direction, opponents) {
         return Math.hypot(opponent.x - closestX, opponent.z - closestZ) < 1
     })
 
-    return distanceFactor * angleFactor * (blocked ? 0.4 : 1)
+    // Bị chắn: 0.4 (Composure 50) → 0.62 (Composure 99).
+    const blockedFactor = 0.3 + Math.min(1.2, composure) * 0.27
+
+    return distanceFactor * angleFactor * (blocked ? blockedFactor : 1)
 }
 
 // Chấm điểm mọi lựa chọn chuyền bóng. Trả về danh sách đã sắp xếp (tốt nhất trước).
 function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { allowKeeper }) {
     const options = []
     const ownerAdvance = owner.position.z * direction
+    // Phase 29F: Long passing (0..1) — chuyền dài, đổi cánh, phát động phản công.
+    const longSkill = Math.min(1.2, skill01(attr(ownerItem, 'longPassing')))
+    const visionSkill = Math.min(1.2, skill01(attr(ownerItem, 'vision')))
 
     const consider = (kind) => {
         listPassCandidates(ctx, ownerId, kind).forEach((candidate) => {
@@ -135,13 +147,17 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
             const open = candidate.nearestOpponent
 
             if (kind === 'pass' && (distance < 4 || distance > 26)) return
-            if (kind === 'through' && (distance < 8 || distance > 30 || progress < 5)) return
-            if (kind === 'lob' && (distance < 15 || distance > 40)) return
+            // Phase 29F: người có Vision / Long passing tốt chọc khe xa hơn (tới 38m).
+            if (kind === 'through' && (distance < 8 || distance > 30 + visionSkill * 8 || progress < 5)) return
+            if (kind === 'lob' && (distance < 15 || distance > 40 + longSkill * 8)) return
 
             // Bóng bổng kém chính xác hơn: rơi xuống còn nảy, dễ bị tranh.
+            // Phase 29F: bóng bổng bay qua đầu người nên đường chuyền ít quan
+            // trọng hơn; độ an toàn theo Long passing (trước đây tối đa 0.62,
+            // gần như không bao giờ đạt ngưỡng an toàn → AI chỉ chuyền ngắn).
             const lane =
                 kind === 'lob'
-                    ? 0.62 * clamp(0.5 + candidate.laneSlack * 0.3, 0.3, 1)
+                    ? (0.56 + longSkill * 0.18) * clamp(0.6 + candidate.laneSlack * 0.2, 0.5, 1)
                     : clamp(0.5 + candidate.laneSlack * 0.45, 0, 1)
 
             // Chọc khe: người nhận phải tới điểm rơi trước hậu vệ gần nhất.
@@ -154,15 +170,27 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
                 if (open < run + (moving ? 0.3 : 1.5)) return
             }
 
-            // Người nhận bị kèm sát (< 2m) là lựa chọn tồi: nhận bóng xong mất ngay.
-            const safety = lane * clamp((open - 1) / 3.5, 0.15, 1)
-
             const targetAdvance = candidate.targetPosition.z * direction
             const inBox = targetAdvance > 36 && Math.abs(candidate.targetPosition.x) < 14
 
+            // Người nhận bị kèm sát (< 2m) là lựa chọn tồi: nhận bóng xong mất ngay.
+            // Phase 29F: bóng bổng ngoài vòng cấm rơi xuống còn nảy → người nhận
+            // phải trống hơn (≥ 6.5m mới an toàn tối đa).
+            const safety = kind === 'lob' && !inBox
+                ? lane * clamp((open - 2) / 4.5, 0.15, 1)
+                : lane * clamp((open - 1) / 3.5, 0.15, 1)
+
+            // Đổi cánh: chuyền dài sang người trống ở cánh bên kia.
+            const switchPlay =
+                kind === 'lob' &&
+                !inBox &&
+                Math.abs(candidate.targetPosition.x - owner.position.x) > 20 &&
+                progress > 0 &&
+                open > 8
+
             // Bóng bổng về phía sau không có ý nghĩa; chuyền dài ngoài vòng cấm
             // chỉ khi người nhận thật sự trống (bóng rơi xuống còn nảy).
-            if (kind === 'lob' && !inBox && (progress < 8 || open < 5)) return
+            if (kind === 'lob' && !inBox && !switchPlay && (progress < 8 || open < 5.5 - longSkill)) return
 
             const progressTerm =
                 progress >= 0
@@ -173,19 +201,33 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
             const ownThirdPenalty =
                 targetAdvance < -30 && ownerAdvance > targetAdvance ? 0.12 : 0
 
+            // Phase 29F: chuyền dài có giá trị hơn với người chuyền dài giỏi và
+            // lối đá trực diện (Counter Attack, Attacking); đổi cánh có thưởng;
+            // chọc khe dài (≥ 22m) cho tiền đạo đang chạy = phản công.
+            const longBonus =
+                kind === 'lob' && !inBox
+                    ? longSkill * 0.03 + (switchPlay ? 0.02 + longSkill * 0.04 : 0)
+                    : kind === 'through' && distance >= 22
+                        ? visionSkill * 0.06 + tactic.directness * 0.05
+                        : 0
+
             const value =
                 safety *
                 (0.3 +
                     progressTerm +
                     (inBox ? 0.25 : 0) +
                     (kind === 'through' ? 0.08 : 0) -
-                    (kind === 'lob' && !inBox ? 0.14 - tactic.directness * 0.08 : 0) -
+                    (kind === 'lob' && !inBox ? 0.14 - tactic.directness * 0.08 : 0) +
+                    longBonus -
                     ownThirdPenalty)
 
             // Vision (Phase 19): cầu thủ nhìn bao quát tốt mới thấy và dám
             // thực hiện đường chọc khe / chuyền dài.
+            // Phase 29F: chuyền dài ngoài vòng cấm vẫn là lựa chọn "mạo hiểm":
+            // ×0.75 (Long passing 40) → ×0.9 (99), để khoảng 1/6 số đường chuyền.
             const visionFactor =
-                kind === 'pass' ? 1 : 0.65 + skill01(attr(ownerItem, 'vision')) * 0.35
+                (kind === 'pass' ? 1 : 0.65 + skill01(attr(ownerItem, 'vision')) * 0.35) *
+                (kind === 'lob' && !inBox ? 0.75 + Math.min(1, longSkill) * 0.15 : 1)
 
             options.push({
                 kind,
@@ -196,6 +238,7 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
                 safety,
                 progress,
                 inBox,
+                switchPlay,
                 value: value * visionFactor,
             })
         })
@@ -303,6 +346,8 @@ function passVariant(ctx, ownerId, option) {
 
     if (option.kind === 'through') {
         if (option.blockedLane >= 1 && roll < 0.55) return 'lobbed'
+        // Phase 29F: chọc khe dài qua đầu hàng thủ (bóng bổng ra sau lưng).
+        if (option.distance > 22 && roll < 0.15 + skill01(attr(item, 'longPassing')) * 0.3) return 'lobbed'
         if (option.distance > 16 && option.laneSlack > 1.5 && roll < 0.3 + skill * 0.2) return 'driven'
         return null
     }
@@ -312,6 +357,8 @@ function passVariant(ctx, ownerId, option) {
     }
 
     if (option.kind === 'lob' && option.inBox) return roll < 0.35 ? 'whipped' : null
+    // Phase 29F: đổi cánh căng (ZA) khi người chuyền dài giỏi.
+    if (option.kind === 'lob' && option.switchPlay) return roll < skill * 0.4 ? 'whipped' : null
 
     return null
 }
@@ -441,10 +488,21 @@ export function updateCarrierAI(ctx, dt) {
     const role = ownerItem.role
 
     // ---- 1. Sút ----
-    const shot = evaluateShot(owner, direction, opponents)
-    const shootThreshold = 0.5 - tactic.risk * 0.08
+    // Phase 29F: Long shots → tầm sút; Composure (quyết đoán) → dám sút khi
+    // có góc thay vì chuyền thêm một nhịp, bị áp sát vẫn sút.
+    const composure = Math.min(1.2, skill01(attr(ownerItem, 'composure')))
+    const shot = evaluateShot(owner, direction, opponents, {
+        longSkill: skill01(attr(ownerItem, 'longShots')),
+        composure,
+    })
+    const goalDistance = Math.hypot(owner.position.x, direction * FIELD.lineZ - owner.position.z)
+    const inShootingZone = goalDistance < 17
+    // Áp sát làm người kém bản lĩnh ngại sút (0.8 ở Composure 0, 1 ở 99).
+    const nerve = close ? 0.8 + Math.min(1, composure) * 0.2 : 1
+    const shootThreshold =
+        0.5 - tactic.risk * 0.08 - (inShootingZone ? composure * 0.07 : 0) - (role === 'FW' ? composure * 0.03 : 0)
 
-    if (shot > shootThreshold) {
+    if (shot * nerve > shootThreshold) {
         if (shootWithVariant(ctx, ownerId, ownerItem, owner)) return
     }
 
@@ -455,6 +513,17 @@ export function updateCarrierAI(ctx, dt) {
 
     const minSafety = 0.62 - tactic.risk * 0.14
     const best = options.find((option) => option.safety >= minSafety) || null
+
+    // Phase 29F: trong vòng cấm có góc sút tạm được: so cú sút (nhân theo
+    // Composure) với đường chuyền tốt nhất — tiền đạo quyết đoán tự dứt điểm
+    // thay vì chuyền vòng vo tới tận khung thành.
+    if (inShootingZone && shot * nerve > 0.28 && role !== 'GK' && role !== 'DF') {
+        const decisive = shot * nerve * (1 + composure * 0.7 + (role === 'FW' ? 0.15 : 0))
+
+        if (!best || decisive > best.value) {
+            if (shootWithVariant(ctx, ownerId, ownerItem, owner)) return
+        }
+    }
 
     // Tạt bóng: ở biên trong 1/3 cuối sân, có đồng đội trong vòng cấm.
     const wide = Math.abs(owner.position.x) > 13 && advance > 32

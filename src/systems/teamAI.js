@@ -206,8 +206,14 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
         !ownerItem && state.pendingPass && state.lastTouchTeam !== teamId
             ? findInterceptor(ctx, teamList, isUserControlled, ballPoint, ballSpeed)
             : null
-    const chaseId = !ownerItem && pressers[0] ? pressers[0].item.id : null
-    const secondChaseId = !ownerItem && pressers[1] ? pressers[1].item.id : null
+    // Phase 29F: người được chuyền tới đang ra lấy bóng (looseReceive) thì
+    // không cử thêm người chạy theo bóng, nhất là người vừa chuyền.
+    const looseJob = state.looseReceive?.teamId === teamId ? state.looseReceive : null
+    const chasers = looseJob
+        ? pressers.filter((entry) => entry.item.id !== looseJob.id && entry.item.id !== looseJob.passerId)
+        : pressers
+    const chaseId = !ownerItem && !looseJob && chasers[0] ? chasers[0].item.id : null
+    const secondChaseId = !ownerItem && !looseJob && chasers[1] ? chasers[1].item.id : null
 
     // ---- Khối phòng ngự ----
     const dl = tactic.defensiveLine
@@ -302,6 +308,7 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
         // hai cùng điều khiển, hai lệnh di chuyển triệt tiêu nhau).
         if (state.pendingPass?.receiverId === item.id) return
         if (state.prePassReceiver === item.id) return
+        if (state.looseReceive?.id === item.id && !(item.id === ctx.selectedId && state.userSteering)) return
 
         const role = item.role
         const wide = Math.abs(homeX) > 14
@@ -757,6 +764,53 @@ function throughRunTarget(ctx, item, object, ballPosition, ballVelocity, targetP
     return meetingPoint(ctx, item, object, ballPosition, ballVelocity) || targetPosition
 }
 
+// Phase 29F: người được chuyền tới lao ra lấy bóng tự do (đường chuyền
+// dừng sớm / bị chạm lệch). Người chơi đang bấm hướng thì để người chơi tự chạy.
+const LOOSE_RECEIVE_TIME = 1.6
+
+function updateLooseReceive(ctx, dt) {
+    const { state, objects } = ctx
+    const job = state.looseReceive
+
+    if (!job) return
+
+    job.time += dt
+
+    const ball = ctx.ballRef.current
+    const object = objects[job.id]
+    const item = getPlayer(ctx, job.id)
+
+    if (state.possession || state.pendingPass || state.restart || !object || !item || job.time > LOOSE_RECEIVE_TIME) {
+        state.looseReceive = null
+        return
+    }
+
+    const ballPosition = ball.translation()
+    const ballVelocity = ball.linvel()
+
+    // Bóng đã quá xa (> 14m) — để đội hình xử lý như bóng tự do bình thường.
+    if (distance2D(object.position, ballPosition) > 14) {
+        state.looseReceive = null
+        return
+    }
+
+    if (item.id === ctx.selectedId && state.userSteering) return
+    if (isPlayerLocked(state, item.id)) return
+
+    const target = meetingPoint(ctx, item, object, ballPosition, ballVelocity) || ballPosition
+
+    moveAIPlayer(
+        ctx,
+        item,
+        {
+            x: clamp(target.x, FIELD.minX + 1, FIELD.maxX - 1),
+            z: clamp(target.z, FIELD.minZ + 1, FIELD.maxZ - 1),
+        },
+        1.4,
+        dt,
+    )
+}
+
 // Đồng đội chạy đến vị trí dự kiến nhận đường chuyền.
 export function updateReceiverRun(ctx, dt) {
     const { state, objects } = ctx
@@ -764,6 +818,8 @@ export function updateReceiverRun(ctx, dt) {
     const ball = ctx.ballRef.current
 
     updatePrePassRun(ctx, dt)
+
+    if (ball) updateLooseReceive(ctx, dt)
 
     if (!pendingPass || !ball) return
 
@@ -789,6 +845,18 @@ export function updateReceiverRun(ctx, dt) {
         (ballDistanceToTarget < 1.4 && ballSpeed < 3.2)
 
     if (passFinished) {
+        // Phase 29F: đường chuyền yếu / lệch, bóng dừng trước khi tới người
+        // nhận: người nhận vẫn chủ động ra lấy bóng (tối đa 1.6s), người vừa
+        // chuyền không phải quay lại nhặt.
+        if (!state.possession && receiverObject && receiverItem && pendingPass.elapsed <= 3.5) {
+            state.looseReceive = {
+                id: receiverItem.id,
+                passerId: pendingPass.passerId || null,
+                teamId: receiverItem.teamId,
+                time: 0,
+            }
+        }
+
         state.pendingPass = null
         return
     }

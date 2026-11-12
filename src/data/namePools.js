@@ -65,6 +65,23 @@ export const NAME_POOLS = {
         'Ibrahim Moussa Sadio Kwame Emmanuel Samuel Victor Yaw Ismaila Cheikh Seydou Kofi Amadou Bakary Oumar Kalidou Thomas Junior Wilfried Serge Ebere Chidi',
         'Diallo Traoré Koné Mensah Ndiaye Diop Sow Osei Boateng Okafor Eze Adeyemi Bamba Touré Cissé Keita Sylla Mbeki Asante Owusu Agyemang Nwosu Fofana Kamara Ouattara',
     ),
+    // Phase 29E: thêm cho đội tuyển các nước không có giải trong game.
+    ma: pool(
+        'Youssef Hakim Achraf Sofyan Azzedine Nayef Bilal Ayoub Ismael Abdelhamid Romain Amine Zakaria Hamza Ilias Oussama Anass Soufiane Walid Yassine Adam Selim',
+        'El_Amrani Benali Haddad Belhaj Ziani Ouali Tahiri Chakir Bennani Idrissi Lamrani Fassi Bouzidi Rahmouni Aboukhlal Saiss Mazraoui Ezzalzouli Amallah Harit Berrada Kabbaj',
+    ),
+    kr: pool(
+        'Min-jae Heung-min Kang-in Hee-chan Jae-sung Woo-yeong Gue-sung Seung-ho In-beom Young-woo Jin-su Hyun-woo Tae-hwan Ji-sung Dong-jun Jun-ho Sang-ho Chang-hoon Kyung-won Se-hun',
+        'Kim Lee Park Choi Jung Kang Cho Yoon Jang Lim Han Oh Seo Shin Kwon Hwang Ahn Song Jeon Hong',
+    ),
+    rs: pool(
+        'Aleksandar Dušan Nikola Luka Sergej Filip Strahinja Nemanja Saša Lazar Andrija Milos Veljko Uroš Dejan Marko Stefan Vanja Ivan Srđan',
+        'Mitrović Jović Milenković Pavlović Živković Lukić Kostić Tadić Gudelj Racić Babić Vlahović Samardžić Stojić Ilić Petrović Nikolić Marković Đorđević Stanković',
+    ),
+    vn: pool(
+        'Quang Văn Tiến Công Đức Hoàng Thành Hùng Tuấn Minh Hải Duy Trọng Đình Xuân Mạnh Khánh Long Phong Tấn',
+        'Nguyễn Trần Lê Phạm Hoàng Đỗ Bùi Vũ Đặng Ngô Dương Hồ Phan Đoàn Lương Quế Đinh Châu Tô Hà',
+    ),
 }
 
 // Ngôn ngữ đặt tên theo nước của CLB.

@@ -29,6 +29,9 @@ export const ATTRIBUTE_GROUPS = [
             ['finishing', 'Finishing'],
             ['shotPower', 'Shot power'],
             ['longShots', 'Long shots'],
+            // Phase 29F: quyết đoán — dám tự dứt điểm thay vì chuyền thêm,
+            // bị áp sát vẫn sút chuẩn.
+            ['composure', 'Composure'],
         ],
     },
     {
@@ -101,29 +104,29 @@ const POSITION_BIAS = {
     GK: {},
     CB: {
         strength: 4, marking: 3, standingTackle: 2, slidingTackle: 2,
-        acceleration: -3, agility: -3, longShots: -3,
+        acceleration: -3, agility: -3, longShots: -3, composure: -4,
     },
     FB: {
         stamina: 4, acceleration: 3, sprintSpeed: 2, slidingTackle: 2,
-        strength: -2, finishing: -3,
+        strength: -2, finishing: -3, composure: -3,
     },
     DM: {
         interceptions: 3, stamina: 2, shortPassing: 2, strength: 2,
-        finishing: -3, agility: -1,
+        finishing: -3, agility: -1, composure: -1,
     },
     CM: {
         stamina: 3, vision: 2, shortPassing: 2, longPassing: 1, interceptions: 1,
     },
     AM: {
-        vision: 4, agility: 3, ballControl: 2, longShots: 2,
+        vision: 4, agility: 3, ballControl: 2, longShots: 2, composure: 2,
         strength: -3, slidingTackle: -3,
     },
     WG: {
-        acceleration: 4, agility: 3, sprintSpeed: 2, balance: 2,
+        acceleration: 4, agility: 3, sprintSpeed: 2, balance: 2, composure: 1,
         strength: -3, marking: -3, longPassing: -1,
     },
     ST: {
-        finishing: 4, shotPower: 2, strength: 2, balance: 1,
+        finishing: 4, shotPower: 2, strength: 2, balance: 1, composure: 4,
         vision: -2, marking: -4, slidingTackle: -3,
     },
 }

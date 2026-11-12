@@ -2,6 +2,7 @@
 // Dữ liệu thô ở worldClubs.js; file này chỉ phân tích và tính sức mạnh.
 // Không import gì ngoài worldClubs.js (tránh vòng lặp import).
 import { WORLD_COUNTRIES } from './worldClubs'
+import { NATION_BY_ID } from './nations'
 
 // Phase 26B: mọi CLB (kể cả Manchester United) dùng id thật; CLB người chơi
 // quản lý lưu ở bản lưu thế giới (services/career.js). Id cũ trong bản lưu:
@@ -167,7 +168,8 @@ export const COUNTRY_BY_ID = new Map(COUNTRIES.map((country) => [country.id, cou
 export function worldClub(clubId) {
     const id = LEGACY_CLUB_ALIASES[clubId] || clubId
 
-    return CLUB_BY_ID.get(id) || null
+    // Phase 29E: đội tuyển quốc gia ('nat-xxx') dùng chung như một CLB ảo.
+    return CLUB_BY_ID.get(id) || NATION_BY_ID.get(id) || null
 }
 
 // Giải mặc định (danh sách gốc của dữ liệu) cho mỗi giải.
