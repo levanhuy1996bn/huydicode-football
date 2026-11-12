@@ -1,3 +1,19 @@
+import SimulationScreen from './screens/SimulationScreen'
+import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation } from '../services/quickSim'
+import {
+    CUP_MATCH_FACTOR,
+    STAGE_LABELS,
+    calendarSlot,
+    cupPrizeFor,
+    describeUserCupResult,
+    findUserFixture,
+    fixtureLabel,
+    nextUserFixture,
+    recordCupResult,
+    shootoutSkill,
+    userCalendar,
+} from '../services/cupService'
+import { epCard, playerPack } from '../services/cards'
 import ClubCrest from './ClubCrest'
 import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
@@ -48,7 +64,6 @@ import {
 } from './MatchOverlays'
 import {
     saveLeague,
-    getNextUserFixture,
     getLeagueStandings,
     getSeasonProgress,
     getTeamById,
@@ -240,8 +255,9 @@ export default function GameScene() {
     const [world, setWorld] = useState(boot.world)
     const [league, setLeague] = useState(boot.league)
 
+    // Phase 27: lịch chung giải + cúp (cupService).
     const [activeFixtureId, setActiveFixtureId] = useState(
-        () => getNextUserFixture(boot.league.fixtures)?.id || null,
+        () => nextUserFixture(boot.league)?.id || null,
     )
 
     const [isLeagueOpen, setIsLeagueOpen] = useState(false)
@@ -256,13 +272,12 @@ export default function GameScene() {
 
     // Chặn ghi nhận trùng kết quả khi React chạy lại effect.
     const recordedFixtureRef = useRef(null)
+    // Phase 27: kết quả cúp của trận vừa xong (màn sau trận).
+    const cupInfoRef = useRef(null)
 
     const activeFixture = useMemo(
-        () =>
-            league.fixtures.find(
-                (fixture) => fixture.id === activeFixtureId,
-            ) || null,
-        [league.fixtures, activeFixtureId],
+        () => findUserFixture(league, activeFixtureId),
+        [league, activeFixtureId],
     )
 
     const opponentId = activeFixture
@@ -447,9 +462,7 @@ export default function GameScene() {
             return
         }
 
-        const fixture = league.fixtures.find(
-            (item) => item.id === activeFixtureId,
-        )
+        const fixture = findUserFixture(league, activeFixtureId)
 
         if (!fixture || fixture.played) {
             return
@@ -467,20 +480,27 @@ export default function GameScene() {
                 ? redScore
                 : blueScore
 
+        // Phase 27: trận cúp ghi vào league.cups (hoà tổng tỉ số → luân lưu
+        // mô phỏng theo chỉ số sút của 11 người đá chính).
+        const userSkill = shootoutSkill(roster.find((team) => team.id === 'blue')?.players || [])
+
         setLeague((currentLeague) =>
-            recordUserFixtureResult(
-                currentLeague,
-                activeFixtureId,
-                homeGoals,
-                awayGoals,
-            ),
+            fixture.competition
+                ? recordCupResult(currentLeague, activeFixtureId, homeGoals, awayGoals, userSkill)
+                : recordUserFixtureResult(
+                    currentLeague,
+                    activeFixtureId,
+                    homeGoals,
+                    awayGoals,
+                ),
         )
 
         setActionMessage('FULL TIME - RESULT SAVED')
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         matchStatus,
         activeFixtureId,
-        league.fixtures,
+        league,
         blueScore,
         redScore,
     ])
@@ -535,9 +555,10 @@ export default function GameScene() {
 
             // Phase 22: thống kê cầu thủ cả mùa (cả hai đội) cho trận giải đấu.
             // Bỏ trận (xử thua 0–3) thì không ghi số liệu cầu thủ.
-            const fixture = league.fixtures.find((item) => item.id === activeFixtureId)
+            const fixture = findUserFixture(league, activeFixtureId)
+            const isCup = Boolean(fixture?.competition)
 
-            if (!forfeit && fixture && !fixture.played) {
+            if (!forfeit && fixture && !fixture.played && !isCup) {
                 const entries = userMatchEntries({
                     stats: statsRef.current?.stats,
                     bluePlayers: summary.ratings,
@@ -548,6 +569,28 @@ export default function GameScene() {
                 })
 
                 setLeague((current) => recordUserMatchStats(current, activeFixtureId, entries))
+            }
+
+            // Phase 27: kết quả cúp sau trận (cả khi bỏ trận: xử thua 0–3).
+            let cupInfo = null
+
+            if (isCup && fixture && !fixture.played) {
+                const isHome = isUserClub(fixture.homeTeamId)
+                const after = recordCupResult(
+                    league,
+                    fixture.id,
+                    isHome ? blueScore : redScore,
+                    isHome ? redScore : blueScore,
+                    shootoutSkill(roster.find((team) => team.id === 'blue')?.players || []),
+                )
+
+                cupInfo = describeUserCupResult(after, fixture.id)
+            }
+
+            cupInfoRef.current = cupInfo
+
+            // Thưởng (trận giải và trận cúp; bỏ trận thì không có).
+            if (!forfeit && fixture && !fixture.played) {
 
                 // Phase 23: XP CLB + tiền thưởng (EP); lên cấp thì thêm thẻ EP
                 // và gói cầu thủ vào kho. Trận cuối mùa: thưởng theo thứ hạng.
@@ -555,10 +598,30 @@ export default function GameScene() {
                     goalsFor: blueScore,
                     goalsAgainst: redScore,
                     opponentStrength: opponentTeam?.strength,
-                    rewardFactor: difficulty.reward,
+                    // Phase 27: trận cúp thưởng nhiều hơn (C1 ×1.5, C2 ×1.25).
+                    rewardFactor: difficulty.reward * (isCup ? CUP_MATCH_FACTOR[fixture.competition] : 1),
                 })
                 let nextClub = rewarded.club
                 let seasonReward = null
+                let cupReward = null
+
+                if (isCup) {
+                    const prize = Math.round(
+                        (cupPrizeFor(cupInfo?.cupId, cupInfo?.stage, cupInfo?.outcome) * difficulty.reward) / 100000,
+                    ) * 100000
+
+                    if (prize > 0) {
+                        const label = cupInfo.outcome === 'champion'
+                            ? `${cupInfo.cupName} winners`
+                            : `${cupInfo.cupName} · ${STAGE_LABELS[cupInfo.stage]} passed`
+                        const items = [epCard(prize, label)]
+
+                        if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label))
+
+                        nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
+                        cupReward = { amount: prize, label, pack: cupInfo.outcome === 'champion' }
+                    }
+                }
 
                 const remainingUserFixtures = league.fixtures.filter(
                     (item) =>
@@ -567,7 +630,7 @@ export default function GameScene() {
                         (isUserClub(item.homeTeamId) || isUserClub(item.awayTeamId)),
                 ).length
 
-                if (remainingUserFixtures === 0) {
+                if (!isCup && remainingUserFixtures === 0) {
                     const isHome = isUserClub(fixture.homeTeamId)
                     const finalLeague = recordUserFixtureResult(
                         league,
@@ -583,7 +646,7 @@ export default function GameScene() {
                     seasonReward = bonus.bonus
                 }
 
-                clubReportRef.current = { ...rewarded.report, seasonReward, budget: nextClub.budget }
+                clubReportRef.current = { ...rewarded.report, seasonReward, cupReward, budget: nextClub.budget }
                 setClub(nextClub)
             }
 
@@ -612,6 +675,7 @@ export default function GameScene() {
             shots: [...(statsRef.current?.stats?.shots || [])],
             progression: progressionReportRef.current || [],
             clubReport: clubReportRef.current,
+            cupInfo: cupInfoRef.current,
         })
         // Chỉ chụp một lần khi vừa hết trận.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -718,7 +782,7 @@ export default function GameScene() {
         const nextOpponent = getTeamById(nextOpponentId)
 
         setActionMessage(
-            `ROUND ${fixture.round}: ${nextOpponent?.name || 'OPPONENT'}`,
+            `${fixtureLabel(fixture)}: ${nextOpponent?.name || 'OPPONENT'}`,
         )
     }, [])
 
@@ -751,9 +815,7 @@ export default function GameScene() {
             )
         }
 
-        const firstFixture = getNextUserFixture(
-            nextLeague.fixtures,
-        )
+        const firstFixture = nextUserFixture(nextLeague)
 
         setActiveFixtureId(firstFixture?.id || null)
         recordedFixtureRef.current = null
@@ -853,8 +915,8 @@ export default function GameScene() {
 
     // Trận tiếp theo của đội người chơi trong lịch (sau khi kết quả đã được ghi).
     const nextFixture = useMemo(
-        () => getNextUserFixture(league.fixtures),
-        [league.fixtures],
+        () => nextUserFixture(league),
+        [league],
     )
 
     const nextOpponent = nextFixture
@@ -1226,10 +1288,10 @@ export default function GameScene() {
     // ---- Điều hướng giữa các màn hình ngoài trận ----
     const prematchFixture = useMemo(
         () =>
-            league.fixtures.find((fixture) => fixture.id === prematchFixtureId) ||
+            findUserFixture(league, prematchFixtureId) ||
             nextFixture ||
             null,
-        [league.fixtures, prematchFixtureId, nextFixture],
+        [league, prematchFixtureId, nextFixture],
     )
 
     const openPrematch = (fixture) => {
@@ -1338,13 +1400,9 @@ export default function GameScene() {
         }
         : null
 
-    const lastPlayedFixture = league.fixtures
-        .filter(
-            (fixture) =>
-                fixture.played &&
-                (isUserClub(fixture.homeTeamId) || isUserClub(fixture.awayTeamId)),
-        )
-        .sort((a, b) => b.round - a.round)[0]
+    const lastPlayedFixture = userCalendar(league)
+        .filter((fixture) => fixture.played)
+        .sort((a, b) => calendarSlot(b) - calendarSlot(a))[0]
 
     const lastResult = lastPlayedFixture
         ? (() => {
@@ -1354,6 +1412,7 @@ export default function GameScene() {
 
             return {
                 round: lastPlayedFixture.round,
+                label: fixtureLabel(lastPlayedFixture),
                 blueGoals,
                 opponentGoals,
                 opponentName: getTeamById(opponentIdOf(lastPlayedFixture))?.name,
@@ -1402,6 +1461,152 @@ export default function GameScene() {
     )
 
     // Đổi bộ áo của một đội (người chơi hoặc máy) cho trận sắp đá.
+    // ---- Phase 28: mô phỏng nhanh (5 lượt / ngày, thưởng ×0.7) ----
+    const [simulation, setSimulation] = useState(null)
+    const simsLeft = simulationsLeft(club)
+
+    const runQuickSimulation = (fixture) => {
+        if (!fixture || fixture.played || simulationsLeft(club) <= 0) return
+
+        const opponentClubId = isUserClub(fixture.homeTeamId) ? fixture.awayTeamId : fixture.homeTeamId
+        const opponent = getTeamById(opponentClubId)
+        const simRoster = applyKits(
+            buildMatchRoster(roster, opponent, matchOptions),
+            kitsForFixture(fixture),
+            opponentClubId,
+        )
+        const blueSide = simRoster.find((team) => team.id === 'blue')
+        const redSide = simRoster.find((team) => team.id === 'red')
+        const blueBase = roster.find((team) => team.id === 'blue')
+        const isHome = isUserClub(fixture.homeTeamId)
+        const isCup = Boolean(fixture.competition)
+        const venue = fixture.stage === 'final' ? 'neutral' : isHome ? 'blue' : 'red'
+
+        // 1. Kết quả (tính ngay, lưu ngay — hoạt cảnh chỉ phát lại).
+        const sim = simulateQuickMatch({ bluePlayers: blueSide.players, redPlayers: redSide.players, venue })
+        const { blueScore: goalsFor, redScore: goalsAgainst } = sim
+        const homeGoals = isHome ? goalsFor : goalsAgainst
+        const awayGoals = isHome ? goalsAgainst : goalsFor
+        const userSkill = shootoutSkill(blueBase?.players || [])
+        let nextLeague = isCup
+            ? recordCupResult(league, fixture.id, homeGoals, awayGoals, userSkill)
+            : recordUserFixtureResult(league, fixture.id, homeGoals, awayGoals)
+
+        // 2. Tổng kết + thống kê cầu thủ cả mùa (trận giải).
+        const summary = buildMatchSummary({
+            stats: sim.stats,
+            players: blueBase?.players || [],
+            blueScore: goalsFor,
+            redScore: goalsAgainst,
+            goalEvents: sim.goalEvents,
+            forfeit: null,
+        })
+
+        if (!isCup) {
+            nextLeague = recordUserMatchStats(
+                nextLeague,
+                fixture.id,
+                userMatchEntries({
+                    stats: sim.stats,
+                    bluePlayers: summary.ratings,
+                    redPlayers: redSide.players,
+                    opponentClubId,
+                    blueScore: goalsFor,
+                    redScore: goalsAgainst,
+                }),
+            )
+        }
+
+        // 3. Thể lực + XP cầu thủ ×0.7 (11 người đá chính đá đủ 90 phút).
+        const fractions = Object.fromEntries((blueBase?.players || []).map((player) => [player.id, 1]))
+        const rested = applyMatchCondition(squadOf(blueBase), fractions)
+        const { players: progressed, reports } = applyMatchProgression(rested, summary.ratings, fractions, {
+            goalsFor,
+            goalsAgainst,
+            motmId: summary.manOfTheMatch?.id || null,
+            forfeit: null,
+            xpFactor: SIM_REWARD_FACTOR,
+        })
+        const updatedById = new Map(progressed.map((player) => [player.id, player]))
+
+        // 4. Thưởng ×0.7 (× độ khó, × hệ số cúp); dùng 1 lượt mô phỏng.
+        const rewardFactor = difficulty.reward * SIM_REWARD_FACTOR * (isCup ? CUP_MATCH_FACTOR[fixture.competition] : 1)
+        const rewarded = applyMatchToClub(club, {
+            goalsFor,
+            goalsAgainst,
+            opponentStrength: opponent?.strength,
+            rewardFactor,
+        })
+        let nextClub = spendSimulation(rewarded.club)
+        let seasonReward = null
+        let cupReward = null
+        let cupInfo = null
+
+        if (isCup) {
+            cupInfo = describeUserCupResult(nextLeague, fixture.id)
+
+            const prize = Math.round(
+                (cupPrizeFor(cupInfo?.cupId, cupInfo?.stage, cupInfo?.outcome) * difficulty.reward * SIM_REWARD_FACTOR) / 100000,
+            ) * 100000
+
+            if (prize > 0) {
+                const label = cupInfo.outcome === 'champion'
+                    ? `${cupInfo.cupName} winners`
+                    : `${cupInfo.cupName} · ${STAGE_LABELS[cupInfo.stage]} passed`
+                const items = [epCard(prize, label)]
+
+                if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label))
+
+                nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
+                cupReward = { amount: prize, label, pack: cupInfo.outcome === 'champion' }
+            }
+        } else if (getSeasonProgress(nextLeague.fixtures).completed) {
+            const position = getLeagueStandings(nextLeague.fixtures).findIndex((row) => isUserClub(row.teamId)) + 1
+            const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward)
+
+            nextClub = bonus.club
+            seasonReward = bonus.bonus
+        }
+
+        // 5. Ghi lại tất cả rồi phát hoạt cảnh.
+        setLeague(nextLeague)
+        setClub(nextClub)
+        setRoster((current) =>
+            current.map((team) =>
+                team.id !== 'blue'
+                    ? team
+                    : {
+                        ...team,
+                        players: team.players.map((player) => updatedById.get(player.id) || player),
+                        substitutes: (team.substitutes || []).map((player) => updatedById.get(player.id) || player),
+                        reserves: (team.reserves || []).map((player) => updatedById.get(player.id) || player),
+                    },
+            ),
+        )
+        setActiveFixtureId(fixture.id)
+        recordedFixtureRef.current = fixture.id
+        setMatchStatus('idle')
+        setMatchSummary({
+            ...summary,
+            cardEvents: sim.cardEvents,
+            subEvents: [],
+            shots: sim.stats.shots,
+            progression: reports,
+            clubReport: { ...rewarded.report, seasonReward, cupReward, budget: nextClub.budget, simulated: true },
+            cupInfo,
+            simulated: true,
+        })
+        setSimulation({
+            label: fixtureLabel(fixture),
+            result: sim,
+            blue: { clubId: userClubId(), name: userTeam().name, color: blueSide.color },
+            red: { clubId: opponentClubId, name: opponent?.name || 'OPPONENT', color: redSide.color },
+        })
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setScreen('simulation')
+    }
+
     const changeKit = (clubId, slot) => {
         if (!prematchFixture) return
 
@@ -1463,6 +1668,8 @@ export default function GameScene() {
                     onOpenDevelopment={openDevelopment}
                     onNewSeason={createNewSeason}
                     onChangeClub={openChangeClub}
+                    simsLeft={simsLeft}
+                    onSimulate={() => runQuickSimulation(nextFixture)}
                 />
             )}
 
@@ -1484,8 +1691,21 @@ export default function GameScene() {
                     difficulty={difficulty}
                     difficultyLocked={difficultyLocked}
                     onDifficultyChange={changeDifficulty}
+                    simsLeft={simsLeft}
+                    onSimulate={() => runQuickSimulation(prematchFixture)}
                     onKickOff={kickOff}
                     onBack={goHome}
+                />
+            )}
+
+            {screen === 'simulation' && simulation && (
+                <SimulationScreen
+                    key={simulation.label + simulation.result.blueScore + simulation.result.redScore + simulation.red.clubId}
+                    label={simulation.label}
+                    blue={simulation.blue}
+                    red={simulation.red}
+                    result={simulation.result}
+                    onDone={() => setScreen('postmatch')}
                 />
             )}
 
@@ -1645,7 +1865,7 @@ export default function GameScene() {
                                 letterSpacing: 0.8,
                             }}
                         >
-                            ROUND {activeFixture.round}
+                            {fixtureLabel(activeFixture)}
                         </div>
                     )}
                 </div>

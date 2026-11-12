@@ -2163,3 +2163,505 @@ nav button { position: relative; }
     grid-template-columns: 1fr;
     align-items: start;
 }
+
+/* ---- Phase 27: cúp C1 / C2 ---- */
+.cup-result {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px 16px;
+    margin: 12px auto 0;
+    padding: 9px 16px;
+    max-width: 640px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px;
+    background: rgba(0,0,0,.25);
+    color: #c9d8ce;
+    font-size: 12px;
+}
+
+.cup-result__label {
+    color: #b9ed70;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.cup-result strong {
+    font-size: 13px;
+    letter-spacing: .5px;
+}
+
+.cup-result--advanced strong { color: #b9ed70; }
+.cup-result--champion { border-color: #e3bd62; }
+.cup-result--champion strong { color: #ffd34d; font-size: 16px; }
+.cup-result--eliminated strong { color: #ff8a7a; }
+
+.cup-result__pens {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pen-kicks {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.pen-kick {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.4);
+    opacity: .65;
+}
+
+.pen-kick.is-user { opacity: 1; }
+.pen-kick.is-scored { background: #4fbf6a; }
+.pen-kick.is-missed { background: #e2504a; }
+
+.cup-panel__head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.cup-panel__head p {
+    margin: 0;
+    color: #9fb0c2;
+    font-size: 12px;
+}
+
+.cup-groups {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.cup-group {
+    padding: 8px 10px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 8px;
+    background: #192533;
+}
+
+.cup-group__name {
+    margin-bottom: 6px;
+    color: #7f90a3;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.cup-group table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.cup-group td {
+    padding: 3px 2px;
+    color: #c8d4e0;
+}
+
+.cup-group td:first-child {
+    width: 14px;
+    color: #7f90a3;
+}
+
+.cup-group td:nth-child(n+3) {
+    width: 22px;
+    text-align: right;
+}
+
+.cup-group tr.is-through td:first-child {
+    color: #3fbf6a;
+    font-weight: 900;
+}
+
+.cup-group tr.user-team-row {
+    background: rgba(36,124,224,.2);
+}
+
+.cup-club {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.cup-club.is-user {
+    color: #8cc2ff;
+}
+
+.cup-club.is-winner {
+    color: #fff;
+}
+
+.cup-bracket {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+}
+
+.cup-bracket__col {
+    display: grid;
+    gap: 6px;
+}
+
+.cup-bracket__empty {
+    margin: 0;
+    color: #6f8090;
+    font-size: 11px;
+}
+
+.cup-tie {
+    display: grid;
+    gap: 3px;
+    padding: 7px 9px;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 7px;
+    background: #192533;
+    font-size: 11px;
+}
+
+.cup-tie.is-user {
+    border-color: rgba(140,194,255,.55);
+}
+
+.cup-tie__row {
+    display: flex;
+    justify-content: space-between;
+    color: #9fb0c2;
+}
+
+.cup-tie small {
+    color: #6f8090;
+    font-size: 9.5px;
+    line-height: 1.35;
+}
+
+.cup-fixture-label {
+    margin-left: 8px;
+    color: #7f90a3;
+    font-size: 10px;
+}
+
+.league-fixture-round.is-cup {
+    color: #e3bd62;
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .cup-groups,
+    .cup-bracket {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* ---- Sau Phase 27: OVR khi đá trái vị trí ---- */
+b.is-off-position,
+.lineup__list b.is-off-position {
+    color: #ff8a7a !important;
+}
+
+b.is-off-position::after {
+    content: '▼';
+    margin-left: 2px;
+    font-size: 8px;
+    vertical-align: 1px;
+}
+
+.team-color-chip--off {
+    background: rgba(255,138,122,.16);
+    color: #ff8a7a;
+}
+
+/* ---- Phase 28: mô phỏng nhanh ---- */
+.btn--sim small {
+    margin-left: 6px;
+    opacity: .75;
+    font-size: 10px;
+}
+
+.sim-screen {
+    display: grid;
+    justify-items: center;
+}
+
+.sim-card {
+    width: min(860px, 100%);
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    text-align: center;
+    transition: box-shadow .3s;
+}
+
+.sim-card.is-goal-blue,
+.sim-card.is-goal-red {
+    box-shadow: 0 0 0 2px #b9ed70, 0 0 40px rgba(185,237,112,.35);
+}
+
+.sim-score {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+}
+
+.sim-score b {
+    font: 900 46px 'Barlow Condensed', Inter, sans-serif;
+    letter-spacing: 2px;
+}
+
+.sim-team {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    font-weight: 900;
+    font-size: 18px;
+}
+
+.sim-team--away {
+    justify-content: flex-start;
+}
+
+.sim-clock {
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    color: #b9ed70;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.sim-pitch {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 100 / 64;
+    max-height: 360px;
+    border-radius: 10px;
+    background:
+        repeating-linear-gradient(90deg, #1f6b3d 0 10%, #237544 10% 20%);
+    overflow: hidden;
+}
+
+.sim-pitch svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.sim-pitch__line {
+    fill: none;
+    stroke: rgba(255,255,255,.55);
+    stroke-width: .5;
+    vector-effect: non-scaling-stroke;
+}
+
+.sim-pitch::before,
+.sim-pitch::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+}
+
+.sim-pitch::before { left: 0; background: var(--blue); }
+.sim-pitch::after { right: 0; background: var(--red); }
+
+.sim-ball {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+    transition: left .25s linear, top .25s linear;
+}
+
+.sim-goal {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font: 900 64px 'Barlow Condensed', Inter, sans-serif;
+    letter-spacing: 6px;
+    color: #fff;
+    text-shadow: 0 4px 18px rgba(0,0,0,.6);
+    background: rgba(0,0,0,.25);
+    animation: sim-goal-pop .9s ease-out;
+}
+
+@keyframes sim-goal-pop {
+    0% { transform: scale(.6); opacity: 0; }
+    30% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.sim-bars {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    font-size: 10px;
+    font-weight: 800;
+    color: #9fb8a9;
+    letter-spacing: 1px;
+}
+
+.sim-bar {
+    position: relative;
+    display: flex;
+    height: 8px;
+    margin: 5px 0 3px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: rgba(255,255,255,.08);
+}
+
+.sim-bar--momentum::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(255,255,255,.3);
+}
+
+.sim-bar--momentum i {
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 8px;
+    margin-left: -5px;
+    border-radius: 99px;
+    background: #b9ed70;
+    transition: left .4s ease;
+}
+
+.sim-feed {
+    list-style: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    min-height: 168px;
+    display: grid;
+    align-content: start;
+    gap: 4px;
+    text-align: left;
+    font-size: 12px;
+}
+
+.sim-feed__item {
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.04);
+    color: #c9d8ce;
+}
+
+.sim-feed__item b {
+    display: inline-block;
+    width: 34px;
+    color: #8fa597;
+}
+
+.sim-feed__item--goal {
+    background: rgba(185,237,112,.15);
+    color: #fff;
+    font-weight: 900;
+}
+
+.sim-feed__item--card {
+    color: #f2c230;
+}
+
+.sim-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ---- Sau Phase 28: màn PRE-MATCH gọn lại ---- */
+.prematch-header { justify-content: space-between; flex-wrap: wrap; }
+.prematch-header > div:nth-child(2) { flex: 1 1 360px; min-width: 0; }
+.prematch-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    align-self: center;
+}
+.prematch-actions .btn--large { min-width: 160px; }
+
+.lineup__head-side { display: inline-flex; align-items: baseline; gap: 10px; }
+.lineup--right .lineup__head-side { flex-direction: row-reverse; }
+.lineup__edit { align-self: center; padding: 4px 9px; font-size: 10px; letter-spacing: .5px; }
+
+.setup-card { display: grid; gap: 10px; }
+.setup-card__summary {
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(185,237,112,.08);
+    color: #d9f5b8;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+.setup-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 3px;
+    border-radius: 8px;
+    background: rgba(0,0,0,.25);
+}
+.setup-tabs button {
+    padding: 7px 2px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #8fa597;
+    font: 800 10px Inter, sans-serif;
+    letter-spacing: .5px;
+    cursor: pointer;
+}
+.setup-tabs button:hover { color: #e3efe6; }
+.setup-tabs button.is-active { background: rgba(185,237,112,.18); color: #fff; }
+.setup-card__body { display: grid; gap: 8px; }
+.setup-card__hint { margin: 0; color: #9fb4a6; font-size: 11px; line-height: 1.45; }
+.setup-card__hint b { color: #fff; }
+.setup-tactics { display: grid; gap: 6px; }
+.setup-tactic {
+    display: grid;
+    gap: 2px;
+    padding: 7px 10px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 7px;
+    background: rgba(255,255,255,.03);
+    color: #d6e2d9;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.setup-tactic b { font-size: 12px; }
+.setup-tactic small { color: #8fa597; font-size: 10px; line-height: 1.35; }
+.setup-tactic.is-active { border-color: #b9ed70; background: rgba(185,237,112,.12); color: #fff; }
+
+@media (max-width: 760px) {
+  .prematch-header > div:nth-child(2) { flex: none; }
+  .prematch-actions { width: 100%; margin-left: 0; }
+  .prematch-actions .btn { flex: 1; }
+}

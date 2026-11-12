@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25 and 26A–26D — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 27 (C1 / C2), 28 (mobile, graphics, sound, performance), 29 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27 and 28 — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29 (mobile, graphics, sound, performance), 30 (card seasons, real data). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -254,6 +254,8 @@ ultimate-football-manager-3d/
     │   ├── career.js         # the club you manage: userClubId(), userTeam(), isUserClub() (Phase 26B)
     │   ├── difficulty.js     # season difficulty: opponent card level, reward factor, AI speed (Phase 26C)
     │   ├── teamColor.js      # team color: card level color + club color of the XI (Phase 26D)
+    │   ├── cupService.js     # C1 / C2: qualification, draw, groups, knockouts, shoot-outs, calendar (Phase 27)
+    │   ├── quickSim.js       # quick simulation: team ratings, instant result, 5 per day (Phase 28)
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
@@ -306,6 +308,8 @@ ultimate-football-manager-3d/
         ├── ClubCrest.jsx         # generated SVG crest for every club (Phase 26A)
         ├── ClubPicker.jsx        # choose / change club (Phase 26B)
         ├── FormationPicker.jsx   # formation tiles with mini pitch diagrams (after 26B)
+        ├── CupPanel.jsx          # C1 / C2 tab: groups, bracket, your cup matches (Phase 27)
+        ├── screens/SimulationScreen.jsx # quick simulation replay (Phase 28)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
         └── ...
 ```
@@ -360,9 +364,11 @@ The project currently uses browser LocalStorage for local game progress.
 | 26B | Choose / change club (first start, new season, Settings), former club becomes AI, real club ids in saves, crests on every screen | ✅ Done (2026-11-12) |
 | 26C | Player height / weight (body + small attribute effects) and season difficulty (opponent card level +N, rewards ×) | ✅ Done (2026-11-12) |
 | 26D | Team color: card level color (lowest card of the XI: bronze / silver / gold / diamond) + club color (11 from one club), also for AI teams | ✅ Done (2026-11-12) |
-| 27 | Champions League / Europa League (C1 / C2) | 🔜 Planned |
-| 28 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
-| 29 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
+| 27 | C1 Champions Cup / C2 Challenge Cup: qualification from the league tables of all 18 countries, 8 groups × 4, two-legged knockouts, final, simulated shoot-outs, cup prizes | ✅ Done (2026-11-12) |
+| After 27 | Away goals rule in two-legged cup ties; out-of-position OVR shown lower (display only) | ✅ Done (2026-11-12) |
+| 28 | Quick simulation: 5 instant matches per day (league and cups), 2D replay with commentary, rewards ×0.7 | ✅ Done (2026-11-12) |
+| 29 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
+| 30 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
 | Backlog | Individual player skills / traits | 💤 Later |
 
 ### Status check (2026-11-09)
@@ -904,8 +910,8 @@ Plan (as agreed):
 
 - **Club level and XP:** the club earns XP after every match (win > draw > loss, bonus for a clean sheet and a big win). The XP needed per level grows level by level. The post-match screen shows XP gained, the level bar and a LEVEL UP message.
 - **Match prize money:** paid after every match into the club budget (EP), based on result, goal difference and opponent strength. End-of-season bonus by league position.
-- **Player catalog** (`src/data/playerCatalog.js`): **500 default players created by the project itself** (fictional names, no real-world data). Each has a `playerId`, name, nationality, age, position, the six main stats, rarity (Bronze / Silver / Gold) and value. The current transfer market players move into this catalog, and the transfer market draws from it. Real data comes later in Phase 29 with the same structure.
-- **Two ids per player:** `playerId` = the person; `cardId` = one card the club owns. Several cards can share a `playerId` (duplicates now, card seasons in Phase 29).
+- **Player catalog** (`src/data/playerCatalog.js`): **500 default players created by the project itself** (fictional names, no real-world data). Each has a `playerId`, name, nationality, age, position, the six main stats, rarity (Bronze / Silver / Gold) and value. The current transfer market players move into this catalog, and the transfer market draws from it. Real data comes later in Phase 30 with the same structure.
+- **Two ids per player:** `playerId` = the person; `cardId` = one card the club owns. Several cards can share a `playerId` (duplicates now, card seasons in Phase 30).
 - **No duplicates in the matchday squad:** the 20 starters and substitutes can never contain two cards with the same `playerId`. Duplicate cards stay in the reserves.
 - **Cards tab (new):** an inventory of unopened rewards. Everything is opened whenever the player wants:
   - **Player packs:** opening one gives a random player from the catalog (by pack rarity). Cards from packs are **+1** for now. The new card goes to the reserves.
@@ -1189,11 +1195,64 @@ Agreed on 2026-11-12 (FC Online-style team color, done before 26B). Logic in `sr
 - **Shown:** TEAM COLOR box on the SQUAD screen (starting XI), in the lineup board (updates while dragging players), under both lineups on the pre-match screen (OVR there includes the bonus, green ▲, tooltip "Base 85 + 3 team color"), and "TEAM COLOR +N" in the in-match player profile. The box also says what is missing, e.g. "2 players below +5 → Silver (+2)". Card lists, the market and the upgrade screen keep showing base stats.
 - Idea for later: nationality team color (needs nationalities for the real-name stars).
 
-### Phase 27 — Champions League / Europa League (planned)
+### Phase 27 — C1 / C2 club cups ✅ (2026-11-12)
 
-- C1 / C2 for the clubs qualified from the previous season (details to be agreed; uses the third kits for clashes).
+Agreed on 2026-11-12. Logic in `src/services/cupService.js`, UI in `src/components/CupPanel.jsx`.
 
-### Phase 28 — Mobile, graphics, performance, sound and release (planned)
+- **Two cups, 32 clubs each:** **C1 Champions Cup** and **C2 Challenge Cup** (names chosen for a world-wide competition — clubs come from all 18 countries).
+- **Qualification ("way B": every country has clubs in the cups)** from the final top-league tables of the previous season (stored at season end since 26A); the very first season uses the data order (strongest first):
+
+  | Countries (rank in the list of 18) | C1 | C2 |
+  | --- | --- | --- |
+  | 1–4 (England, Italy, Spain, Germany) | top 4 (16 clubs) | 5th–6th (8) |
+  | 5–6 (France, Belgium) | top 2 (4) | 3rd–4th (4) |
+  | 7–14 (Portugal … Croatia) | champion (8) | 2nd–3rd (16) |
+  | 15–18 (Poland, Denmark, Sweden, Turkey) | champion (4) | 2nd (4) |
+
+  **The C2 winner plays in C1 next season:** if it has no C1 place from its league it takes the C1 place of the champion of the lowest-ranked country (who moves to C2); if it already has one, nothing changes. In the first season Manchester United (5th in the data) play in C2.
+- **Format (classic):** group stage of **8 groups × 4** (drawn from 4 pots by strength, no two clubs of the same country in a group where possible), everyone plays 6 matches home and away, **top 2 go through**. Round of 16 (group winners vs runners-up of another group), quarter-finals and semi-finals over **two legs** (aggregate score, then **away goals** (added after Phase 27, see below), still level → **penalty shoot-out right after the second leg**). **Final: one match on neutral ground** (draw → shoot-out). Up to **13 cup matches** per season for your club.
+- **Penalty shoot-outs are simulated** (5 kicks each, then sudden death) from the shooting of each side's five best shooters vs the opposing keeper; the post-match screen shows the score and every kick. Taking the penalties yourself → backlog / Phase 29.
+- **Calendar:** cup matchdays sit between league rounds — group matchdays after rounds 3, 6, 9, 12, 15, 18; round of 16 after 21 / 23; quarter-finals after 26 / 28; semi-finals after 31 / 33; final after 36. "Next match" (home, pre-match, league fixtures list) follows this combined calendar, so you play the cup match before the next league round. The fixtures tab lists league and cup matches together (cup ones marked `C1 MD3`, `C2 R16 L2`, …).
+- **Your cup matches are 3D matches** against real clubs from other countries (their squads, kits — third kit on clashes — team color and the season difficulty). All other cup matches are simulated like the virtual leagues.
+- **Rewards:** a cup match pays ×1.5 (C1) / ×1.25 (C2) the league prize money and club XP (× difficulty). Going through a round adds an EP card (× difficulty): C1 8M group / 10M round of 16 / 15M quarter-final / 20M semi-final / **40M + Premium Player Pack for the title**; C2 4M / 5M / 8M / 10M / **20M + Premium pack**.
+- **Screens:** LEAGUE has two new tabs, CHAMPIONS CUP and CHALLENGE CUP — your status in the cup, your cup matches (PLAY on the next one), the 8 group tables (top 2 marked) and the knockout bracket (both legs, aggregate, penalties, winners), plus the champion. Labels like "C2 · GROUP G · MD 1" / "C1 · QUARTER-FINAL · LEG 2" / "C1 · FINAL" on the home screen, pre-match (neutral venue for the final), scoreboard and full-time / post-match screens; the post-match screen also shows the group position or aggregate, penalties and "Through to …" / "Knocked out" / "Champions!".
+- **Storage:** only your cup results are stored (`league.cups = { season, entrants, results }`, ≈ 2–3 KB per season); draws and every other match are recomputed from fixed seeds. Cup winners go into the world history.
+- **Older saves:** a season that was already under way when this update arrives has no cups (the cup tabs say so); cups start with the next season. A season not yet started gets them immediately. Changing club mid-season restarts the season including the cups.
+- **Fix included:** league fixture lists used to give some clubs half a season of away matches followed by half a season of home matches; home and away now alternate (never more than 2 in a row). Already stored fixtures of your current league are unchanged; the other (virtual) leagues of the current season use the new order.
+
+#### Quick updates after 27 ✅ (2026-11-12)
+
+- **Away goals rule** (two-legged rounds of 16, quarter-finals and semi-finals): aggregate first; if level, the club with more goals scored away goes through (e.g. win 2–1 at home, lose 2–3 away = 4–4, 2 away goals against 1 → through); still level → penalty shoot-out after the second leg. The one-match final has no away goals. The post-match screen shows "Away goals 2–1", the bracket marks ties decided this way. (The real competitions dropped the rule in 2021; the game uses it on purpose.)
+- **Out-of-position OVR (display only):** a player in a slot other than his natural position (`naturalPosition`, kept since the formation update) shows a lower OVR in red with ▼ on the lineup board, in the pre-match lineups (team average included; tooltip e.g. "Base 75 · RB playing CB −5 · team color +3") and as "OUT OF POSITION −5" in the in-match profile. **The real stats do not change**: a striker at centre-back still tackles with his own (low) defending, a centre-back up front still shoots with his own (low) shooting, so he plays worse naturally. Penalties (`positionPenalty` in `src/systems/roster.js`):
+
+  | Gap | Examples | OVR shown |
+  | --- | --- | --- |
+  | Very close | CM ↔ CDM / CAM, LB ↔ LWB, RB ↔ RWB, LW ↔ LM, RW ↔ RM, ST ↔ CF, CAM ↔ CF | −2 |
+  | Close | CDM ↔ CB, LB ↔ RB, LW ↔ RW, LM ↔ RM, CAM ↔ ST, CM → LM / RM, CB ↔ LB / RB, LW / RW ↔ ST, wing-back ↔ wide midfielder | −5 |
+  | Far | CM ↔ CB, ST ↔ CDM, LW ↔ LB, RW ↔ RB, everything else up to three lines apart | −10 |
+  | Very far | defender ↔ forward (e.g. ST ↔ CB) | −15 |
+
+  The automatic formation switch now uses the same table to put players where they lose the least.
+
+### Phase 28 — Quick simulation ✅ (2026-11-12)
+
+Agreed on 2026-11-12. Engine in `src/services/quickSim.js`, replay in `src/components/screens/SimulationScreen.jsx`.
+
+- **SIMULATE** button next to PLAY MATCH (home) and KICK OFF (pre-match), with the remaining count (e.g. `SIMULATE 3/5`). Works for league and cup matches. **5 per day** (local date on the device, stored in the club save as `simulations`); unused ones do not carry over; at 0 the button is greyed out.
+- **The result is decided and saved the moment you press the button** — the replay only plays it back, so reloading the page cannot change a result.
+- **How the result is decided (players and whole team):** each side's 11 get four ratings — Attack (shooting / dribbling / pace of forwards, part of midfielders), Midfield (passing / dribbling / physical), Defence (defending / physical / pace of defenders, part of midfielders) and Goalkeeping — using effective stats (card +N, stats above 99), team color, current condition, the opponent's +N cards from the difficulty, and a small home advantage (none in the final). They give each side's expected goals; goals, shots (on / off target, xG), scorers and assisters (by position and stats), saves, passes, tackles, cards, corners and possession follow from them. Typical results for the default United XI on Normal: vs Burnley ~56% wins, vs Aston Villa ~20%, vs Manchester City ~9%.
+- **Replay (~24 s, SPEED ×2, SKIP):** score and crests, match clock with half-time, a 2D top-down pitch where the ball moves towards the goal of the side attacking, GOAL! pop-up, possession and momentum bars, minute-by-minute commentary (goals with assists, saves, misses, cards). Then MATCH SUMMARY → the normal post-match screen (stats, ratings, man of the match, shot map, timeline, cup result).
+- **Everything counts like a real match:** league table / cup result (aggregate, away goals, shoot-outs), season player stats, player condition and XP (the starting XI play 90 minutes), season prize at the end of the league.
+- **Rewards ×0.7:** prize money and club XP of the match, and cup round prizes, are ×0.7 of a played match (× difficulty, × cup factor); the reward card says "SIMULATED · REWARD ×…". **Player XP is ×0.7 too** (`xpFactor` in `applyMatchProgression`).
+
+#### Quick update after Phase 28 — tidier pre-match screen (2026-11-12)
+
+- **SIMULATE n/5 and ▶ KICK OFF sit in the header**, right of the "MANCHESTER UNITED vs …" title, so you no longer scroll to find them (on narrow screens they wrap below the title, full width). The home screen keeps SIMULATE next to PLAY MATCH.
+- **TEAM SETUP has 4 tabs — FORMATION / TACTIC / KITS / DIFFICULTY** — showing one part at a time (FORMATION by default), with an always-visible summary line, e.g. `4-3-3 · Attacking · Home kit · Normal 🔒`. Tactics are picked from cards with a one-line description. Once the season's first match is played, the DIFFICULTY tab shows "Normal · locked until next season".
+- **EDIT ✎** (lineup editor) moved into the header of your lineup card, next to the AVG; the old help paragraph became that button's tooltip.
+- Result: the middle column is about half as tall and the three columns line up (579 / 521 / 579 px at 1400 px wide).
+
+### Phase 29 — Mobile, graphics, performance, sound and release (planned)
 
 - **Mobile controls** (reference: FC Mobile layout), landscape and full screen:
   - Top left: compact score and clock. Top right: formation / tactics selector and a ☰ menu (Pause, Subs, Stats, Controls).
@@ -1212,7 +1271,7 @@ Agreed on 2026-11-12 (FC Online-style team color, done before 26B). Logic in `sr
 - **Mobile performance:** lighter graphics preset (no shadows, lower pixel ratio), block page zoom and scroll, iOS Safari fixes.
 - **Visual polish, sound, performance optimisation and release preparation.**
 
-### Phase 29 — Card seasons and real player data (planned)
+### Phase 30 — Card seasons and real player data (planned)
 
 - **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
 - **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
@@ -1253,19 +1312,23 @@ Agreed on 2026-11-12 (FC Online-style team color, done before 26B). Logic in `sr
 | Nâng cấp thẻ bằng 2 thẻ cùng cầu thủ (+1 → +10), thất bại từ +5 chỉ tụt 1 cấp | Phase 25 ✅ |
 | Thêm giải đấu khác (18 nước × 2 hạng, 720 CLB thật, lên / xuống hạng) | Phase 26A ✅ |
 | Cho chọn / đổi CLB (lần đầu, đầu mùa, Settings; CLB cũ thành AI) | Phase 26B ✅ |
+| Cúp C1 / C2 (cả 18 nước có suất, 8 bảng × 4, đấu loại 2 lượt, luân lưu mô phỏng, vô địch C2 dự C1) | Phase 27 ✅ |
+| Tự đá luân lưu | Backlog |
 | Độ khó chỉ hiện tên mức; thêm sơ đồ (4-1-4-1, kim cương, 4-3-2-1, 4-4-1-1, 4-2-2-2, 3-5-2, 3-4-3, 5-3-2), màn chọn sơ đồ có sân nhỏ | Sau 26B ✅ |
 | Chiều cao, cân nặng của cầu thủ (ảnh hưởng thể hình 3D, sức mạnh, khéo léo, bóng bổng, tầm với thủ môn) | Phase 26C ✅ |
 | Độ khó mỗi mùa: tăng cấp thẻ + của cầu thủ đối thủ, thưởng nhiều hơn khi khó hơn | Phase 26C ✅ |
 | Team color kiểu FO4: cả 11 người đá chính cùng bậc thẻ (theo người thấp nhất) và cùng CLB thì được cộng chỉ số, đội AI cũng có | Phase 26D ✅ |
 | Team color theo quốc tịch | Backlog |
-| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 28 |
-| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 29 |
+| Luật bàn thắng sân khách ở vòng đấu loại 2 lượt; đá trái vị trí thì OVR hiển thị giảm | Sau 27 ✅ |
+| Mô phỏng nhanh 5 trận mỗi ngày, có hoạt cảnh, thưởng ×0.7 | Phase 28 ✅ |
+| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 29 |
+| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 30 |
 | Skill riêng cho từng cầu thủ | Backlog |
 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–26D (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–28 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

@@ -1,3 +1,4 @@
+import { fixtureLabel } from '../../services/cupService'
 import { userClubId, userTeam } from '../../services/career'
 import { Scoreline } from '../MatchOverlays'
 import { shortPlayerName } from '../../utils/names'
@@ -15,7 +16,7 @@ function ClubRewardCard({ report, onOpenCards }) {
         <div className={`home-card club-reward${gained.length ? ' is-levelup' : ''}`}>
             <div className="home-card__head">
                 <span>CLUB REWARDS</span>
-                {(gained.length > 0 || report.seasonReward) && (
+                {(gained.length > 0 || report.seasonReward || report.cupReward) && (
                     <button type="button" className="link-btn" onClick={onOpenCards}>
                         OPEN IN CARDS →
                     </button>
@@ -26,7 +27,7 @@ function ClubRewardCard({ report, onOpenCards }) {
                 <div><span>PRIZE MONEY</span><b>+{formatMoney(report.prize)}</b></div>
                 <div><span>BUDGET</span><b>{formatMoney(report.budget)}</b></div>
                 {report.rewardFactor && report.rewardFactor !== 1 && (
-                    <div><span>DIFFICULTY</span><b>×{report.rewardFactor}</b></div>
+                    <div><span>{report.simulated ? 'SIMULATED · REWARD' : 'REWARD'}</span><b>×{Math.round(report.rewardFactor * 100) / 100}</b></div>
                 )}
                 <div className="club-reward__level">
                     <span>CLUB LEVEL {report.level}</span>
@@ -42,6 +43,14 @@ function ClubRewardCard({ report, onOpenCards }) {
                     <span>{formatMoney(entry.ep)} card + {PACK_TYPES[entry.pack]?.label} added to CARDS</span>
                 </div>
             ))}
+            {report.cupReward && (
+                <div className="club-reward__levelup">
+                    <b>{report.cupReward.label.toUpperCase()}</b>
+                    <span>
+                        {formatMoney(report.cupReward.amount)} card{report.cupReward.pack ? ' + Premium Player Pack' : ''} added to CARDS
+                    </span>
+                </div>
+            )}
             {report.seasonReward && (
                 <div className="club-reward__levelup">
                     <b>SEASON {report.seasonReward.season} FINISHED · #{report.seasonReward.position}</b>
@@ -55,6 +64,54 @@ function ClubRewardCard({ report, onOpenCards }) {
 // Màn sau trận: tỉ số, thống kê hai đội, điểm cầu thủ đội người chơi + cầu thủ
 // xuất sắc nhất trận, rồi về sảnh / trận tiếp theo / bảng xếp hạng.
 
+
+// Phase 27: kết quả cúp (tổng tỉ số, luân lưu, đi tiếp / bị loại).
+const NEXT_STAGE = { group: 'the round of 16', r16: 'the quarter-finals', qf: 'the semi-finals', sf: 'the final' }
+
+function ordinalOf(value) {
+    return value === 1 ? '1st' : value === 2 ? '2nd' : value === 3 ? '3rd' : `${value}th`
+}
+
+function CupResultBox({ info }) {
+    if (!info) return null
+
+    const outcome =
+        info.outcome === 'champion'
+            ? `${info.cupName.toUpperCase()} WINNERS!`
+            : info.outcome === 'advanced'
+                ? `Through to ${NEXT_STAGE[info.stage]}`
+                : info.outcome === 'eliminated'
+                    ? info.stage === 'group' ? 'Out in the group stage' : info.stage === 'final' ? 'Runners-up' : 'Knocked out'
+                    : null
+
+    return (
+        <div className={`cup-result${info.outcome ? ` cup-result--${info.outcome}` : ''}`}>
+            <span className="cup-result__label">{info.label}</span>
+            {info.groupPosition && <span>Group position: <b>{ordinalOf(info.groupPosition)}</b></span>}
+            {info.aggregate && (
+                <span>Aggregate <b>{info.aggregate.for}–{info.aggregate.against}</b></span>
+            )}
+            {info.awayGoals && (
+                <span>Away goals <b>{info.awayGoals.for}–{info.awayGoals.against}</b></span>
+            )}
+            {info.shootout && (
+                <span className="cup-result__pens">
+                    Penalties <b>{info.shootout.for}–{info.shootout.against}</b>
+                    <span className="pen-kicks">
+                        {info.shootout.kicks.map((kick, index) => (
+                            <i
+                                key={index}
+                                className={`pen-kick${kick.user ? ' is-user' : ''}${kick.scored ? ' is-scored' : ' is-missed'}`}
+                                title={`${kick.user ? 'You' : 'Opponent'}: ${kick.scored ? 'scored' : 'missed'}`}
+                            />
+                        ))}
+                    </span>
+                </span>
+            )}
+            {outcome && <strong>{outcome}</strong>}
+        </div>
+    )
+}
 
 function ratingClass(rating) {
     if (rating == null) return ''
@@ -103,7 +160,7 @@ export default function PostMatchScreen({
         <section className="screen postmatch-screen">
             <div className="home-hero">
                 <div className="home-hero__eyebrow">
-                    MATCH SUMMARY{fixture ? ` · ROUND ${fixture.round}` : ''}
+                    MATCH SUMMARY{fixture ? ` · ${fixtureLabel(fixture)}` : ''}
                 </div>
 
                 <Scoreline
@@ -124,6 +181,8 @@ export default function PostMatchScreen({
                             ? 'MATCH ABANDONED'
                             : result.toUpperCase()}
                 </div>
+
+                <CupResultBox info={summary.cupInfo} />
 
                 <div className="home-hero__actions">
                     {nextFixture ? (

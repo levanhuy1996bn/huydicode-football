@@ -1,3 +1,5 @@
+import { SIM_DAILY_LIMIT } from '../../services/quickSim'
+import { fixtureLabel } from '../../services/cupService'
 import ClubCrest from '../ClubCrest'
 import { isUserClub, userClubId, userTeam } from '../../services/career'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
@@ -54,6 +56,8 @@ export default function HomeScreen({
     onOpenDevelopment,
     onNewSeason,
     onChangeClub,
+    simsLeft = 0,
+    onSimulate,
 }) {
     const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
     const topRows = standings.slice(0, 6)
@@ -67,7 +71,7 @@ export default function HomeScreen({
                 {nextMatch ? (
                     <>
                         <div className="home-hero__eyebrow">
-                            NEXT MATCH · ROUND {nextMatch.fixture.round} ·{' '}
+                            NEXT MATCH · {fixtureLabel(nextMatch.fixture)} ·{' '}
                             {nextMatch.isHome ? 'HOME' : 'AWAY'}
                         </div>
 
@@ -95,6 +99,16 @@ export default function HomeScreen({
                             </button>
                             <button type="button" className="btn" onClick={onEditLineup}>
                                 EDIT LINEUP
+                            </button>
+                            {/* Phase 28 */}
+                            <button
+                                type="button"
+                                className="btn btn--sim"
+                                onClick={onSimulate}
+                                disabled={!simsLeft}
+                                title="Quick simulation: instant result, rewards ×0.7 · 5 per day"
+                            >
+                                SIMULATE <small>{simsLeft}/{SIM_DAILY_LIMIT}</small>
                             </button>
                         </div>
                     </>
@@ -167,7 +181,7 @@ export default function HomeScreen({
                                 {userTeam().name} <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
                                 {lastResult.opponentName}
                             </div>
-                            <small>ROUND {lastResult.round}</small>
+                            <small>{lastResult.label || `ROUND ${lastResult.round}`}</small>
                         </div>
                     ) : (
                         <p className="home-card__empty">No matches played yet this season.</p>

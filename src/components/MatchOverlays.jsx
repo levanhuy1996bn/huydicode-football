@@ -1,3 +1,4 @@
+import { fixtureLabel } from '../services/cupService'
 import FormationPicker from './FormationPicker'
 import { TACTICS } from '../systems/constants'
 import { useState } from 'react'
@@ -219,7 +220,7 @@ export function FullTimeOverlay({
         <div className="match-overlay match-overlay--dim match-overlay--front">
             <div className="match-card match-card--wide">
                 <div className="match-card__eyebrow">
-                    FULL TIME{fixture ? ` · ROUND ${fixture.round}` : ''}
+                    FULL TIME{fixture ? ` · ${fixtureLabel(fixture)}` : ''}
                 </div>
 
                 <Scoreline
@@ -282,7 +283,7 @@ export function QuitConfirm({ isLeagueMatch, onConfirm, onCancel }) {
                 <div className="match-card__title">QUIT MATCH?</div>
                 <div className="match-card__subtitle">
                     {isLeagueMatch
-                        ? 'This league match will be recorded as a 0–3 loss.'
+                        ? 'This match will be recorded as a 0–3 loss.'
                         : 'The match will end without a result.'}
                 </div>
                 <div className="match-card__actions">

@@ -1,6 +1,6 @@
 // Phase 23: danh mục 500 cầu thủ mặc định (tên hư cấu, tự tạo — không dùng dữ liệu thật).
 // 20 cầu thủ thị trường chuyển nhượng cũ (market-001…020) + 480 cầu thủ sinh tự động (p0001…p0480).
-// Sau này có dữ liệu thật (Phase 29) chỉ cần thay file này, giữ nguyên cấu trúc.
+// Sau này có dữ liệu thật (Phase 30) chỉ cần thay file này, giữ nguyên cấu trúc.
 // rarity: gold (OVR ≥ 75) · silver (65–74) · bronze (≤ 64). value / wage tính bằng EP.
 // File được sinh bằng script (seed cố định); sửa tay cũng được, nhưng playerId phải duy nhất.
 export const PLAYER_CATALOG = [

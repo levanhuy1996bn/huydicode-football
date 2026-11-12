@@ -65,7 +65,10 @@ function generateRoundRobin(clubIds) {
 
             if (!home || !away) continue
 
-            const shouldSwap = (round + index) % 2 === 1
+            // Phase 27: xen kẽ sân nhà / sân khách (phương pháp vòng tròn chuẩn).
+            // Công thức cũ (round + index) làm một đội đá sân khách liền nửa
+            // mùa đầu rồi sân nhà liền nửa mùa sau.
+            const shouldSwap = round % 2 === 1
 
             matches.push({
                 homeTeamId: shouldSwap ? away : home,

@@ -18,7 +18,8 @@ import {
     WORLD_LEAGUES,
     worldClub,
 } from '../data/world'
-import { DEFAULT_USER_CLUB, setUserClubId, userClubId } from './career'
+import { DEFAULT_USER_CLUB, isUserClub, setUserClubId, userClubId } from './career'
+import { createCups, cupWinners } from './cupService'
 import { LEAGUE_STORAGE_KEY } from '../data/leagueData'
 import { ROSTER_STORAGE_KEY } from '../systems/roster'
 import {
@@ -107,10 +108,24 @@ export function userLeagueId(world, clubId = world.userClubId || userClubId()) {
 }
 
 // difficulty: mùa mới giữ độ khó của mùa trước (đổi được trước trận đầu tiên).
+// Phase 27: kèm hai cúp C1 / C2 của mùa (league.cups).
 export function createLeagueForWorld(world, difficulty) {
     const leagueId = userLeagueId(world)
+    const league = createInitialLeague(world.season, leagueId, world.divisions[leagueId], difficulty)
 
-    return createInitialLeague(world.season, leagueId, world.divisions[leagueId], difficulty)
+    return { ...league, cups: createCups(world) }
+}
+
+// Bản lưu giải trước Phase 27 (chưa có cúp): mùa chưa đá trận nào thì có cúp
+// ngay; đang đá dở thì cúp bắt đầu từ mùa sau (vẫn xem được, không đá).
+function withCups(world, league) {
+    if (league.cups?.season === league.season) return league
+
+    const started = league.fixtures.some(
+        (fixture) => fixture.played && (isUserClub(fixture.homeTeamId) || isUserClub(fixture.awayTeamId)),
+    )
+
+    return { ...league, cups: createCups(world, { inactive: started }) }
 }
 
 const sameClubs = (a = [], b = []) => a.length === b.length && a.every((id) => b.includes(id))
@@ -150,7 +165,7 @@ export function loadGameWorld() {
         }
 
         if (sameClubs(world.divisions[saved.leagueId], saved.clubIds)) {
-            return { world, league: saved, migrated: false, firstRun }
+            return { world, league: withCups(world, saved), migrated: false, firstRun }
         }
     }
 
@@ -269,6 +284,8 @@ export function advanceWorld(world, league) {
         divisions[country.secondLeagueId] = [...second.slice(PROMOTION_SPOTS), ...down]
     })
 
+    // Phase 27: nhà vô địch C1 / C2 (vô địch C2 được dự C1 mùa sau).
+    const cups = cupWinners(league)
     const userTable = final(league.leagueId)
     const userPosition = userTable.indexOf(world.userClubId || userClubId()) + 1
     const entry = {
@@ -277,6 +294,7 @@ export function advanceWorld(world, league) {
         promoted,
         relegated,
         user: { clubId: world.userClubId || userClubId(), leagueId: league.leagueId, position: userPosition },
+        ...(cups ? { cups } : {}),
     }
 
     return {

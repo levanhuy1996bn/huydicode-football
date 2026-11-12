@@ -1,3 +1,4 @@
+import { naturalPositionOf, positionOverall, positionPenalty } from '../systems/roster'
 import TeamColorPanel from './TeamColorPanel'
 import { teamColorOf } from '../services/teamColor'
 import { useState } from 'react'
@@ -83,7 +84,17 @@ function PlayerCard({
             <span className="sub-card__name">{shortName(player)}</span>
             <span className="sub-card__meta">
                 <em>{player.position}</em>
-                <b>{player.overall}</b>
+                {/* Sau Phase 27: trên sân, OVR theo vị trí đang đá (đá trái vị trí → giảm). */}
+                {zone === 'pitch' && positionPenalty(naturalPositionOf(player), player.position) > 0 ? (
+                    <b
+                        className="is-off-position"
+                        title={`${naturalPositionOf(player)} playing ${player.position}: ${player.overall} → ${positionOverall(player)}`}
+                    >
+                        {positionOverall(player)}
+                    </b>
+                ) : (
+                    <b>{player.overall}</b>
+                )}
             </span>
             {isDisabled && <span className="sub-card__flag">SUBBED OFF</span>}
             <span

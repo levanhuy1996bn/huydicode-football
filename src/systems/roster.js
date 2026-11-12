@@ -373,6 +373,53 @@ const NATURAL_SPOT = {
 
 export const naturalPositionOf = (player) => player?.naturalPosition || player?.position
 
+// ---- Sau Phase 27: đá trái vị trí → OVR HIỂN THỊ giảm ----
+// Chỉ là con số hiển thị (bảng đội hình, trước trận, hồ sơ trong trận); chỉ
+// số thật không đổi — tiền đạo đá trung vệ vẫn tắc bóng bằng chỉ số phòng
+// ngự (thấp) của mình nên tự nhiên đá kém. Mức giảm: rất gần −2, gần −5,
+// xa −10, rất xa −15.
+const PAIR_PENALTY = {}
+const pairKey = (a, b) => [a, b].sort().join('|')
+const setPairs = (penalty, pairs) => pairs.forEach(([a, b]) => { PAIR_PENALTY[pairKey(a, b)] = penalty })
+
+setPairs(2, [
+    ['CM', 'CDM'], ['CM', 'CAM'], ['LB', 'LWB'], ['RB', 'RWB'], ['LW', 'LM'], ['RW', 'RM'],
+    ['ST', 'CF'], ['CAM', 'CF'],
+])
+setPairs(5, [
+    ['CDM', 'CB'], ['LB', 'RB'], ['LWB', 'RWB'], ['LW', 'RW'], ['LM', 'RM'], ['CAM', 'ST'],
+    ['CM', 'LM'], ['CM', 'RM'], ['CDM', 'CAM'], ['CB', 'LB'], ['CB', 'RB'], ['LWB', 'LM'],
+    ['RWB', 'RM'], ['LW', 'ST'], ['RW', 'ST'], ['CAM', 'LW'], ['CAM', 'RW'], ['CF', 'LW'],
+    ['CF', 'RW'], ['LM', 'LB'], ['RM', 'RB'], ['LWB', 'LW'], ['RWB', 'RW'],
+])
+setPairs(10, [['LW', 'LB'], ['RW', 'RB'], ['CB', 'LWB'], ['CB', 'RWB']])
+
+// Tuyến: hậu vệ 0, tiền vệ phòng ngự 1, tiền vệ 2, tiền vệ công 3, tiền đạo 4.
+const LINE = {
+    CB: 0, LB: 0, RB: 0, LWB: 0, RWB: 0, CDM: 1, CM: 2, LM: 2, RM: 2, AM: 3, CAM: 3,
+    CF: 4, LW: 4, RW: 4, ST: 4,
+}
+
+export function positionPenalty(natural, played) {
+    const a = String(natural || '').toUpperCase()
+    const b = String(played || '').toUpperCase()
+
+    if (!a || !b || a === b) return 0
+    if (a === 'GK' || b === 'GK') return 15
+
+    const listed = PAIR_PENALTY[pairKey(a, b)]
+
+    if (listed) return listed
+
+    const gap = Math.abs((LINE[a] ?? 2) - (LINE[b] ?? 2))
+
+    return gap >= 4 ? 15 : 10
+}
+
+// OVR hiển thị ở vị trí đang đá (không bao giờ dưới 1).
+export const positionOverall = (player) =>
+    Math.max(1, (player?.overall || 0) - positionPenalty(naturalPositionOf(player), player?.position))
+
 // Đặt cầu thủ vào một ô (vị trí + toạ độ), nhớ vị trí sở trường.
 export const placeInSlot = (player, position, x, z) => ({
     ...player,
@@ -448,14 +495,13 @@ function solveAssignment(cost) {
 }
 
 function slotCost(player, [position, x, z]) {
-    const group = SLOT_GROUP(position)
     const natural = String(naturalPositionOf(player) || '').toUpperCase()
-    const playerGroup = SLOT_GROUP(natural)
     const [nx, nz] = NATURAL_SPOT[natural] || [player.x ?? 0, player.z ?? 0]
-    // Thủ môn chỉ vào ô thủ môn; lệch tuyến bị phạt nặng.
-    const groupCost = (group === 0) !== (playerGroup === 0) ? 10000 : Math.abs(group - playerGroup) * 60
+    // Thủ môn chỉ vào ô thủ môn. Còn lại: mức giảm OVR khi đá trái vị trí là
+    // chính, khoảng cách tới chỗ sở trường / chỗ đang đứng để phân định.
+    if ((position === 'GK') !== (natural === 'GK')) return 10000
 
-    return groupCost + Math.abs(nx - x) + Math.abs(nz - z) * 0.6 + Math.abs((player.x ?? 0) - x) * 0.1
+    return positionPenalty(natural, position) * 8 + Math.abs(nx - x) * 0.3 + Math.abs(nz - z) * 0.2 + Math.abs((player.x ?? 0) - x) * 0.1
 }
 
 export function assignFormation(players, formation) {

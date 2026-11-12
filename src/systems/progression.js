@@ -320,7 +320,10 @@ export function applyMatchProgression(players, lines, fractions, context) {
     const reports = []
 
     const next = players.map((player) => {
-        const gained = matchXp(player, lineById.get(player.id), fractions[player.id] || 0, context)
+        // Phase 28: xpFactor (trận mô phỏng nhanh = 0.7).
+        const gained = Math.round(
+            matchXp(player, lineById.get(player.id), fractions[player.id] || 0, context) * (context.xpFactor ?? 1),
+        )
 
         if (!gained) return player
 

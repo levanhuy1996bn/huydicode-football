@@ -1,9 +1,10 @@
 
+import CupPanel from './CupPanel'
+import { fixtureLabel, fixtureShortLabel, nextUserFixture, userCalendar } from '../services/cupService'
 import { useMemo, useState } from 'react'
 import './LeagueManagementPanel.css'
 import {
     getLeagueStandings,
-    getNextUserFixture,
     getSeasonProgress,
     getTeamById,
 } from '../services/leagueService'
@@ -28,6 +29,9 @@ const TABS = [
     { id: 'table', label: 'LEAGUE TABLE' },
     { id: 'players', label: 'PLAYER STATS' },
     { id: 'fixtures', label: 'FIXTURES' }, // + tên CLB người chơi (Phase 26B)
+    // Phase 27: hai cúp
+    { id: 'c1', label: 'CHAMPIONS CUP' },
+    { id: 'c2', label: 'CHALLENGE CUP' },
 ]
 
 // Cột thống kê cầu thủ. minApps: số trận tối thiểu để được xếp hạng ở cột tỉ lệ.
@@ -100,17 +104,16 @@ export default function LeagueManagementPanel({
         [fixtures],
     )
 
+    // Phase 27: lịch chung giải + cúp.
     const nextFixture = useMemo(
-        () => getNextUserFixture(fixtures),
-        [fixtures],
+        () => nextUserFixture(league),
+        [league],
     )
 
-    // Toàn bộ 38 trận của đội mình, theo thứ tự vòng đấu.
+    // Toàn bộ trận của đội mình (38 trận giải + trận cúp đã biết), theo lịch.
     const userFixtures = useMemo(
-        () => fixtures
-            .filter((fixture) => isUserClub(fixture.homeTeamId) || isUserClub(fixture.awayTeamId))
-            .sort((a, b) => a.round - b.round),
-        [fixtures],
+        () => userCalendar(league),
+        [league],
     )
 
     const seasonPlayers = useMemo(
@@ -209,7 +212,7 @@ export default function LeagueManagementPanel({
                                         className="league-primary-button"
                                         onClick={() => onStartFixture(nextFixture)}
                                     >
-                                        PLAY ROUND {nextFixture.round}
+                                        PLAY · {fixtureLabel(nextFixture)}
                                     </button>
                                 ) : (
                                     <button
@@ -492,7 +495,9 @@ export default function LeagueManagementPanel({
                                                 isNext ? 'is-next' : '',
                                             ].join(' ')}
                                         >
-                                            <span className="league-fixture-round">R{fixture.round}</span>
+                                            <span className={`league-fixture-round${fixture.competition ? ' is-cup' : ''}`}>
+                                                {fixtureShortLabel(fixture)}
+                                            </span>
                                             <span className={`league-fixture-venue league-fixture-venue--${isHome ? 'home' : 'away'}`}>
                                                 {isHome ? 'H' : 'A'}
                                             </span>
@@ -521,6 +526,14 @@ export default function LeagueManagementPanel({
                                 })}
                             </div>
                         </section>
+                    )}
+                    {(activeTab === 'c1' || activeTab === 'c2') && (
+                        <CupPanel
+                            league={league}
+                            cupId={activeTab}
+                            nextFixture={nextFixture}
+                            onStartFixture={onStartFixture}
+                        />
                     )}
                 </main>
             </div>
