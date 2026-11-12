@@ -1,5 +1,5 @@
 // Phase 23: cấp độ CLB, XP, tiền thưởng (EP) sau trận và thưởng lên cấp.
-import { epCard, playerPack } from './cards'
+import { epCard, playerPack, protectionCard } from './cards'
 
 // XP CLB nhận sau mỗi trận giải đấu (trận bỏ cuộc không tính).
 export const CLUB_XP = {
@@ -21,6 +21,8 @@ export function levelRewards(level) {
     return {
         ep: milestone ? 10000000 : 5000000,
         pack: milestone ? 'premium' : 'standard',
+        // Phase 29C: cấp 5, 10, 15… tặng thêm 1 thẻ bảo vệ.
+        protection: milestone ? 1 : 0,
     }
 }
 
@@ -73,6 +75,7 @@ export function addClubXp(club, amount) {
 
         inventory.push(epCard(rewards.ep, `Level ${level} reward`))
         inventory.push(playerPack(rewards.pack, `Level ${level} reward`))
+        if (rewards.protection) inventory.push(protectionCard(`Level ${level} reward`))
         levelsGained.push({ level, ...rewards })
     }
 
@@ -128,9 +131,14 @@ export function applySeasonBonus(club, season, position, rewardFactor = 1, tier 
     return {
         club: {
             ...club,
-            inventory: [...(club.inventory || []), epCard(amount, `Season ${season} · finished #${position}`)],
+            inventory: [
+                ...(club.inventory || []),
+                epCard(amount, `Season ${season} · finished #${position}`),
+                // Phase 29C: vô địch giải → thêm 1 thẻ bảo vệ.
+                ...(position === 1 ? [protectionCard(`Season ${season} · league champions`)] : []),
+            ],
             seasonBonusPaid: { ...(club.seasonBonusPaid || {}), [season]: position },
         },
-        bonus: { amount, position, season, tier },
+        bonus: { amount, position, season, tier, protection: position === 1 },
     }
 }

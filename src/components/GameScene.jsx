@@ -2,6 +2,12 @@ import SimulationScreen from './screens/SimulationScreen'
 import TrophyRoomScreen from './screens/TrophyRoomScreen'
 import NewTrophyPopup from './NewTrophyPopup'
 import { awardTrophies } from '../services/trophyService'
+import { crowdStart, crowdStop, roar, whistle } from '../utils/matchSound'
+import FpsMeter from './FpsMeter'
+
+// Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
+const loadMatchCanvas = () => import('./MatchCanvas')
+const MatchCanvas = lazy(loadMatchCanvas)
 import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation } from '../services/quickSim'
 import {
     CUP_MATCH_FACTOR,
@@ -16,7 +22,7 @@ import {
     shootoutSkill,
     userCalendar,
 } from '../services/cupService'
-import { epCard, playerPack } from '../services/cards'
+import { epCard, playerPack, protectionCard } from '../services/cards'
 import ClubCrest from './ClubCrest'
 import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
@@ -57,7 +63,6 @@ function applyKits(roster, kits, opponentClubId) {
 import { buildMatchSummary } from '../systems/matchStats'
 import { applyMatchCondition } from '../systems/stamina'
 import { applyMatchProgression, progressOf } from '../systems/progression'
-import MatchWorld from './MatchWorld'
 import {
     FullTimeOverlay,
     HalfTimeOverlay,
@@ -81,14 +86,13 @@ import {
 } from '../services/worldService'
 import {
     Suspense,
+    lazy,
     useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
 } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { Physics } from '@react-three/rapier'
 
 import { FORMATIONS } from '../data/teams'
 import { LiveStatsPanel, liveStatSource } from './MatchStatsPanel'
@@ -118,7 +122,8 @@ import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 // Engine trận đấu nằm trong src/systems, scene 3D nằm trong MatchWorld.jsx.
 
 const SETTINGS_KEY = 'ultimate-football-settings-v1'
-const DEFAULT_SETTINGS = { matchDuration: MATCH_DURATION, labelMode: 'smart' }
+// Phase 29B: graphics 'high' | 'low', showFps (đồng hồ FPS trong trận).
+const DEFAULT_SETTINGS = { matchDuration: MATCH_DURATION, labelMode: 'smart', graphics: 'high', showFps: false }
 
 function loadSettings() {
     try {
@@ -340,6 +345,16 @@ export default function GameScene() {
         saveWorld(world)
     }, [world])
 
+    // Phase 29B: tải trước khung 3D trận đấu khi trình duyệt rảnh (sau 1.5 giây),
+    // để lúc bấm KICK OFF không phải chờ.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadMatchCanvas().catch(() => {})
+        }, 1500)
+
+        return () => clearTimeout(timer)
+    }, [])
+
     // Phase 28B: trao cúp (vô địch giải khi đá xong mùa, C1 / C2 khi thắng
     // chung kết). Lần chạy đầu (mở game) chỉ ghi lặng lẽ — ví dụ danh hiệu
     // giành trước khi có phòng truyền thống — không hiện thông báo.
@@ -384,12 +399,18 @@ export default function GameScene() {
             setGoalMessage(`${opponentNameRef.current} · ${credit}`)
         }
 
+        // Phase 29B: khán giả hò reo (to hơn khi đội mình ghi bàn).
+        roar(teamId === 'blue')
+
         setGoalEvents((events) => [
             ...events,
             {
                 teamId,
                 name: info.scorerName,
                 ownGoal: Boolean(info.ownGoal),
+                // Phase 29C: bàn từ cú sút bồi / bóng đổi hướng.
+                rebound: Boolean(info.rebound),
+                deflected: Boolean(info.deflected),
                 minute,
             },
         ])
@@ -458,6 +479,29 @@ export default function GameScene() {
             setWhistlePending('full')
         }
     }, [matchTime, matchStatus, half, whistlePending])
+
+    // Phase 29B: còi giao bóng + tiếng khán giả nền trong trận.
+    const previousStatusRef = useRef(matchStatus)
+
+    useEffect(() => {
+        const previous = previousStatusRef.current
+
+        previousStatusRef.current = matchStatus
+
+        if (screen !== 'match') {
+            crowdStop()
+            return
+        }
+
+        if (matchStatus === 'playing') {
+            crowdStart()
+            if (previous !== 'paused' && previous !== 'playing') whistle('kickoff')
+        } else if (matchStatus !== 'goal') {
+            crowdStop()
+        }
+    }, [matchStatus, screen])
+
+    useEffect(() => () => crowdStop(), [])
 
     const handleWhistleDone = useCallback((type) => {
         setWhistlePending(null)
@@ -634,7 +678,7 @@ export default function GameScene() {
                             : `${cupInfo.cupName} · ${STAGE_LABELS[cupInfo.stage]} passed`
                         const items = [epCard(prize, label)]
 
-                        if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label))
+                        if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label), protectionCard(label))
 
                         nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
                         cupReward = { amount: prize, label, pack: cupInfo.outcome === 'champion' }
@@ -1582,7 +1626,7 @@ export default function GameScene() {
                     : `${cupInfo.cupName} · ${STAGE_LABELS[cupInfo.stage]} passed`
                 const items = [epCard(prize, label)]
 
-                if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label))
+                if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label), protectionCard(label))
 
                 nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
                 cupReward = { amount: prize, label, pack: cupInfo.outcome === 'champion' }
@@ -1737,7 +1781,7 @@ export default function GameScene() {
             )}
 
             {screen === 'trophies' && (
-                <TrophyRoomScreen world={world} league={league} onBack={goHome} />
+                <TrophyRoomScreen world={world} league={league} onBack={goHome} quality={settings.graphics} />
             )}
 
             {newTrophies.length > 0 && screen !== 'match' && screen !== 'simulation' && (
@@ -1745,6 +1789,7 @@ export default function GameScene() {
                     key={newTrophies[0].id}
                     trophy={newTrophies[0]}
                     remaining={newTrophies.length - 1}
+                    quality={settings.graphics}
                     onClose={() => setNewTrophies((queue) => queue.slice(1))}
                     onOpenRoom={() => {
                         setNewTrophies([])
@@ -1795,14 +1840,9 @@ export default function GameScene() {
             <section className="content-grid">
             <div className="pitch-panel">
         <div className="game-canvas">
-            <Canvas shadows dpr={[1, 1.75]}>
-                <Suspense fallback={null}>
-                    <Physics
-                        gravity={[0, -9.81, 0]}
-                        timeStep={FIXED_STEP}
-                        interpolate={false}
-                    >
-                        <MatchWorld
+            <Suspense fallback={<div className="match-loading">LOADING STADIUM…</div>}>
+                        <MatchCanvas
+                            graphics={settings.graphics}
                             chargeHudRef={chargeHudRef}
                             radarRef={radarRef}
                             statsRef={statsRef}
@@ -1822,9 +1862,9 @@ export default function GameScene() {
                             onGoal={handleGoal}
                             onCard={handleCard}
                         />
-                    </Physics>
-                </Suspense>
-            </Canvas>
+            </Suspense>
+
+            {settings.showFps && <FpsMeter />}
 
             {/* SCOREBOARD */}
             <div

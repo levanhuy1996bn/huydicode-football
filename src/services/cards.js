@@ -147,7 +147,7 @@ export function inventoryItem(type, fields) {
 
     return {
         id: `item-${Date.now().toString(36)}${itemCounter.toString(36)}`,
-        type, // 'ep' | 'pack'
+        type, // 'ep' | 'pack' | 'protection' (Phase 29C)
         createdAt: Date.now(),
         ...fields,
     }
@@ -155,3 +155,20 @@ export function inventoryItem(type, fields) {
 
 export const epCard = (amount, source) => inventoryItem('ep', { amount, source })
 export const playerPack = (pack, source) => inventoryItem('pack', { pack, source })
+
+// Phase 29C: thẻ bảo vệ khi đập thẻ (thất bại không tụt cấp). Nằm trong kho
+// (REWARDS), được dùng ở UPGRADE CARDS. Mua bằng EP hoặc nhận thưởng.
+export const PROTECTION_PRICE = 5000000
+export const protectionCard = (source) => inventoryItem('protection', { source })
+export const protectionCount = (club) => (club?.inventory || []).filter((item) => item.type === 'protection').length
+
+// Bỏ một thẻ bảo vệ khỏi kho (thẻ cũ nhất trước).
+export function spendProtection(club) {
+    const inventory = [...(club?.inventory || [])]
+    const index = inventory.findIndex((item) => item.type === 'protection')
+
+    if (index < 0) return null
+
+    inventory.splice(index, 1)
+    return { ...club, inventory }
+}

@@ -179,7 +179,9 @@ export default function UpgradeAnimation({ before, after, result, materials = []
                         ? `SUCCESS · +${result.from} → +${result.to}`
                         : dropped
                             ? `FAILED · +${result.from} → +${result.to}`
-                            : 'FAILED'
+                            : result.protectedDrop
+                                ? `FAILED · PROTECTED · STAYS +${result.to}`
+                                : 'FAILED'
                     : `UPGRADING TO +${target} · ${Math.round(result.rate * 100)}%`}
             </div>
 
@@ -254,6 +256,12 @@ export default function UpgradeAnimation({ before, after, result, materials = []
                     <CountStat key={key} label={label} from={before[key]} to={after[key]} active={revealed} />
                 ))}
             </div>
+
+            {revealed && !result.success && result.insuranceNext > 0 && (
+                <div className="upgrade-anim__insurance">
+                    Insurance for +{result.from + 1}: <b>+{Math.round(result.insuranceNext * 100)}%</b> on the next try
+                </div>
+            )}
 
             {revealed ? (
                 <div className="upgrade-anim__actions" onClick={(event) => event.stopPropagation()}>

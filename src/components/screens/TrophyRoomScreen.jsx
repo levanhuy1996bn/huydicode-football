@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import ClubCrest from '../ClubCrest'
 import TrophyIcon from '../TrophyIcon'
+import Trophy3D from '../Trophy3D'
 import { LEAGUE_BY_ID, worldClub } from '../../data/world'
 import { getLeagueStandings, getSeasonProgress } from '../../services/leagueService'
 import { userCupRun } from '../../services/cupService'
@@ -33,7 +34,7 @@ function StarChip({ difficulty }) {
     )
 }
 
-export default function TrophyRoomScreen({ world, league, onBack }) {
+export default function TrophyRoomScreen({ world, league, onBack, quality = 'high' }) {
     const cabinet = useMemo(() => trophyCabinet(world?.trophies || []), [world])
 
     // Mùa đang đá (chưa có trong world.career).
@@ -124,7 +125,8 @@ export default function TrophyRoomScreen({ world, league, onBack }) {
                 {selected && (
                     <aside className="home-card trophy-detail">
                         <div className="trophy-detail__icon">
-                            <TrophyIcon trophy={selected} won={selected.count > 0} star={selected.bestStar} size={130} />
+                            {/* Phase 29B: cúp 3D xoay (SVG khi chưa giành được / đồ hoạ LOW). */}
+                            <Trophy3D trophy={selected} won={selected.count > 0} star={selected.bestStar} size={130} quality={quality} />
                         </div>
                         <h2>{selected.name}</h2>
                         <p className="trophy-detail__sub">{selected.subtitle}</p>

@@ -12,6 +12,8 @@ import * as THREE from 'three'
 
 import { useKeyboard } from '../hooks/useKeyboard'
 import Pitch from './Pitch'
+import Stadium from './Stadium'
+import { crowdIntensity, matchSoundEvent } from '../utils/matchSound'
 import Player from './Player'
 
 import { FIXED_STEP, TACTICS, clamp } from '../systems/constants'
@@ -411,6 +413,8 @@ export default function MatchWorld({
     onWhistleDone,
     onAutoPilotChange,
     onCard,
+    // Phase 29B: chất lượng đồ hoạ ('high' | 'low').
+    quality = 'high',
 }) {
     const keys = useKeyboard()
 
@@ -510,6 +514,8 @@ export default function MatchWorld({
         onGoal,
         onCard,
         onSentOff: (id) => setSentOff((list) => (list.includes(id) ? list : [...list, id])),
+        // Phase 29B: âm thanh trận đấu (còi, chạm bóng, cứu thua, sút trượt).
+        onSound: matchSoundEvent,
     })
     // Người đang điều khiển: engine có thể tự đổi (nhận bóng, giao bóng, S/Q)
     // trước khi React kịp render lại. Chỉ đồng bộ từ prop khi prop THAY ĐỔI,
@@ -695,6 +701,23 @@ export default function MatchWorld({
         stepMatch(ctx, FIXED_STEP)
     })
 
+    // Phase 29B: tiếng khán giả to dần khi bóng tới gần khung thành (4 lần/giây).
+    const crowdTimer = useRef(0)
+
+    useFrame((_, delta) => {
+        crowdTimer.current += delta
+
+        if (crowdTimer.current < 0.25) return
+
+        crowdTimer.current = 0
+
+        const position = ballRef.current?.translation()
+
+        if (!position || !ctx.isPlaying) return
+
+        crowdIntensity(clamp((Math.abs(position.z) - 22) / 28, 0, 1))
+    })
+
     return (
         <>
             <color attach="background" args={['#10251d']} />
@@ -705,12 +728,19 @@ export default function MatchWorld({
             <directionalLight
                 position={[-25, 45, 20]}
                 intensity={2.2}
-                castShadow
+                castShadow={quality !== 'low'}
                 shadow-mapSize={[2048, 2048]}
             />
 
             <FixedCamera ballRef={ballRef} />
 
+            <Stadium
+                quality={quality}
+                colors={[
+                    roster.find((team) => team.id === 'blue')?.color || '#c8102e',
+                    roster.find((team) => team.id === 'red')?.color || '#00b2a9',
+                ]}
+            />
             <Pitch />
             <GroundCollider />
             <Ball bodyRef={ballRef} />
@@ -740,13 +770,16 @@ export default function MatchWorld({
                 )
             })}
 
-            <ContactShadows
-                position={[0, -0.04, 0]}
-                opacity={0.25}
-                scale={115}
-                blur={2.5}
-                far={12}
-            />
+            {/* Bóng mờ dưới chân: tốn GPU nhất → tắt khi LOW. */}
+            {quality !== 'low' && (
+                <ContactShadows
+                    position={[0, -0.04, 0]}
+                    opacity={0.25}
+                    scale={115}
+                    blur={2.5}
+                    far={12}
+                />
+            )}
         </>
     )
 }

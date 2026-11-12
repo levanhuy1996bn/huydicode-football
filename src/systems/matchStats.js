@@ -218,26 +218,87 @@ export function shotXg({ lateral, depth, penalty = false, freeKick = false, pres
     return clamp(xg, 0.01, 0.95)
 }
 
-export function recordShot(state, entry) {
-    if (!state.stats) return
+// ---- Phase 29C: cú sút bồi / bóng bật ----
+// Cú sút trong vòng REBOUND_WINDOW giây sau một cú sút không thành bàn của
+// cùng đội (bị cứu, bị chặn, dội ra) là cú sút bồi: xG ×1.2 (thủ môn / hậu vệ
+// thường chưa kịp về vị trí), gắn nhãn REBOUND trên bản đồ cú sút.
+export const REBOUND_WINDOW = 4
+export const REBOUND_XG_FACTOR = 1.2
+// Bóng chạm cầu thủ đội phòng ngự rồi vào lưới trong DEFLECTION_WINDOW giây
+// sau cú sút → bàn của người sút (bóng đổi hướng), không phải phản lưới.
+export const DEFLECTION_WINDOW = 2.5
 
-    state.stats.shots.push({ ...entry, goal: false })
-    recordTeam(state, entry.teamId, 'xg', entry.xg)
-    recordPlayer(state, entry.playerId, 'xg', entry.xg)
+const nowOf = (state) => state.elapsed || 0
+
+// Cú sút gần nhất (chưa thành bàn) của một đội trong `window` giây.
+export function recentShot(state, teamId, window = REBOUND_WINDOW) {
+    const shots = state.stats?.shots
+
+    if (!shots?.length) return null
+
+    for (let index = shots.length - 1; index >= 0; index -= 1) {
+        const shot = shots[index]
+
+        if (nowOf(state) - (shot.at ?? -Infinity) > window) return null
+        if (shot.teamId === teamId) return shot.goal ? null : shot
+    }
+
+    return null
 }
 
-// Đánh dấu cú sút gần nhất của người ghi bàn là bàn thắng.
+export function recordShot(state, entry) {
+    if (!state.stats) return null
+
+    const rebound = entry.rebound ?? (!entry.penalty && Boolean(recentShot(state, entry.teamId)))
+    const xg = rebound ? clamp(entry.xg * REBOUND_XG_FACTOR, 0.01, 0.95) : entry.xg
+    const shot = { ...entry, xg, rebound, at: nowOf(state), goal: false }
+
+    state.stats.shots.push(shot)
+    recordTeam(state, entry.teamId, 'xg', xg)
+    recordPlayer(state, entry.playerId, 'xg', xg)
+    return shot
+}
+
+// Đánh dấu cú sút gần nhất của người ghi bàn là bàn thắng. Trả về cú sút đó
+// (null nếu không có — bàn thắng từ một lần chạm / bóng bật, xem creditGoal).
 export function markShotGoal(state, scorerId) {
     const shots = state.stats?.shots
 
-    if (!shots || !scorerId) return
+    if (!shots || !scorerId) return null
 
     for (let index = shots.length - 1; index >= Math.max(0, shots.length - 4); index -= 1) {
-        if (shots[index].playerId === scorerId && !shots[index].goal) {
-            shots[index].goal = true
-            return
+        const shot = shots[index]
+
+        if (shot.playerId === scorerId && !shot.goal && nowOf(state) - (shot.at ?? nowOf(state)) <= REBOUND_WINDOW + 4) {
+            shot.goal = true
+            return shot
         }
     }
+
+    return null
+}
+
+// Bàn thắng không có cú sút đi kèm (đá bồi bằng một lần chạm, bóng bật vào
+// người rồi vào lưới, chuyền / đỡ bóng thành bàn): ghi thành một cú sút tại
+// vị trí người ghi bàn, có xG, rồi đánh dấu là bàn thắng.
+export function recordTouchGoal(state, { teamId, playerId, lateral, depth }) {
+    if (!state.stats) return null
+
+    recordTeam(state, teamId, 'shots')
+    recordPlayer(state, playerId, 'shots')
+
+    const shot = recordShot(state, {
+        teamId,
+        playerId,
+        depth,
+        lateral,
+        variant: null,
+        touch: true,
+        xg: shotXg({ lateral, depth }),
+    })
+
+    if (shot) shot.goal = true
+    return shot
 }
 
 // Tỉ lệ chuyền thành công (%) của một đội.

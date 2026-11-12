@@ -37,19 +37,57 @@ export function extraBonus(main, extra) {
     return EXTRA_EACH * Math.pow(ratio, EXTRA_CURVE)
 }
 
-export function successRate(main, material, extras = []) {
-    const current = main.upgrade || 1
+// ---- Phase 29C: bảo hiểm khi thất bại ----
+// Mỗi lần hỏng ở cùng một cấp đích → lần sau ở cấp đó +5 điểm %, tối đa +30.
+// Lưu trên thẻ theo cấp đích (card.insurance = { 9: 0.15 }), nên hỏng bị tụt
+// cấp rồi leo lại vẫn còn; thành công ở cấp đó thì về 0.
+export const INSURANCE_STEP = 0.05
+export const INSURANCE_MAX = 0.3
 
-    if (!material || current >= MAX_UPGRADE) return 0
+export const insuranceOf = (card, target = (card?.upgrade || 1) + 1) =>
+    Math.max(0, Math.min(INSURANCE_MAX, card?.insurance?.[target] || 0))
 
-    const base = BASE_RATES[current + 1] ?? 0
+// Thẻ bảo vệ chỉ có tác dụng khi thất bại làm tụt cấp (từ +5).
+export const protectionUseful = (card) => {
+    const level = card?.upgrade || 1
+
+    return level >= 5 && level < MAX_UPGRADE
+}
+
+// Chi tiết tỉ lệ: base (gốc × nguyên liệu + thẻ phụ), insurance, total.
+export function rateBreakdown(main, material, extras = []) {
+    const current = main?.upgrade || 1
+
+    if (!main || !material || current >= MAX_UPGRADE) return { base: 0, insurance: 0, total: 0 }
+
+    const baseRate = BASE_RATES[current + 1] ?? 0
     const factor = materialFactor((material.upgrade || 1) - current)
     const extra = Math.min(
         EXTRA_TOTAL,
         extras.slice(0, EXTRA_LIMIT).reduce((sum, card) => sum + extraBonus(main, card), 0),
     )
+    const base = Math.max(0, Math.min(1, baseRate * factor + extra))
+    const insurance = insuranceOf(main, current + 1)
 
-    return Math.max(0, Math.min(1, base * factor + extra))
+    return { base, insurance, total: Math.min(1, base + insurance) }
+}
+
+export function successRate(main, material, extras = []) {
+    return rateBreakdown(main, material, extras).total
+}
+
+function withInsurance(card, target, success) {
+    const insurance = { ...(card.insurance || {}) }
+
+    if (success) delete insurance[target]
+    else insurance[target] = Math.min(INSURANCE_MAX, Math.round(((insurance[target] || 0) + INSURANCE_STEP) * 100) / 100)
+
+    const next = { ...card }
+
+    if (Object.keys(insurance).length) next.insurance = insurance
+    else delete next.insurance
+
+    return next
 }
 
 // Kết quả thất bại: dưới +5 giữ nguyên, từ +5 tụt 1 cấp.
@@ -89,13 +127,30 @@ export function applyUpgradeLevel(player, level) {
 }
 
 // Thực hiện một lần đập (đã có tỉ lệ). random() < rate → thành công.
-export function rollUpgrade(main, material, extras, random = Math.random) {
-    const rate = successRate(main, material, extras)
+// Phase 29C: protect = dùng thẻ bảo vệ (thất bại không tụt cấp); bảo hiểm
+// của cấp đích tăng khi thất bại, về 0 khi thành công.
+export function rollUpgrade(main, material, extras, random = Math.random, { protect = false } = {}) {
+    const breakdown = rateBreakdown(main, material, extras)
+    const rate = breakdown.total
     const from = main.upgrade || 1
+    const target = from + 1
     const success = random() < rate
-    const to = success ? from + 1 : levelAfterFailure(from)
+    const dropTo = levelAfterFailure(from)
+    const protectedDrop = !success && protect && dropTo < from
+    const to = success ? target : protect ? from : dropTo
+    const player = withInsurance(applyUpgradeLevel(main, to), target, success)
 
-    return { success, rate, from, to, player: applyUpgradeLevel(main, to) }
+    return {
+        success,
+        rate,
+        breakdown,
+        from,
+        to,
+        protectUsed: Boolean(protect),
+        protectedDrop,
+        insuranceNext: success ? 0 : insuranceOf(player, target),
+        player,
+    }
 }
 
 // Màu ô +N: xám / đồng / bạc / vàng / kim cương.

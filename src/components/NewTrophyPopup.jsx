@@ -1,10 +1,10 @@
 import ClubCrest from './ClubCrest'
-import TrophyIcon from './TrophyIcon'
+import Trophy3D from './Trophy3D'
 import { worldClub } from '../data/world'
 import { DIFFICULTY_STARS, TROPHY_BY_ID, difficultyLabel, seasonLabel } from '../services/trophyService'
 
 // Phase 28B: thông báo "NEW TROPHY" khi thắng chung kết C1 / C2 hoặc vô địch giải.
-export default function NewTrophyPopup({ trophy, remaining = 0, onClose, onOpenRoom }) {
+export default function NewTrophyPopup({ trophy, remaining = 0, onClose, onOpenRoom, quality = 'high' }) {
     const entry = TROPHY_BY_ID.get(trophy.competitionId)
 
     if (!entry) return null
@@ -17,7 +17,7 @@ export default function NewTrophyPopup({ trophy, remaining = 0, onClose, onOpenR
                 <div className="trophy-popup__rays" aria-hidden="true" />
                 <div className="home-hero__eyebrow">NEW TROPHY · {seasonLabel(trophy.season)}</div>
                 <div className="trophy-popup__icon">
-                    <TrophyIcon trophy={entry} star={trophy.difficulty} size={150} />
+                    <Trophy3D trophy={entry} star={trophy.difficulty} size={150} quality={quality} />
                 </div>
                 <h2>{entry.name.toUpperCase()}</h2>
                 <p className="trophy-popup__club">

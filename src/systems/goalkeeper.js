@@ -343,6 +343,9 @@ function resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel) {
         return
     }
 
+    // Phase 29B: khán giả "ồ" khi thủ môn cứu thua.
+    ctx.onSound?.('save')
+
     recordTeam(state, enemyTeamId, 'onTarget')
     recordTeam(state, teamId, 'saves')
     recordPlayer(state, keeperItem.id, 'saves')

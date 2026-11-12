@@ -40,21 +40,21 @@ function ClubRewardCard({ report, onOpenCards }) {
             {gained.map((entry) => (
                 <div className="club-reward__levelup" key={entry.level}>
                     <b>LEVEL UP! · LEVEL {entry.level}</b>
-                    <span>{formatMoney(entry.ep)} card + {PACK_TYPES[entry.pack]?.label} added to CARDS</span>
+                    <span>{formatMoney(entry.ep)} card + {PACK_TYPES[entry.pack]?.label}{entry.protection ? ' + Upgrade Protection' : ''} added to CARDS</span>
                 </div>
             ))}
             {report.cupReward && (
                 <div className="club-reward__levelup">
                     <b>{report.cupReward.label.toUpperCase()}</b>
                     <span>
-                        {formatMoney(report.cupReward.amount)} card{report.cupReward.pack ? ' + Premium Player Pack' : ''} added to CARDS
+                        {formatMoney(report.cupReward.amount)} card{report.cupReward.pack ? ' + Premium Player Pack + Upgrade Protection' : ''} added to CARDS
                     </span>
                 </div>
             )}
             {report.seasonReward && (
                 <div className="club-reward__levelup">
                     <b>SEASON {report.seasonReward.season} FINISHED · #{report.seasonReward.position}{report.seasonReward.tier >= 2 ? ' · DIVISION 2 (½ PRIZE)' : ''}</b>
-                    <span>{formatMoney(report.seasonReward.amount)} card added to CARDS</span>
+                    <span>{formatMoney(report.seasonReward.amount)} card{report.seasonReward.protection ? ' + Upgrade Protection' : ''} added to CARDS</span>
                 </div>
             )}
         </div>

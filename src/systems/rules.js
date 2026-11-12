@@ -1,5 +1,6 @@
 import { FIELD, clamp } from './constants'
 import {
+    attackDir,
     facingFor,
     homePosition,
     ownGoalSign,
@@ -7,7 +8,7 @@ import {
 } from './matchState'
 import { clearPlayerStates } from './playerState'
 import { placeBall, teamPlayers } from './ball'
-import { markShotGoal, recordPlayer, recordTeam } from './matchStats'
+import { DEFLECTION_WINDOW, markShotGoal, recentShot, recordPlayer, recordTeam, recordTouchGoal } from './matchStats'
 import { attr } from './attributes'
 import { BOX_DEPTH, BOX_HALF_WIDTH, PENALTY_SPOT } from './referee'
 
@@ -489,21 +490,55 @@ export function checkGoalAndOut(ctx) {
         const scoringTeam = otherTeam(defendingTeam)
 
         // Ghi công: người chạm bóng cuối. Nếu là cầu thủ đội phòng ngự → phản lưới.
-        const scorer = state.lastToucherId
+        // Phase 29C: trừ khi bóng vừa từ một cú sút của đội ghi bàn (thủ môn
+        // đẩy / hậu vệ chạm làm đổi hướng) → bàn của người sút (DEFLECTED).
+        let scorer = state.lastToucherId
             ? ctx.byId.get(state.lastToucherId)
             : null
+        let deflected = false
+
+        if (scorer && scorer.teamId !== scoringTeam) {
+            const shot = recentShot(state, scoringTeam, DEFLECTION_WINDOW)
+            const shooter = shot ? ctx.byId.get(shot.playerId) : null
+
+            if (shooter) {
+                scorer = shooter
+                deflected = true
+            }
+        }
+
         const goalInfo = {
             scorerId: scorer?.id || null,
             scorerName: scorer?.name || null,
             ownGoal: Boolean(scorer && scorer.teamId !== scoringTeam),
             assistName: null,
+            deflected,
+            rebound: false,
         }
 
         // Thống kê: bàn thắng (không tính phản lưới) + kiến tạo.
         if (!goalInfo.ownGoal) {
             recordTeam(state, scoringTeam, 'onTarget')
             recordPlayer(state, goalInfo.scorerId, 'goals')
-            markShotGoal(state, goalInfo.scorerId)
+
+            let shot = markShotGoal(state, goalInfo.scorerId)
+
+            // Phase 29C: bàn thắng từ một lần chạm (đá bồi, đỡ bóng vào lưới)
+            // chưa có cú sút → ghi thêm cú sút có xG tại chỗ người ghi bàn.
+            if (!shot && goalInfo.scorerId) {
+                const spot = ctx.objects?.[goalInfo.scorerId]?.position || position
+                const attack = attackDir(state, scoringTeam)
+
+                shot = recordTouchGoal(state, {
+                    teamId: scoringTeam,
+                    playerId: goalInfo.scorerId,
+                    depth: Math.max(0.5, FIELD.lineZ - spot.z * attack),
+                    lateral: spot.x * attack,
+                })
+            }
+
+            if (shot && deflected) shot.deflected = true
+            goalInfo.rebound = Boolean(shot?.rebound)
 
             const passerId = state.stats?.lastPasserId
 
@@ -580,6 +615,11 @@ export function checkGoalAndOut(ctx) {
                 endSide < 0 ? FIELD.minZ + 0.8 : FIELD.maxZ - 0.8,
             )
         } else {
+            // Phase 29B: cú sút chệch khung thành → khán giả "ồ" (to hơn nếu sát cột).
+            if (state.lastKick?.action === 'shoot' && state.lastKick.teamId === lastTouch) {
+                ctx.onSound?.('miss', { close: Math.abs(position.x) < FIELD.goalHalfWidth + 2.5 })
+            }
+
             restartAtSpot(
                 ctx,
                 defendingTeam,

@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PlayerCardView, StatNum, UpgradeBadge } from './CardBits'
 import UpgradeAnimation from './UpgradeAnimation'
-import { playerIdOf } from '../services/cards'
+import { PROTECTION_PRICE, playerIdOf, protectionCard, protectionCount, spendProtection } from '../services/cards'
+import { formatMoney } from '../services/clubService'
 import {
     EXTRA_LIMIT,
+    INSURANCE_MAX,
+    INSURANCE_STEP,
     MAX_UPGRADE,
     applyUpgradeLevel,
+    protectionUseful,
+    rateBreakdown,
     rollUpgrade,
-    successRate,
 } from '../services/upgrade'
 import { squadGroupOf, squadOf } from '../systems/roster'
 import { shortPlayerName } from '../utils/names'
@@ -39,13 +43,16 @@ function CardRow({ player, group, active, disabled, note, onClick }) {
     )
 }
 
-export default function UpgradePanel({ team, onRosterChange, onClubChange, onFindCopy }) {
+export default function UpgradePanel({ club, team, onRosterChange, onClubChange, onFindCopy }) {
     const [mainId, setMainId] = useState(null)
     const [materialId, setMaterialId] = useState(null)
     const [extraIds, setExtraIds] = useState([])
     const [onlyWithMaterial, setOnlyWithMaterial] = useState(true)
     const [anim, setAnim] = useState(null)
     const [message, setMessage] = useState(null)
+    const [protect, setProtect] = useState(false)
+    const protections = protectionCount(club)
+    const budget = club?.budget || 0
 
     const squad = useMemo(() => squadOf(team), [team])
     const reserves = team?.reserves || []
@@ -89,7 +96,24 @@ export default function UpgradePanel({ team, onRosterChange, onClubChange, onFin
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mainId, materialKey])
-    const rate = main && material ? successRate(main, material, extras) : 0
+    const breakdown = rateBreakdown(main, material, extras)
+    const rate = breakdown.total
+    const canProtect = protectionUseful(main)
+    const protecting = protect && canProtect && protections > 0
+    const pct = (value) => `${(value * 100).toFixed(value > 0 && value < 0.1 ? 1 : 0)}%`
+
+    // Phase 29C: mua thẻ bảo vệ bằng EP (vào kho, dùng ngay được).
+    const buyProtection = () => {
+        if (budget < PROTECTION_PRICE) return
+
+        onClubChange((current) => ({
+            ...current,
+            budget: (current.budget || 0) - PROTECTION_PRICE,
+            inventory: [...(current.inventory || []), protectionCard('Bought with EP')],
+        }))
+        setProtect(true)
+        setMessage(`Upgrade Protection bought for ${formatMoney(PROTECTION_PRICE)}.`)
+    }
     const preview = main && !atMax ? applyUpgradeLevel(main, (main.upgrade || 1) + 1) : null
 
     // Gợi ý thẻ nguyên liệu: thẻ cấp thấp nhất mà vẫn ≥ cấp thẻ chính (đủ
@@ -127,7 +151,7 @@ export default function UpgradePanel({ team, onRosterChange, onClubChange, onFin
     const upgrade = () => {
         if (!main || !material || atMax) return
 
-        const outcome = rollUpgrade(main, material, extras)
+        const outcome = rollUpgrade(main, material, extras, Math.random, { protect: protecting })
         const consumed = new Set([material.id, ...extras.map((card) => card.id)])
 
         onRosterChange((current) =>
@@ -152,7 +176,10 @@ export default function UpgradePanel({ team, onRosterChange, onClubChange, onFin
             const contracts = { ...(current.contracts || {}) }
 
             consumed.forEach((id) => delete contracts[id])
-            return { ...current, contracts }
+
+            const next = { ...current, contracts }
+
+            return protecting ? spendProtection(next) || next : next
         })
 
         setAnim({
@@ -242,10 +269,49 @@ export default function UpgradePanel({ team, onRosterChange, onClubChange, onFin
                                 )}
                                 <div className={`upgrade-rate${material ? '' : ' is-empty'}`}>
                                     <span>SUCCESS</span>
-                                    <b>{material && !atMax ? `${(rate * 100).toFixed(rate < 0.1 ? 1 : 0)}%` : '–'}</b>
+                                    <b>{material && !atMax ? pct(rate) : '–'}</b>
                                 </div>
-                                {(main.upgrade || 1) >= 5 && !atMax && (
-                                    <p className="upgrade-warning">From +5, a failed upgrade drops the card one level.</p>
+                                {material && !atMax && breakdown.insurance > 0 && (
+                                    <p className="upgrade-insurance">
+                                        Base {pct(breakdown.base)} + <b>insurance {pct(breakdown.insurance)}</b>
+                                        {breakdown.insurance >= INSURANCE_MAX ? ' (max)' : ''}
+                                    </p>
+                                )}
+                                {canProtect && (
+                                    <div className={`upgrade-protect${protecting ? ' is-on' : ''}`}>
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                checked={protecting}
+                                                disabled={protections === 0}
+                                                onChange={(event) => setProtect(event.target.checked)}
+                                            />
+                                            <span>
+                                                <b>⛨ UPGRADE PROTECTION</b>
+                                                <small>
+                                                    {protections > 0
+                                                        ? `${protections} left · a failure keeps +${main.upgrade}`
+                                                        : 'None left'}
+                                                </small>
+                                            </span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            className="btn btn--small"
+                                            onClick={buyProtection}
+                                            disabled={budget < PROTECTION_PRICE}
+                                            title={budget < PROTECTION_PRICE ? 'Not enough EP' : 'Buy one Upgrade Protection'}
+                                        >
+                                            BUY · {formatMoney(PROTECTION_PRICE)}
+                                        </button>
+                                    </div>
+                                )}
+                                {canProtect && (
+                                    <p className="upgrade-warning">
+                                        {protecting
+                                            ? `Protected: a failed upgrade keeps the card at +${main.upgrade}.`
+                                            : 'From +5, a failed upgrade drops the card one level.'}
+                                    </p>
                                 )}
                                 <button
                                     type="button"
@@ -255,7 +321,10 @@ export default function UpgradePanel({ team, onRosterChange, onClubChange, onFin
                                 >
                                     {atMax ? 'MAX LEVEL' : 'UPGRADE'}
                                 </button>
-                                <p className="upgrade-note">Material and extra cards are used up either way. No EP cost.</p>
+                                <p className="upgrade-note">
+                                    Material and extra cards are used up either way. No EP cost. Each failure adds
+                                    +{Math.round(INSURANCE_STEP * 100)}% insurance for the next try at this level (max +{Math.round(INSURANCE_MAX * 100)}%).
+                                </p>
                             </div>
                         </div>
 

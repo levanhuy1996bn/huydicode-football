@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { formatMoney } from '../../services/clubService'
 import {
     PACK_TYPES,
+    PROTECTION_PRICE,
     cardFromCatalog,
     drawFromPack,
     freeShirtNumber,
@@ -20,6 +21,7 @@ export { PlayerCardView }
 
 function itemTitle(item) {
     if (item.type === 'ep') return `${formatMoney(item.amount)} card`
+    if (item.type === 'protection') return 'Upgrade Protection'
     return PACK_TYPES[item.pack]?.label || 'Player Pack'
 }
 
@@ -101,6 +103,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                             <span>{club.xp || 0} / {xpNeeded} XP to level {level + 1}</span>
                             <span>
                                 Next: {formatMoney(nextReward.ep)} + {PACK_TYPES[nextReward.pack].label}
+                                {nextReward.protection ? ' + Upgrade Protection' : ''}
                             </span>
                         </div>
                         <div className="xp-bar xp-bar--large">
@@ -129,6 +132,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
 
             {tab === 'upgrade' && (
                 <UpgradePanel
+                    club={club}
                     team={team}
                     onRosterChange={onRosterChange}
                     onClubChange={onClubChange}
@@ -168,30 +172,41 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         <div className="cards-inventory">
                             {[...inventory].reverse().map((item) => {
                                 const blocked = item.type === 'pack' && squadFull
+                                const protection = item.type === 'protection'
 
                                 return (
                                     <div
                                         key={item.id}
-                                        className={`inventory-item inventory-item--${item.type === 'ep' ? 'ep' : item.pack}`}
+                                        className={`inventory-item inventory-item--${item.type === 'pack' ? item.pack : item.type}`}
                                     >
                                         <div className="inventory-item__icon" aria-hidden="true">
-                                            {item.type === 'ep' ? 'EP' : item.pack === 'premium' ? '★' : '♦'}
+                                            {item.type === 'ep' ? 'EP' : protection ? '⛨' : item.pack === 'premium' ? '★' : '♦'}
                                         </div>
                                         <div className="inventory-item__body">
                                             <strong>{itemTitle(item)}</strong>
                                             <small>
-                                                {item.type === 'pack' ? PACK_TYPES[item.pack]?.description : 'Adds EP to the transfer budget'}
+                                                {item.type === 'pack'
+                                                    ? PACK_TYPES[item.pack]?.description
+                                                    : protection
+                                                        ? 'A failed upgrade from +5 keeps its level · used in UPGRADE CARDS'
+                                                        : 'Adds EP to the transfer budget'}
                                                 {item.source ? ` · ${item.source}` : ''}
                                             </small>
                                         </div>
-                                        <button
-                                            type="button"
-                                            className={`btn btn--small${blocked ? '' : ' btn--primary'}`}
-                                            onClick={() => openItem(item)}
-                                            title={blocked ? 'Squad is full (50/50)' : 'Open'}
-                                        >
-                                            {blocked ? 'SQUAD FULL' : 'OPEN'}
-                                        </button>
+                                        {protection ? (
+                                            <button type="button" className="btn btn--small" onClick={() => setTab('upgrade')}>
+                                                USE →
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className={`btn btn--small${blocked ? '' : ' btn--primary'}`}
+                                                onClick={() => openItem(item)}
+                                                title={blocked ? 'Squad is full (50/50)' : 'Open'}
+                                            >
+                                                {blocked ? 'SQUAD FULL' : 'OPEN'}
+                                            </button>
+                                        )}
                                     </div>
                                 )
                             })}
@@ -211,6 +226,10 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         <li>Levels 5, 10, 15…: <b>{formatMoney(10000000)}</b> card + {PACK_TYPES.premium.label}.</li>
                         <li>End of season: EP card by final position (champion {formatMoney(30000000)}).</li>
                         <li>Packs give one +1 player card (reserves). Duplicates are used in UPGRADE CARDS.</li>
+                        <li>
+                            <b>Upgrade Protection</b> (a failed upgrade from +5 keeps its level): club levels 5, 10, 15…,
+                            league titles, C1 / C2 titles, or buy one for <b>{formatMoney(PROTECTION_PRICE)}</b> in UPGRADE CARDS.
+                        </li>
                     </ul>
                 </div>
             </div>

@@ -1112,6 +1112,8 @@ function releaseKick(ctx, windup) {
     // Phase 23: nhớ cú đá vừa rồi là gì (sút / chuyền) để xử lý bóng bật ra
     // khi cú sút trúng cầu thủ đối phương (updateShotBlock).
     state.lastKick = { kickId: state.kickId, action, teamId, playerId }
+    // Phase 29B: tiếng chạm bóng (to theo lực đá; ném biên không có tiếng).
+    if (!isThrowIn) ctx.onSound?.('kick', { power: Math.min(1, power / 26), action })
     state.lastUserKick = !isAI
         ? { kickId: state.kickId + 0, action, age: 0, low: Boolean(windup.lowShot || windup.lowCross) }
         : null
@@ -1144,6 +1146,7 @@ function releaseKick(ctx, windup) {
             depth,
             lateral,
             variant: windup.variant || null,
+            penalty: state.restart?.type === 'penalty',
             xg: shotXg({
                 lateral,
                 depth,

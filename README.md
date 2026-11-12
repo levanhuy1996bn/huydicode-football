@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28 and 28B — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29 (mobile, graphics, sound, performance) — the last planned phase; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B and 29C — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phase; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -21,6 +21,16 @@ Production build:
 npm run build
 npm run preview
 ```
+
+### Publish online (Phase 29B)
+
+`npm run build` creates a static site in `dist/`. The build uses relative paths (`base: './'` in `vite.config.js`), so the `dist/` folder works from any domain or sub-folder; no server code is needed and saves stay in each player's browser (LocalStorage).
+
+- **Netlify:** drag the `dist/` folder onto app.netlify.com/drop, or connect the repo with build command `npm run build` and publish directory `dist`.
+- **Vercel:** import the repo; framework preset *Vite* (build `npm run build`, output `dist`).
+- **GitHub Pages:** build, then publish the contents of `dist/` to the `gh-pages` branch (e.g. `npx gh-pages -d dist`); the game then runs at `https://<user>.github.io/<repo>/`.
+- **Install as an app:** the site has a web app manifest and icons (`public/manifest.webmanifest`, `public/icon*.png`), so Chrome / Edge offer *Install* and phones offer *Add to Home Screen*. There is no offline mode (no service worker).
+- **Loading:** the first screen loads ~1.3 MB of JavaScript (~380 KB gzipped); the 3D match engine with Rapier physics (~2.4 MB) is a separate file fetched in the background 1.5 s after start, and the 3D trophy viewer is loaded only when needed.
 
 ## Current features
 
@@ -288,7 +298,9 @@ ultimate-football-manager-3d/
     │   ├── clips.js          # keyframe clips (pass, shot, tackle, slide...)
     │   └── rig.js            # run cycle, clip sampling, blending, applyPose
     ├── utils/
-    │   └── names.js          # shortPlayerName()
+    │   ├── names.js          # shortPlayerName()
+    │   ├── sound.js          # Web Audio: upgrade sounds, SOUND ON / OFF (Phase 25)
+    │   └── matchSound.js     # Web Audio: whistle, kicks, crowd, ooh, roar (Phase 29B)
     └── components/
         ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen
         ├── GameScene.jsx
@@ -314,6 +326,10 @@ ultimate-football-manager-3d/
         ├── screens/TrophyRoomScreen.jsx # TROPHIES: shelves, trophy details, career table (Phase 28B)
         ├── TrophyIcon.jsx        # SVG trophy for each competition, difficulty star (Phase 28B)
         ├── NewTrophyPopup.jsx    # "NEW TROPHY" pop-up (Phase 28B)
+        ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B)
+        ├── Stadium.jsx           # stands with crowd, boards, floodlights (Phase 29B)
+        ├── Trophy3D.jsx          # 3D turning trophy with SVG fallback; TrophyCanvas.jsx = WebGL part (Phase 29B)
+        ├── FpsMeter.jsx          # FPS counter (Phase 29B)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
         └── ...
 ```
@@ -372,7 +388,9 @@ The project currently uses browser LocalStorage for local game progress.
 | After 27 | Away goals rule in two-legged cup ties; out-of-position OVR shown lower (display only) | ✅ Done (2026-11-12) |
 | 28 | Quick simulation: 5 instant matches per day (league and cups), 2D replay with commentary, rewards ×0.7 | ✅ Done (2026-11-12) |
 | 28B | Trophy room: titles won as a manager (kept when changing club), a different trophy per competition, difficulty star, career table | ✅ Done (2026-11-12) |
-| 29 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
+| 29A | Mobile controls (joystick + 4 swipe buttons), minimal mobile UI, touch / iOS fixes | 🔜 Later |
+| 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
+| 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | Backlog | Individual player skills / traits | 💤 Later |
 | Backlog | Card seasons and real player data (was Phase 30, moved to the backlog on 2026-11-12) | 💤 Later |
 
@@ -1216,7 +1234,7 @@ Agreed on 2026-11-12. Logic in `src/services/cupService.js`, UI in `src/componen
 
   **The C2 winner plays in C1 next season:** if it has no C1 place from its league it takes the C1 place of the champion of the lowest-ranked country (who moves to C2); if it already has one, nothing changes. In the first season Manchester United (5th in the data) play in C2.
 - **Format (classic):** group stage of **8 groups × 4** (drawn from 4 pots by strength, no two clubs of the same country in a group where possible), everyone plays 6 matches home and away, **top 2 go through**. Round of 16 (group winners vs runners-up of another group), quarter-finals and semi-finals over **two legs** (aggregate score, then **away goals** (added after Phase 27, see below), still level → **penalty shoot-out right after the second leg**). **Final: one match on neutral ground** (draw → shoot-out). Up to **13 cup matches** per season for your club.
-- **Penalty shoot-outs are simulated** (5 kicks each, then sudden death) from the shooting of each side's five best shooters vs the opposing keeper; the post-match screen shows the score and every kick. Taking the penalties yourself → backlog / Phase 29.
+- **Penalty shoot-outs are simulated** (5 kicks each, then sudden death) from the shooting of each side's five best shooters vs the opposing keeper; the post-match screen shows the score and every kick. Taking the penalties yourself → backlog.
 - **Calendar:** cup matchdays sit between league rounds — group matchdays after rounds 3, 6, 9, 12, 15, 18; round of 16 after 21 / 23; quarter-finals after 26 / 28; semi-finals after 31 / 33; final after 36. "Next match" (home, pre-match, league fixtures list) follows this combined calendar, so you play the cup match before the next league round. The fixtures tab lists league and cup matches together (cup ones marked `C1 MD3`, `C2 R16 L2`, …).
 - **Your cup matches are 3D matches** against real clubs from other countries (their squads, kits — third kit on clashes — team color and the season difficulty). All other cup matches are simulated like the virtual leagues.
 - **Rewards:** a cup match pays ×1.5 (C1) / ×1.25 (C2) the league prize money and club XP (× difficulty). Going through a round adds an EP card (× difficulty): C1 8M group / 10M round of 16 / 15M quarter-final / 20M semi-final / **40M + Premium Player Pack for the title**; C2 4M / 5M / 8M / 10M / **20M + Premium pack**.
@@ -1281,6 +1299,8 @@ Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (
 
 ### Phase 29 — Mobile, graphics, performance, sound and release (planned)
 
+Split on 2026-11-12 into **29A** (mobile controls, minimal mobile UI and the touch-only fixes: block page zoom / scroll, iOS Safari), **29B** (graphics, sound, performance, release — see the 29B section below) and **29C** (upgrade insurance, protection cards, xG for rebounds). Order: 29C → 29B now, 29A later.
+
 - **Mobile controls** (reference: FC Mobile layout), landscape and full screen:
   - Top left: compact score and clock. Top right: formation / tactics selector and a ☰ menu (Pause, Subs, Stats, Controls).
   - Left: floating joystick that appears where the thumb touches (replaces the arrow keys).
@@ -1295,8 +1315,43 @@ Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (
 
   - Touch buttons write into the same `keys.current` input the engine already reads, so the engine needs almost no change.
 - **Minimal mobile UI:** management screens become step-by-step screens with tabs and back buttons instead of one long scrolling page.
-- **Mobile performance:** lighter graphics preset (no shadows, lower pixel ratio), block page zoom and scroll, iOS Safari fixes.
-- **Visual polish, sound, performance optimisation and release preparation.**
+- **Touch fixes (29A):** block page zoom and scroll during a match, iOS Safari fixes.
+
+### Phase 29B — Graphics, sound, performance, release ✅ (2026-11-12)
+
+Scope chosen on 2026-11-12 (the user asked to go ahead without more questions). Done in the same session as 29C (29C first).
+
+- **Settings** (home screen, remembered on the device): **Graphics HIGH / LOW**, **Sound ON / OFF** (same switch as the upgrade screen), **FPS counter ON / OFF** (bottom-left of the pitch, green ≥ 50, yellow ≥ 30, red below).
+  - **LOW:** no shadows, no contact shadows under the players (the most expensive effect), no antialiasing, pixel ratio 0.75–1, unlit stadium materials, no floodlights. In a software-rendered test LOW ran about twice as fast as HIGH.
+- **Stadium** (`src/components/Stadium.jsx`): sloped stands with a crowd behind the far touchline and both goals, drawn into a canvas texture in code (no images; shirts in the two teams' colours), advertising boards, floodlight towers, darker apron around the pitch. Only the stands the camera can see are built.
+- **3D turning trophy** (`Trophy3D.jsx` + `TrophyCanvas.jsx`) in the TROPHIES detail panel and the NEW TROPHY pop-up: the 8 shapes rebuilt from three.js lathes, tori, extrusions and spheres, real metal reflections from a generated room environment (no HDR download), wooden base with the flag band, difficulty star. Falls back to the SVG trophy for trophies not won yet, on LOW graphics, without WebGL, and while the 3D part loads.
+- **Match sounds** (`src/utils/matchSound.js`, Web Audio, no audio files):
+  - referee whistle with a pea trill: kick-off / restart after a goal, fouls and offside (short), half-time (2 blasts), full-time (3, the last one long);
+  - ball kicks, louder for harder shots and passes;
+  - crowd ambience that grows when the ball gets near either goal;
+  - "ooh" on a goalkeeper save and on a shot wide (louder when close to the post);
+  - roar on a goal (bigger for your goals).
+- **Performance / first load:** the 3D match scene with Rapier physics is a separate file (`MatchCanvas.jsx`) loaded in the background 1.5 s after start (a short "LOADING STADIUM…" shows only if you kick off before it arrives); the 3D trophy viewer is loaded on demand. First screen JavaScript went from ~3.9 MB to ~1.3 MB.
+- **Release preparation:** relative build paths (works on Netlify, Vercel, GitHub Pages sub-folders), web app manifest and icons (installable / add to home screen), page meta tags, version 0.9.0, deployment notes under *Publish online* at the top of this README.
+
+### Phase 29C — Upgrade insurance, protection cards, xG for rebounds ✅ (2026-11-12)
+
+Agreed on 2026-11-12 (both A and B). Today (Phase 25): rates drop to 8% for +8 → +9 and 5% for +9 → +10; from +5 a failure drops the card one level and the material cards are always lost, so an unlucky player can fail 15–20 times in a row.
+
+- **A. Insurance (bonus after each failure):**
+  - Every failed attempt at the same target level adds **+5 percentage points** to the next attempt at that level, up to **+30**. Example: +8 → +9 base 8%, three failures → the fourth attempt is 23%.
+  - Stored per card and per target level (e.g. `card.insurance = { 9: 0.15 }`), so it is not lost when a failure drops the card one level and you climb back. A success at that level resets it to 0.
+  - The upgrade screen shows it next to the rate, e.g. `Success 23% (base 8% + insurance 15%)`; the rate is still capped at 100%.
+- **B. Protection card (no level drop):**
+  - A new item in CARDS, **Upgrade Protection**. Tick it before an upgrade: if the upgrade fails, the card **keeps its level** (only matters from +5, where failures drop a level). The material cards are still used up; the protection card is used up whether the attempt succeeds or fails.
+  - Ways to get one: **buy for 5,000,000 EP** with the BUY button next to the tick box in UPGRADE CARDS, **club levels 5, 10, 15…**, **league titles** (with the season prize) and **C1 / C2 titles** (with the cup prize). Unused ones wait in CARDS → REWARDS (USE → opens UPGRADE CARDS).
+  - A protected failure still adds insurance (A and B work together). The result screen says `FAILED · PROTECTED · STAYS +8` and shows the insurance for the next try.
+- **xG counts rebounds and deflections:**
+  - Today a goal from a rebound (ball off the keeper or a defender, then in) or a close-range touch can be missed as a shot, so it adds no xG and the match total is lower than it should be (e.g. a 3–1 win showing xG 1.4–0.9). Only the statistics are affected, not results or play.
+  - Done (`src/systems/matchStats.js`, `rules.js`):
+    - A shot within **4 seconds** of a missed / saved / blocked shot by the same team is a **rebound**: xG ×1.2 (keeper and defenders out of position), dashed ring on the shot map, "(rebound)" in the timeline.
+    - A goal with no shot behind it (tap-in, a touch or control that goes in) is now recorded as a shot from where the scorer touched the ball, with its xG.
+    - A shot that goes in off the keeper or a defender within 2.5 seconds is credited to the **shooter** ("deflected"), not counted as an own goal.
 
 ### Backlog
 
@@ -1347,7 +1402,9 @@ Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (
 | Luật bàn thắng sân khách ở vòng đấu loại 2 lượt; đá trái vị trí thì OVR hiển thị giảm | Sau 27 ✅ |
 | Mô phỏng nhanh 5 trận mỗi ngày, có hoạt cảnh, thưởng ×0.7 | Phase 28 ✅ |
 | Phòng truyền thống: danh hiệu của HLV (đổi CLB vẫn giữ), mỗi giải một kiểu cúp, sao độ khó, bảng sự nghiệp | Phase 28B ✅ |
-| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 29 |
+| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản | Phase 29A |
+| Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
+| Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
 | Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Backlog (trước là Phase 30) |
 | Skill riêng cho từng cầu thủ | Backlog |
 

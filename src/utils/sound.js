@@ -19,6 +19,11 @@ export function setMuted(value) {
     }
 }
 
+// Phase 29B: dùng chung AudioContext cho âm thanh trận đấu (utils/matchSound.js).
+export function audioContext() {
+    return audio()
+}
+
 function audio() {
     if (isMuted() || typeof window === 'undefined') return null
 

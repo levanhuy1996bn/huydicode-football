@@ -2841,3 +2841,65 @@ b.is-off-position::after {
 }
 .trophy-grid--big .trophy-count { left: 50%; margin-left: -74px; }
 .trophy-icon.is-empty { opacity: .8; }
+
+/* ---- Phase 29C: bảo hiểm + thẻ bảo vệ khi đập thẻ ---- */
+.inventory-item--protection .inventory-item__icon { background: linear-gradient(135deg, #7cc4ff, #2b5d8f); color: #06121f; }
+.upgrade-insurance { margin: -4px 0 0; color: #9fb4a6; font-size: 11px; }
+.upgrade-insurance b { color: #7cc4ff; }
+.upgrade-protect {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid rgba(124,196,255,.25);
+    border-radius: 8px;
+    background: rgba(124,196,255,.05);
+}
+.upgrade-protect.is-on { border-color: #7cc4ff; background: rgba(124,196,255,.13); }
+.upgrade-protect label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.upgrade-protect label span { display: grid; gap: 1px; }
+.upgrade-protect b { color: #cfe7ff; font-size: 11px; letter-spacing: .5px; }
+.upgrade-protect small { color: #8fa597; font-size: 10px; }
+.upgrade-protect .btn { white-space: nowrap; }
+.upgrade-anim__insurance { margin-top: 6px; color: #9fb4a6; font-size: 13px; text-align: center; }
+.upgrade-anim__insurance b { color: #7cc4ff; }
+.shotmap__shot.is-rebound { stroke-dasharray: 0.6 0.4; stroke-width: 0.35; }
+
+/* ---- Phase 29B: FPS ---- */
+.fps-meter {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    z-index: 12;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(5,12,9,.8);
+    color: #b9ed70;
+    font: 800 11px/1.4 Inter, monospace;
+    letter-spacing: .5px;
+    pointer-events: none;
+}
+.fps-meter[data-level='ok'] { color: #ffd23f; }
+.fps-meter[data-level='low'] { color: #ff8a7a; }
+.trophy-3d { position: relative; display: grid; place-items: center; }
+.trophy-3d canvas { display: block; }
+.trophy-3d__star {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 26px;
+    line-height: 1;
+    text-shadow: 0 0 2px #1a1a1a, 0 1px 3px rgba(0,0,0,.6);
+}
+/* Popup: cúp 3D tự xoay, không cần hiệu ứng lắc của SVG */
+.trophy-popup__icon:has(.trophy-3d) { animation: none; }
+.match-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #b9ed70;
+    font: 800 13px Inter, sans-serif;
+    letter-spacing: 2px;
+}
