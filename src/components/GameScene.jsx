@@ -4,6 +4,8 @@ import NewTrophyPopup from './NewTrophyPopup'
 import { awardTrophies } from '../services/trophyService'
 import { crowdStart, crowdStop, roar, whistle } from '../utils/matchSound'
 import FpsMeter from './FpsMeter'
+import ShootoutPanel from './ShootoutPanel'
+import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
 // Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
 const loadMatchCanvas = () => import('./MatchCanvas')
@@ -20,6 +22,7 @@ import {
     nextUserFixture,
     recordCupResult,
     shootoutSkill,
+    cupShootoutNeeded,
     userCalendar,
 } from '../services/cupService'
 import { epCard, playerPack, protectionCard } from '../services/cards'
@@ -240,7 +243,16 @@ export default function GameScene() {
     const [addedTime, setAddedTime] = useState(0)
     const [autoPilot, setAutoPilot] = useState(false)
 
+    // Phase 29D: luân lưu tự đá. shootout = trạng thái cho bảng luân lưu,
+    // shootoutCommand = lệnh gửi engine, shootoutResultRef = kết quả để lưu cúp.
+    const [shootout, setShootout] = useState(null)
+    const [shootoutCommand, setShootoutCommand] = useState(null)
+    const shootoutResultRef = useRef(null)
+    const shootoutInfoRef = useRef({})
+
     const resetMatchFlow = useCallback(() => {
+        setShootout(null)
+        shootoutResultRef.current = null
         setWhistlePending(null)
         setAddedTime(0)
         setAutoPilot(false)
@@ -493,9 +505,9 @@ export default function GameScene() {
             return
         }
 
-        if (matchStatus === 'playing') {
+        if (matchStatus === 'playing' || matchStatus === 'shootout') {
             crowdStart()
-            if (previous !== 'paused' && previous !== 'playing') whistle('kickoff')
+            if (matchStatus === 'playing' && previous !== 'paused' && previous !== 'playing') whistle('kickoff')
         } else if (matchStatus !== 'goal') {
             crowdStop()
         }
@@ -503,16 +515,93 @@ export default function GameScene() {
 
     useEffect(() => () => crowdStop(), [])
 
+    // Kết quả luân lưu tự đá của trận này (null nếu không có / bỏ trận).
+    const playedShootout = (fixtureId) =>
+        !forfeit && shootoutResultRef.current?.fixtureId === fixtureId ? shootoutResultRef.current.result : null
+
+    // Phase 29D: hết 90 phút ở lượt về / chung kết cúp mà vẫn hoà → luân lưu.
+    const beginShootout = useCallback((fixture) => {
+        const first = isUserClub(fixture.homeTeamId) ? 'blue' : 'red'
+
+        shootoutResultRef.current = null
+        setShootout({ fixtureId: fixture.id, first, kicks: [], current: null, done: false, winner: null })
+        setShootoutCommand({ type: 'start', nonce: `start-${Date.now()}`, first })
+        setMatchStatus('shootout')
+        setActionMessage('PENALTY SHOOT-OUT')
+    }, [])
+
+    const completeShootout = useCallback((kicks, first, winner) => {
+        const { activeFixture: fixture } = shootoutInfoRef.current
+
+        if (!fixture) return
+
+        shootoutResultRef.current = {
+            fixtureId: fixture.id,
+            result: toCupShootout(kicks, isUserClub(fixture.homeTeamId)),
+        }
+        setShootout((current) => ({ ...(current || {}), kicks, first, done: true, winner, current: null }))
+        setActionMessage(winner === 'blue' ? 'YOU WIN THE SHOOT-OUT!' : 'SHOOT-OUT LOST')
+        if (winner === 'blue') roar(true)
+
+        // Xem kết quả một nhịp rồi sang màn hết trận.
+        setTimeout(() => setMatchStatus((status) => (status === 'shootout' ? 'fulltime' : status)), 2800)
+    }, [])
+
+    const handleShootoutUpdate = useCallback((snapshot) => {
+        setShootout((current) => (current && !current.done ? { ...current, ...snapshot } : current))
+    }, [])
+
+    const handleShootoutEnd = useCallback(({ kicks, first, winner }) => {
+        completeShootout(kicks, first, winner)
+    }, [completeShootout])
+
+    // SIMULATE SHOOT-OUT: các quả còn lại mô phỏng theo chỉ số sút / thủ môn.
+    const simulateShootoutRest = useCallback(() => {
+        const current = shootout
+
+        if (!current || current.done) return
+
+        const { roster: teams } = shootoutInfoRef.current
+        const skills = {
+            blue: shootoutSkill(teams?.find((team) => team.id === 'blue')?.players || []),
+            red: shootoutSkill(teams?.find((team) => team.id === 'red')?.players || []),
+        }
+        const kicks = finishShootout(current.kicks || [], current.first, skills)
+        const last = kicks.filter((kick) => kick.team === 'blue' && kick.scored).length -
+            kicks.filter((kick) => kick.team === 'red' && kick.scored).length
+
+        completeShootout(kicks, current.first, last > 0 ? 'blue' : 'red')
+    }, [shootout, completeShootout])
+
+    // Hết luân lưu (hoặc bỏ trận giữa chừng): dừng chế độ luân lưu của engine.
+    useEffect(() => {
+        if (matchStatus === 'fulltime' && shootout) {
+            setShootoutCommand({ type: 'stop', nonce: `stop-${Date.now()}` })
+        }
+    }, [matchStatus, shootout])
+
     const handleWhistleDone = useCallback((type) => {
         setWhistlePending(null)
 
         if (type === 'half') {
             setMatchStatus('halftime')
             setActionMessage('HALF TIME')
-        } else {
-            handleMatchEnd()
+            return
         }
-    }, [handleMatchEnd])
+
+        const { league: currentLeague, activeFixture: fixture, blueScore: blue, redScore: red } = shootoutInfoRef.current
+
+        if (fixture?.competition && !fixture.played) {
+            const isHome = isUserClub(fixture.homeTeamId)
+
+            if (cupShootoutNeeded(currentLeague, fixture.id, isHome ? blue : red, isHome ? red : blue)) {
+                beginShootout(fixture)
+                return
+            }
+        }
+
+        handleMatchEnd()
+    }, [handleMatchEnd, beginShootout])
 
     // Ghi nhận kết quả trận của đội người chơi vào giải đấu đúng một lần.
     useEffect(() => {
@@ -548,7 +637,7 @@ export default function GameScene() {
 
         setLeague((currentLeague) =>
             fixture.competition
-                ? recordCupResult(currentLeague, activeFixtureId, homeGoals, awayGoals, userSkill)
+                ? recordCupResult(currentLeague, activeFixtureId, homeGoals, awayGoals, userSkill, playedShootout(activeFixtureId))
                 : recordUserFixtureResult(
                     currentLeague,
                     activeFixtureId,
@@ -644,6 +733,7 @@ export default function GameScene() {
                     isHome ? blueScore : redScore,
                     isHome ? redScore : blueScore,
                     shootoutSkill(roster.find((team) => team.id === 'blue')?.players || []),
+                    playedShootout(fixture.id),
                 )
 
                 cupInfo = describeUserCupResult(after, fixture.id)
@@ -973,7 +1063,22 @@ export default function GameScene() {
         ? `+${Math.floor(addedGameSeconds / 60)}:${String(addedGameSeconds % 60).padStart(2, '0')}`
         : null
 
-    const isPlaying = matchStatus === 'playing'
+    // Kiểm thử tự động (chỉ khi build với VITE_E2E=1; bản thường bị loại bỏ).
+    if (import.meta.env.VITE_E2E && typeof window !== 'undefined') {
+        window.__ufmTest = {
+            setScore: (blue, red) => {
+                setBlueScore(blue)
+                setRedScore(red)
+            },
+            endMatch: () => handleWhistleDone('full'),
+        }
+    }
+
+    // Phase 29D: dữ liệu mới nhất cho handleWhistleDone / SIMULATE SHOOT-OUT.
+    shootoutInfoRef.current = { league, activeFixture, blueScore, redScore, roster: matchRoster }
+
+    // Phase 29D: engine chạy cả trong lúc luân lưu (dừng khi đã có kết quả).
+    const isPlaying = matchStatus === 'playing' || (matchStatus === 'shootout' && !shootout?.done)
 
     // Trận tiếp theo của đội người chơi trong lịch (sau khi kết quả đã được ghi).
     const nextFixture = useMemo(
@@ -1861,8 +1966,21 @@ export default function GameScene() {
                             resetKey={resetKey}
                             onGoal={handleGoal}
                             onCard={handleCard}
+                            shootoutCommand={shootoutCommand}
+                            onShootoutUpdate={handleShootoutUpdate}
+                            onShootoutEnd={handleShootoutEnd}
                         />
             </Suspense>
+
+            {/* Phase 29D: bảng luân lưu */}
+            {(matchStatus === 'shootout' || (shootout && matchStatus !== 'fulltime')) && (
+                <ShootoutPanel
+                    shootout={shootout}
+                    blue={{ shortName: userTeam().shortName, clubId: userClubId() }}
+                    red={{ shortName: opponentTeam?.shortName || 'OPP', clubId: opponentTeam?.id }}
+                    onSimulate={simulateShootoutRest}
+                />
+            )}
 
             {settings.showFps && <FpsMeter />}
 

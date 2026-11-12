@@ -16,7 +16,7 @@ import {
 import { clampPlayer, rampSpeed, topSpeedOf } from './movement'
 import { attr } from './attributes'
 import { fatiguePenalty } from './stamina'
-import { ownGoalSign } from './matchState'
+import { attackDir, ownGoalSign } from './matchState'
 import { recordPlayer, recordTeam } from './matchStats'
 import { judgeChallenge } from './referee'
 import {
@@ -111,6 +111,42 @@ export function inputDirection(keys) {
     return direction.lengthSq() > 0 ? direction.normalize() : null
 }
 
+// ---- Phase 29D: phạt đền nhìn từ sau lưng người sút ----
+// Camera đứng sau người sút nhìn về khung thành, nên "phải màn hình" là −X
+// nếu đội sút tấn công về +Z, là +X nếu tấn công về −Z.
+const screenRightX = (state, kickingTeam) => -attackDir(state, kickingTeam)
+
+// Hướng ngắm phạt đền theo ← / → (null = sút giữa / theo lực).
+export function penaltyAimInput(ctx) {
+    const { state } = ctx
+    const pressed = ctx.keys?.current || {}
+    const restart = state.restart
+    const side = (pressed.ArrowRight ? 1 : 0) - (pressed.ArrowLeft ? 1 : 0)
+
+    if (!restart || !side) return null
+
+    return new THREE.Vector3(side * screenRightX(state, restart.teamId), 0, 0)
+}
+
+// Đối thủ đá phạt đền: ← / → chọn hướng bay người cho thủ môn đội mình
+// (↓ đứng giữa), lựa chọn được giữ tới lúc bóng rời chân. Trả về true khi
+// đang chờ quả phạt đền của đối thủ (cầu thủ đang chọn đứng yên).
+export function updatePenaltyDive(ctx) {
+    const { state } = ctx
+    const restart = state.restart
+
+    if (!restart || restart.type !== 'penalty' || restart.teamId === 'blue') return false
+
+    const pressed = ctx.keys?.current || {}
+    const right = screenRightX(state, restart.teamId)
+
+    if (pressed.ArrowRight) state.userDive = right
+    else if (pressed.ArrowLeft) state.userDive = -right
+    else if (pressed.ArrowDown || pressed.ArrowUp) state.userDive = 0
+
+    return true
+}
+
 // Di chuyển cầu thủ BLUE đang được chọn theo phím mũi tên.
 export function updateControlledPlayer(ctx, dt) {
     const { state, objects, keys } = ctx
@@ -142,6 +178,9 @@ export function updateControlledPlayer(ctx, dt) {
     }
 
     if (isPlayerLocked(state, ctx.selectedId)) return
+
+    // Phase 29D: đang chờ đối thủ đá phạt đền → mũi tên chọn hướng bay người.
+    if (updatePenaltyDive(ctx)) return
 
     let direction = inputDirection(keys)
 
@@ -729,7 +768,8 @@ export function releaseCharge(ctx, action) {
 
     kickFromPlayer(ctx, charge.playerId, action, false, {
         power: Math.max(action === 'shoot' ? 0.35 : 0.12, charge.power),
-        aimInput: inputDirection(ctx.keys),
+        // Phase 29D: phạt đền ngắm bằng ← / → (camera sau lưng người sút).
+        aimInput: state.restart?.type === 'penalty' ? penaltyAimInput(ctx) : inputDirection(ctx.keys),
         variant: kickVariant(action, modifier),
     })
 }

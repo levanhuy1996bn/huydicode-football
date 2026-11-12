@@ -346,9 +346,12 @@ function resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel) {
     // Phase 29B: khán giả "ồ" khi thủ môn cứu thua.
     ctx.onSound?.('save')
 
-    recordTeam(state, enemyTeamId, 'onTarget')
-    recordTeam(state, teamId, 'saves')
-    recordPlayer(state, keeperItem.id, 'saves')
+    // Luân lưu (Phase 29D) không cộng vào thống kê trận.
+    if (!state.shootout) {
+        recordTeam(state, enemyTeamId, 'onTarget')
+        recordTeam(state, teamId, 'saves')
+        recordPlayer(state, keeperItem.id, 'saves')
+    }
 
     const standing = ['catch', 'catchHigh', 'scoop'].includes(plan.type)
     // Handling (Phase 19): thủ môn bắt dính tốt bắt được bóng mạnh hơn

@@ -12,6 +12,7 @@ import { recordPossession } from './matchStats'
 import { updateDuels, updateShield } from './duels'
 import { updateStamina } from './stamina'
 import { isDeadBall, startWhistle } from './whistle'
+import { stepShootout } from './shootout'
 
 function tickTimers(state, dt) {
     Object.keys(state.timers).forEach((key) => {
@@ -35,6 +36,12 @@ export function stepMatch(ctx, dt) {
     const { state } = ctx
 
     if (!ctx.ballRef.current) return
+
+    // Phase 29D: loạt sút luân lưu chạy vòng lặp riêng.
+    if (state.shootout) {
+        stepShootout(ctx, dt)
+        return
+    }
 
     // Đã hết giờ và bóng chết: thổi còi (xem whistle.js). Sau bàn thắng /
     // bóng ra ngoài thì chờ hết nhịp ăn mừng / đặt bóng (goalCooldown) trước.

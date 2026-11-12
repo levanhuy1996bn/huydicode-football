@@ -181,7 +181,9 @@ export function restartAtSpot(ctx, teamId, restartType, x, z, extra = {}) {
     if (restartType === 'goal-kick') {
         kicker = teamList.find((item) => item.role === 'GK')
     } else if (restartType === 'penalty') {
-        kicker = bestTaker(teamList, objects, 'finishing')
+        // Phase 29D: luân lưu chỉ định người sút (extra.kickerId).
+        kicker = (extra.kickerId && teamList.find((item) => item.id === extra.kickerId && objects[item.id])) ||
+            bestTaker(teamList, objects, 'finishing')
         ballX = 0
         ballZ = attackSign * (FIELD.lineZ - PENALTY_SPOT)
     } else if (restartType === 'free-kick') {
@@ -291,11 +293,16 @@ export function restartAtSpot(ctx, teamId, restartType, x, z, extra = {}) {
     } else if (restartType === 'goal-kick') {
         ctx.onActionMessage(`${teamName} GOAL KICK`)
     } else if (restartType === 'penalty') {
-        ctx.onActionMessage(
-            teamId === 'blue'
-                ? `PENALTY · ${kicker.name.toUpperCase()} · AIM WITH ARROWS, D TO SHOOT`
-                : `${teamName} PENALTY · ${kicker.name.toUpperCase()}`,
-        )
+        // Phase 29D: camera ra sau lưng người sút → ← / → ngắm (sút) hoặc chọn
+        // hướng bay người (thủ môn đội mình). Luân lưu tự hiện thông báo riêng.
+        state.userDive = null
+        if (!extra.silent) {
+            ctx.onActionMessage(
+                teamId === 'blue'
+                    ? `PENALTY · ${kicker.name.toUpperCase()} · ← / → AIM, HOLD D TO SHOOT`
+                    : `${teamName} PENALTY · ${kicker.name.toUpperCase()} · HOLD ← / → TO DIVE`,
+            )
+        }
     } else {
         ctx.onActionMessage(
             `${teamName} ${extra.indirect ? 'INDIRECT ' : ''}FREE KICK${teamId === 'blue' ? ' · S/W/A PASS · D SHOOT' : ''}`,

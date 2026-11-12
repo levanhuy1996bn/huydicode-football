@@ -619,13 +619,19 @@ export function fixtureShortLabel(fixture) {
 
 // ---- Ghi kết quả trận cúp của người chơi ----
 // userSkill: kỹ năng luân lưu của đội người chơi (nếu phải đá luân lưu).
-export function recordCupResult(league, fixtureId, homeGoals, awayGoals, userSkill = null) {
+// Phase 29D: `shootout` = kết quả luân lưu người chơi tự đá ({ home, away, kicks })
+// — được lưu thẳng, không mô phỏng.
+export function recordCupResult(league, fixtureId, homeGoals, awayGoals, userSkill = null, shootout = null) {
     const cups = league?.cups
     const fixture = findUserFixture(league, fixtureId)
 
     if (!cups || !fixture?.competition || fixture.played) return league
 
-    const result = { homeGoals: Math.max(0, Number(homeGoals) || 0), awayGoals: Math.max(0, Number(awayGoals) || 0) }
+    const result = {
+        homeGoals: Math.max(0, Number(homeGoals) || 0),
+        awayGoals: Math.max(0, Number(awayGoals) || 0),
+        ...(shootout ? { shootout } : {}),
+    }
     let next = { ...league, cups: { ...cups, results: { ...cups.results, [fixtureId]: result } } }
 
     // Lượt về / chung kết hoà tổng tỉ số → luân lưu (lưu lại để cố định).
@@ -762,4 +768,20 @@ export const CUP_RUN_LABELS = {
     qf: 'Quarter-final',
     r16: 'Round of 16',
     group: 'Group stage',
+}
+
+// ---- Phase 29D: luân lưu tự đá ----
+// Kết quả này (sau 90 phút) có dẫn tới luân lưu không? (lượt về hoà tổng tỉ số
+// và bàn sân khách, hoặc chung kết hoà)
+export function cupShootoutNeeded(league, fixtureId, homeGoals, awayGoals) {
+    const fixture = findUserFixture(league, fixtureId)
+
+    if (!fixture?.competition || fixture.stage === 'group' || fixture.played) return false
+
+    const trial = recordCupResult(league, fixtureId, homeGoals, awayGoals, null)
+    const index = CUP_SCHEDULE.findIndex((entry) => entry.key === fixture.scheduleKey)
+    const view = cupView(trial.cups, fixture.competition, index + 1)
+    const tie = view?.ties?.[fixture.stage]?.find((item) => item.legs.some((leg) => leg.id === fixtureId))
+
+    return Boolean(tie?.finished && tie.decidedBy === 'penalties')
 }

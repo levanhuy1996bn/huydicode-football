@@ -201,4 +201,7 @@ export function matchSoundEvent(type, data = {}) {
     else if (type === 'miss') ooh(data.close ? 1 : 0.6)
     else if (type === 'foul') whistle('short')
     else if (type === 'whistle') whistle(data.kind)
+    // Phase 29D: luân lưu — vào lưới (khán giả reo, to hơn nếu đội mình sút) / hỏng.
+    else if (type === 'pen-goal') roar(Boolean(data.user))
+    else if (type === 'pen-miss') ooh(0.9)
 }

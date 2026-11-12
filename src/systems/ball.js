@@ -1124,8 +1124,10 @@ function releaseKick(ctx, windup) {
     state.lastTouchTeam = teamId
     state.lastToucherId = playerId
 
-    // Thống kê: sút / chuyền (ném biên không tính).
-    if (action === 'shoot') {
+    // Thống kê: sút / chuyền (ném biên không tính). Luân lưu (Phase 29D) không tính.
+    if (state.shootout) {
+        // không ghi thống kê
+    } else if (action === 'shoot') {
         recordTeam(state, teamId, 'shots')
         recordPlayer(state, playerId, 'shots')
 
@@ -1188,8 +1190,16 @@ function releaseKick(ctx, windup) {
     // Phạt đền: thủ môn đối phương "đoán" hướng ngay lúc bóng rời chân.
     if (restartType === 'penalty') {
         const roll = Math.random()
+        let guess = roll < 0.42 ? -1 : roll < 0.84 ? 1 : 0
 
-        state.penaltyKick = { kickId: state.kickId, guess: roll < 0.42 ? -1 : roll < 0.84 ? 1 : 0 }
+        // Phase 29D: thủ môn đội mình bay theo hướng người chơi chọn (← / →,
+        // không bấm = đứng giữa); máy đá thay (auto play) thì vẫn đoán ngẫu nhiên.
+        if (teamId !== 'blue' && !state.autoPilot) guess = state.userDive ?? 0
+
+        state.penaltyKick = { kickId: state.kickId, guess, teamId }
+        state.userDive = null
+        // Camera sau lưng người sút giữ thêm một nhịp để xem kết quả.
+        state.penaltyCam = { teamId, until: (state.elapsed || 0) + 2.2 }
     }
 
     state.restart = null

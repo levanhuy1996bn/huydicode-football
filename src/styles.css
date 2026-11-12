@@ -2937,3 +2937,50 @@ b.is-off-position::after {
 .sell-confirm__warn { margin: 0; padding: 8px 10px; border-radius: 6px; background: rgba(255,138,122,.12); color: #ff9d8f; font-size: 12px; font-weight: 700; }
 .sell-confirm__note { margin: 0; color: #82998e; font-size: 11px; }
 .sell-confirm__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* ---- Phase 29D: luân lưu ---- */
+.shootout-panel {
+    position: absolute;
+    top: 112px;
+    left: 50%;
+    z-index: 11;
+    display: grid;
+    gap: 6px;
+    min-width: 330px;
+    padding: 10px 14px 12px;
+    border: 1px solid rgba(185,237,112,.35);
+    border-radius: 10px;
+    background: rgba(8,18,14,.92);
+    color: #fff;
+    transform: translateX(-50%);
+    box-shadow: 0 6px 22px rgba(0,0,0,.35);
+}
+.shootout-panel__title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #b9ed70;
+    font: 900 12px Inter, sans-serif;
+    letter-spacing: 2px;
+}
+.shootout-panel__sd { padding: 1px 6px; border-radius: 6px; background: #c0392b; color: #fff; font-size: 9px; letter-spacing: 1px; }
+.shootout-row { display: grid; grid-template-columns: 92px 1fr 22px; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 6px; }
+.shootout-row.is-active { background: rgba(185,237,112,.1); }
+.shootout-row__team { display: inline-flex; align-items: center; gap: 6px; font: 800 12px Inter, sans-serif; }
+.shootout-row__dots { display: flex; flex-wrap: wrap; gap: 4px; }
+.shootout-row__score { text-align: right; font: 900 16px 'Barlow Condensed', Inter, sans-serif; }
+.shootout-dot { width: 16px; font-style: normal; font-size: 13px; line-height: 16px; text-align: center; color: #4e6458; }
+.shootout-dot.is-goal { color: #b9ed70; }
+.shootout-dot.is-miss { color: #ff6b5e; font-weight: 900; }
+.shootout-dot.is-next { color: #fff; animation: shootout-blink 0.9s ease-in-out infinite; }
+@keyframes shootout-blink { 50% { opacity: .3; } }
+.shootout-panel__hint { color: #c9d8cf; font-size: 11px; text-align: center; }
+.shootout-panel__hint kbd { padding: 0 4px; border: 1px solid #547565; border-radius: 3px; background: #1c3529; font: 800 10px Inter, sans-serif; }
+.shootout-panel__result { padding: 6px; border-radius: 6px; font: 900 13px Inter, sans-serif; letter-spacing: 1px; text-align: center; }
+.shootout-panel__result.is-win { background: rgba(185,237,112,.18); color: #b9ed70; }
+.shootout-panel__result.is-loss { background: rgba(255,107,94,.15); color: #ff8a7a; }
+.shootout-panel__sim { justify-self: center; }
+.shootout-panel__last { font-weight: 900; letter-spacing: 1px; }
+.shootout-panel__last.is-goal { color: #b9ed70; }
+.shootout-panel__last.is-miss { color: #ff8a7a; }
