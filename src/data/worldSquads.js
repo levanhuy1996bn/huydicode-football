@@ -8,6 +8,8 @@
 import { CLUB_BY_ID, USER_CLUB_ID, WORLD_CLUBS, hash01, hashString } from './world'
 import { COUNTRY_NAMING, FOREIGN_POOLS, NAME_POOLS, POOL_NATIONALITY } from './namePools'
 import { baseStats } from './teams'
+import { STAR_PHYSIQUE } from './starPhysique'
+import { generatePhysique } from '../systems/physique'
 
 // [vị trí, số áo, nhóm]: 0–10 đá chính, 11–19 dự bị, 20–21 dự bị xa.
 export const SQUAD_TEMPLATE = [
@@ -130,6 +132,7 @@ function buildSquad(club) {
             : pickName(club, slot, usedNames)
         const id = `${club.id}-p${String(slot + 1).padStart(2, '0')}`
         const value = valueOf(overall)
+        const body = (star && STAR_PHYSIQUE.get(star.name)) || generatePhysique(id, position)
 
         return {
             id,
@@ -138,6 +141,8 @@ function buildSquad(club) {
             position,
             number,
             overall,
+            height: body.height,
+            weight: body.weight,
             ...statsFor(club, slot, position, number, overall),
             age: ageFor(club, slot, Boolean(star)),
             nationality: identity.nationality || null,

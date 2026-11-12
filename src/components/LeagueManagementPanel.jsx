@@ -12,6 +12,8 @@ import { COUNTRIES, COUNTRY_BY_ID, LEAGUE_BY_ID } from '../data/world'
 import { buildSeasonPlayerStats } from '../services/seasonStats'
 import { leagueView, zoneOf } from '../services/worldService'
 import ClubCrest from './ClubCrest'
+import { DifficultyPicker } from './screens/PreMatchScreen'
+import { DEFAULT_DIFFICULTY, difficultyOf } from '../services/difficulty'
 
 const ZONE_LABELS = {
     c1: 'Continental Cup (C1)',
@@ -62,6 +64,8 @@ function blueStatsPlayed(fixtures) {
 export default function LeagueManagementPanel({
                                                   league,
                                                   world = null,
+                                                  difficultyLocked = false,
+                                                  onDifficultyChange,
                                                   onClose,
                                                   onStartFixture,
                                                   onNewSeason,
@@ -216,6 +220,14 @@ export default function LeagueManagementPanel({
                                         START NEW SEASON
                                     </button>
                                 )}
+                            </div>
+
+                            <div className="league-difficulty">
+                                <DifficultyPicker
+                                    difficulty={difficultyOf(league?.difficulty || DEFAULT_DIFFICULTY)}
+                                    locked={difficultyLocked}
+                                    onChange={onDifficultyChange}
+                                />
                             </div>
 
                             {champion && (

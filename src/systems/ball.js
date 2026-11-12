@@ -1,3 +1,4 @@
+import { aerialEdge, aerialReach } from './physique'
 import * as THREE from 'three'
 import {
     FIELD,
@@ -1274,8 +1275,12 @@ export function updateLooseBallPickup(ctx) {
     const ballSpeed = Math.hypot(velocity.x, velocity.y, velocity.z)
     const horizontalSpeed = Math.hypot(velocity.x, velocity.z)
 
-    // Bóng quá cao thì cầu thủ chưa thể khống chế bằng chân.
-    if (ballPosition.y >= 1.55) return
+    // Bóng quá cao thì cầu thủ chưa thể khống chế bằng chân. Phase 26C: tầm
+    // với theo chiều cao (≈1.45–1.67m), kiểm tra từng người bên dưới.
+    if (ballPosition.y >= 1.7) return
+
+    // Bóng bổng (trên ngang hông): người cao / nặng có lợi khi tranh chấp.
+    const aerialBall = ballPosition.y > 0.9
 
     let best = null
     let bestScore = Infinity
@@ -1305,6 +1310,7 @@ export function updateLooseBallPickup(ctx) {
                 : BLOCK_REACH + skill01(attr(item, 'interceptions')) * 0.15
 
         if (distance > reach) return
+        if (ballPosition.y >= aerialReach(item)) return
 
         if (state.pickupLocks[item.id] > 0) return
 
@@ -1338,7 +1344,10 @@ export function updateLooseBallPickup(ctx) {
         // nhưng đối phương vẫn có thể cắt bóng nếu ở gần hơn.
         const isIntendedReceiver =
             state.pendingPass?.receiverId === item.id
-        const score = distance - (isIntendedReceiver ? 0.25 : 0)
+        const score =
+            distance -
+            (isIntendedReceiver ? 0.25 : 0) -
+            (aerialBall ? aerialEdge(item) : 0)
 
         if (score < bestScore) {
             bestScore = score

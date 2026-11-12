@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { shortPlayerName } from '../utils/names'
+import { bodyScale } from '../systems/physique'
 import {
     applyPose,
     createPose,
@@ -310,6 +311,8 @@ export default function Player({
         </group>
     )
 
+    const body = bodyScale(player)
+
     return (
         <group
             ref={root}
@@ -321,7 +324,7 @@ export default function Player({
             }}
         >
             <Html
-                position={[0, 2.25, 0]}
+                position={[0, 2.25 * body.height, 0]}
                 center
                 zIndexRange={[6, 0]}
                 style={{ pointerEvents: 'none' }}
@@ -347,6 +350,8 @@ export default function Player({
             )}
 
             {/* Rig: hông → chân (đùi, gối, cẳng chân) + eo → thân → tay, đầu */}
+            {/* Phase 26C: dáng người theo chiều cao / cân nặng */}
+            <group scale={[body.width, body.height, body.width]}>
             <group ref={hips} position={[0, HIP_HEIGHT, 0]}>
                 {/* Quần */}
                 <mesh position={[0, 0.05, 0]} castShadow>
@@ -448,6 +453,7 @@ export default function Player({
                         </group>
                     </group>
                 </group>
+            </group>
             </group>
         </group>
     )

@@ -1,5 +1,6 @@
 import { USER_TEAM } from './leagueData'
 import { worldClub } from './world'
+import { generatePhysique } from '../systems/physique'
 
 const clampStat = (value) => Math.max(1, Math.min(99, value))
 
@@ -68,6 +69,8 @@ const makePlayer = (
     z,
     overall,
     ...baseStats(position, number, overall),
+    // Phase 26C: chiều cao / cân nặng cố định theo id cầu thủ.
+    ...generatePhysique(id, position),
 })
 
 const homeFormation = [

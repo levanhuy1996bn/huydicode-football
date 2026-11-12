@@ -8,6 +8,7 @@
 //   rarity       — gold / silver / bronze theo OVR.
 import { PLAYER_CATALOG } from '../data/playerCatalog'
 import { allWorldPlayers } from '../data/worldSquads'
+import { withPhysique } from '../systems/physique'
 
 export const RARITY_LABELS = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' }
 
@@ -25,15 +26,16 @@ export function newCardId(playerId) {
 
 // Bổ sung các trường thẻ cho cầu thủ trong bản lưu cũ (id cũ được giữ làm cardId).
 export function ensureCardFields(player) {
-    if (!player || (player.playerId && player.cardId && player.upgrade && player.rarity)) return player
+    if (!player || (player.playerId && player.cardId && player.upgrade && player.rarity && player.height)) return player
 
-    return {
+    // Phase 26C: thẻ cũ được bổ sung chiều cao / cân nặng (theo playerId).
+    return withPhysique({
         ...player,
         playerId: player.playerId || player.id,
         cardId: player.cardId || player.id,
         upgrade: player.upgrade || 1,
         rarity: player.rarity || rarityOf(player.overall || 60),
-    }
+    })
 }
 
 export const playerIdOf = (player) => player?.playerId || player?.id
@@ -42,7 +44,7 @@ export const playerIdOf = (player) => player?.playerId || player?.id
 export function cardFromCatalog(catalogPlayer, { number, upgrade = 1 } = {}) {
     const cardId = newCardId(catalogPlayer.playerId)
 
-    return {
+    return withPhysique({
         ...catalogPlayer,
         id: cardId,
         cardId,
@@ -53,7 +55,7 @@ export function cardFromCatalog(catalogPlayer, { number, upgrade = 1 } = {}) {
         x: 0,
         z: 60,
         condition: 100,
-    }
+    })
 }
 
 // Số áo trống đầu tiên từ 20 trở lên.

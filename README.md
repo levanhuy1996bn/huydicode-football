@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25 and Phase 26A — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 26B (choose / change club), 27 (C1 / C2), 28 (mobile, graphics, sound, performance), 29 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A and 26C — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 26B (choose / change club), 27 (C1 / C2), 28 (mobile, graphics, sound, performance), 29 (card seasons, real data). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -244,6 +244,7 @@ ultimate-football-manager-3d/
     │   ├── world.js          # parses the world data: leagues, clubs, ids, strengths (Phase 26A)
     │   ├── worldSquads.js    # deterministic 22-player squad per club (Phase 26A)
     │   ├── namePools.js      # fictional first / last names per nationality (Phase 26A)
+    │   ├── starPhysique.js   # approximate height / weight of the real-name stars (Phase 26C)
     │   └── ...
     ├── hooks/
     │   └── useKeyboard.js
@@ -251,6 +252,7 @@ ultimate-football-manager-3d/
     │   ├── clubService.js
     │   ├── leagueService.js  # your league: fixtures, results, standings, simulation
     │   ├── worldService.js   # world save, virtual leagues, promotion / relegation, history (Phase 26A)
+    │   ├── difficulty.js     # season difficulty: opponent card level, reward factor, AI speed (Phase 26C)
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
@@ -268,7 +270,8 @@ ultimate-football-manager-3d/
     │   ├── tactics.js        # per-team tactics, opponent tactic changes, counter-press
     │   ├── goalkeeper.js     # keeper positioning, save plans, catching
     │   ├── duels.js          # shielding, shoulder duels, poked tackles
-    │   ├── attributes.js     # detailed attributes derived from the 6 main stats
+    │   ├── attributes.js     # detailed attributes derived from the 6 main stats (+ height / weight, 26C)
+    │   ├── physique.js       # height / weight: generation, attribute effects, aerial / keeper reach, body scale (Phase 26C)
     │   ├── stamina.js        # in-match stamina, fatigue effects, condition between matches
     │   ├── progression.js    # XP, levels, attribute points by position, potential, OVR
     │   ├── whistle.js        # end of half / match: wait for a dead ball, whistle, animations
@@ -351,6 +354,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 25 | Player card upgrades (+1 → +10, coloured + badge), player level max 100, stats above 99 with coloured numbers | ✅ Done (2026-11-12) |
 | 26A | World of football: 18 countries × 2 divisions (36 leagues, 720 real clubs), virtual leagues, promotion / relegation, market with every player, crests | ✅ Done (2026-11-12) |
 | 26B | Choose / change club | ⏳ Next |
+| 26C | Player height / weight (body + small attribute effects) and season difficulty (opponent card level +N, rewards ×) | ✅ Done (2026-11-12) |
 | 27 | Champions League / Europa League (C1 / C2) | 🔜 Planned |
 | 28 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
 | 29 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
@@ -1116,6 +1120,37 @@ Agreed on 2026-11-12.
 - Remove the fixed `blue` user slot from the engine / saves and migrate old saves.
 - Crests shown on the home screen, pre- and post-match screens, scoreboard and league tables.
 
+### Phase 26C — Height / weight and season difficulty ✅ (2026-11-12)
+
+Agreed on 2026-11-12 (done before 26B). No birth year / age changes: age stays as it is and is not used.
+
+**Height and weight**
+
+- Every player has `height` (cm) and `weight` (kg). The 351 real-name stars use approximate real values (`src/data/starPhysique.js`, my estimates, may be a few cm / kg off); everybody else is generated once from `playerId` + position (bell curve; averages GK 191, CB 187, CDM 182, ST 183, CM 179, full-backs 178, CAM 176, wingers 175 cm; weight from a footballer BMI 21.3–24.1, a bit heavier for GK / CB). Every copy of the same player has the same numbers; old saved cards (Huy Le…) get theirs on load, nothing to migrate by hand.
+- **Small effects** (`src/systems/physique.js`), main stats still decide most:
+  - Detailed attributes (per 10 cm above / below 181 cm, keepers 189 cm, and per 6 kg above / below the normal weight for the height): strength +2 / +3, balance −1.5 / +1, agility −2.5 / −1.5, acceleration −1.5 / −1.5, sprint speed +0.5 / −1, stamina 0 / −1; keepers: diving +2.5, reflexes −2, handling +1 per 10 cm. Example: Haaland strength +3, agility −4; Messi balance +3; Courtois diving +3, reflexes −2.
+  - High balls: the highest ball a player can control goes from 1.55 m to ≈1.45–1.67 m by height, and in a contested high ball (above hip height) taller / heavier players get up to ≈0.2 m of advantage.
+  - Keepers: dive reach ±0.12 m per 10 cm from 189 cm (max ±0.18 m).
+- **3D body:** the model is taller / shorter (×0.88–1.14) and wider / slimmer (×0.90–1.12) from height and weight; the name tag follows the height.
+- Shown on cards and in the transfer market (`ST · 195 cm · 88 kg`); the market's "Youngest" sort became "Tallest".
+
+**Season difficulty**
+
+- Chosen on the pre-match screen or the LEAGUE TABLE tab **before your first match of the season**, then locked until the next season (a new season keeps the previous choice, which can be changed again before round 1). Stored in the league save (`difficulty`, default Normal).
+
+  | Level | Opponent cards | Rewards (XP, prize money, season prize) | AI decision speed |
+  | --- | --- | --- | --- |
+  | Easy | +1 (±1) | ×0.8 | 15% slower |
+  | Normal | +3 (±1) | ×1 | normal |
+  | Hard | +5 (±1) | ×1.3 | 12% faster |
+  | Very hard | +7 (±1) | ×1.6 | 22% faster |
+  | Legendary | +9 (±1) | ×2 | 32% faster |
+
+- Each opponent player in your 3D match becomes a +N card (same bonus table as Phase 25: +3 → +3 stats, +5 → +7, +7 → +11, +9 → +18, stats above 99 work as for your cards); the ±1 is fixed per player and season. Example Arsenal (starters' average 85.6): Easy 86.5, Normal 89.2, Hard 92.4, Very hard 96.9, Legendary 104.9.
+- The pre-match screen shows the opponents' +N badges and the difficulty; the post-match reward card shows the multiplier.
+- Only your matches are affected: AI-vs-AI results and the virtual leagues stay the same, so promotion / relegation stays fair.
+- Note: Normal (+3) makes opponents a little stronger than before 26C (they used to be +1 = Easy).
+
 ### Phase 27 — Champions League / Europa League (planned)
 
 - C1 / C2 for the clubs qualified from the previous season (details to be agreed; uses the third kits for clashes).
@@ -1180,6 +1215,8 @@ Agreed on 2026-11-12.
 | Nâng cấp thẻ bằng 2 thẻ cùng cầu thủ (+1 → +10), thất bại từ +5 chỉ tụt 1 cấp | Phase 25 ✅ |
 | Thêm giải đấu khác (18 nước × 2 hạng, 720 CLB thật, lên / xuống hạng) | Phase 26A ✅ |
 | Cho chọn / đổi CLB | Phase 26B |
+| Chiều cao, cân nặng của cầu thủ (ảnh hưởng thể hình 3D, sức mạnh, khéo léo, bóng bổng, tầm với thủ môn) | Phase 26C ✅ |
+| Độ khó mỗi mùa: tăng cấp thẻ + của cầu thủ đối thủ, thưởng nhiều hơn khi khó hơn | Phase 26C ✅ |
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 28 |
 | Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 29 |
 | Skill riêng cho từng cầu thủ | Backlog |
@@ -1187,7 +1224,7 @@ Agreed on 2026-11-12.
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–26A (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–26A, 26C (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

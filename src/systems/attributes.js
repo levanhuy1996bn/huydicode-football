@@ -1,3 +1,5 @@
+import { physiqueBonus } from './physique'
+
 // ---- Phase 19: chỉ số chi tiết ----
 //
 // Mỗi cầu thủ vẫn lưu 6 chỉ số chính (pace, shooting, passing, dribbling,
@@ -167,8 +169,11 @@ function compute(player) {
     const base = (key) => player[key] ?? overall
     const result = {}
 
+    // Phase 26C: chiều cao / cân nặng cộng trừ vài điểm (systems/physique.js).
+    const body = physiqueBonus(player)
+
     Object.entries(PARENT).forEach(([key, parent]) => {
-        result[key] = clampStat(base(parent) + (bias[key] || 0) + variation(id, key))
+        result[key] = clampStat(base(parent) + (bias[key] || 0) + variation(id, key) + (body[key] || 0))
     })
 
     const keeper = group === 'GK'
@@ -177,7 +182,7 @@ function compute(player) {
         if (keeper) {
             const offset = key === 'kicking' ? -6 : key === 'reflexes' ? 1 : 0
 
-            result[key] = clampStat(overall + offset + variation(id, key))
+            result[key] = clampStat(overall + offset + variation(id, key) + (body[key] || 0))
         } else {
             result[key] = clampStat(18 + variation(id, key))
         }
@@ -198,7 +203,8 @@ export function getAttributes(player) {
     if (!player) return compute({})
 
     const key = [
-        player.id, player.position, player.overall, player.pace, player.shooting,
+        player.id, player.playerId, player.height, player.weight,
+        player.position, player.overall, player.pace, player.shooting,
         player.passing, player.dribbling, player.defending, player.physical,
         player.attributes ? JSON.stringify(player.attributes) : '',
     ].join('|')

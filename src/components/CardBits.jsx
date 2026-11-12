@@ -1,3 +1,4 @@
+import { physiqueOf } from '../systems/physique'
 import { statTier, upgradeTier } from '../services/upgrade'
 import { RARITY_LABELS } from '../services/cards'
 
@@ -45,7 +46,11 @@ export function PlayerCardView({ player, size = 'large', hideBadge = false }) {
             </div>
             <div className="player-card__name">{player.name}</div>
             <div className="player-card__meta">
-                {player.nationality || player.club || '—'}{player.age ? ` · ${player.age} yrs` : ''}
+                {player.nationality || player.club || '—'}
+                {(() => {
+                    const body = physiqueOf(player)
+                    return ` · ${body.height} cm · ${body.weight} kg`
+                })()}
             </div>
             <div className="player-card__stats">
                 {[

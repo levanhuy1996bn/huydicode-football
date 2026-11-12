@@ -10,6 +10,7 @@ import PreMatchScreen from './screens/PreMatchScreen'
 import PostMatchScreen from './screens/PostMatchScreen'
 import { formatMoney, getSquadValue, loadClub, saveClub } from '../services/clubService'
 import { applyMatchToClub, applySeasonBonus } from '../services/clubProgress'
+import { DEFAULT_DIFFICULTY, difficultyOf } from '../services/difficulty'
 import CardsScreen from './screens/CardsScreen'
 import { resolveMatchKits } from '../data/kits'
 
@@ -47,6 +48,7 @@ import {
     advanceWorld,
     createLeagueForWorld,
     loadGameWorld,
+    roundsPlayed,
     saveWorld,
     seasonOutcome,
 } from '../services/worldService'
@@ -234,6 +236,14 @@ export default function GameScene() {
 
     const [isLeagueOpen, setIsLeagueOpen] = useState(false)
 
+    // Phase 26C: độ khó của mùa — chọn trước trận đầu tiên, sau đó khoá.
+    const difficulty = difficultyOf(league.difficulty || DEFAULT_DIFFICULTY)
+    const difficultyLocked = roundsPlayed(league) > 0
+    const matchOptions = { difficulty: difficulty.id, season: league.season }
+    const changeDifficulty = useCallback((id) => {
+        setLeague((current) => (roundsPlayed(current) > 0 ? current : { ...current, difficulty: id }))
+    }, [])
+
     // Chặn ghi nhận trùng kết quả khi React chạy lại effect.
     const recordedFixtureRef = useRef(null)
 
@@ -269,9 +279,9 @@ export default function GameScene() {
 
     // Đội hình 3D của đối thủ theo đúng đội trong vòng đấu.
     const matchRoster = useMemo(
-        () => applyKits(buildMatchRoster(roster, opponentTeam), matchKits, opponentTeam?.id || 'red'),
+        () => applyKits(buildMatchRoster(roster, opponentTeam, matchOptions), matchKits, opponentTeam?.id || 'red'),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [roster, opponentTeam, activeFixture?.id, kitChoice],
+        [roster, opponentTeam, activeFixture?.id, kitChoice, league.difficulty, league.season],
     )
 
     const opponentNameRef = useRef('OPPONENT')
@@ -536,6 +546,7 @@ export default function GameScene() {
                     goalsFor: blueScore,
                     goalsAgainst: redScore,
                     opponentStrength: opponentTeam?.strength,
+                    rewardFactor: difficulty.reward,
                 })
                 let nextClub = rewarded.club
                 let seasonReward = null
@@ -557,7 +568,7 @@ export default function GameScene() {
                     )
                     const position =
                         getLeagueStandings(finalLeague.fixtures).findIndex((row) => row.teamId === 'blue') + 1
-                    const bonus = applySeasonBonus(nextClub, league.season || 2026, position)
+                    const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward)
 
                     nextClub = bonus.club
                     seasonReward = bonus.bonus
@@ -707,7 +718,7 @@ export default function GameScene() {
         // Phase 26A: tính bảng cuối 36 giải, lên / xuống hạng, rồi tạo giải mới
         // cho người chơi (có thể là giải khác nếu MU lên / xuống hạng).
         const nextWorld = advanceWorld(world, league)
-        const nextLeague = createLeagueForWorld(nextWorld)
+        const nextLeague = createLeagueForWorld(nextWorld, league.difficulty)
         const outcome = seasonOutcome(world, nextWorld)
 
         setWorld(nextWorld)
@@ -1345,10 +1356,10 @@ export default function GameScene() {
     const prematchRoster = useMemo(
         () =>
             prematchOpponent
-                ? applyKits(buildMatchRoster(roster, prematchOpponent), prematchKits, prematchOpponent.id)
+                ? applyKits(buildMatchRoster(roster, prematchOpponent, matchOptions), prematchKits, prematchOpponent.id)
                 : roster,
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [roster, prematchOpponent, prematchFixture?.id, kitChoice],
+        [roster, prematchOpponent, prematchFixture?.id, kitChoice, league.difficulty, league.season],
     )
 
     // Đổi bộ áo của một đội (người chơi hoặc máy) cho trận sắp đá.
@@ -1419,6 +1430,9 @@ export default function GameScene() {
                     kits={prematchKits}
                     blueKitTeam={prematchRoster.find((team) => team.id === 'blue')}
                     onKitChange={changeKit}
+                    difficulty={difficulty}
+                    difficultyLocked={difficultyLocked}
+                    onDifficultyChange={changeDifficulty}
                     onKickOff={kickOff}
                     onBack={goHome}
                 />
@@ -1882,6 +1896,8 @@ export default function GameScene() {
                 <LeagueManagementPanel
                     league={league}
                     world={world}
+                    difficultyLocked={difficultyLocked}
+                    onDifficultyChange={changeDifficulty}
                     onClose={() => setIsLeagueOpen(false)}
                     onStartFixture={openPrematch}
                     onNewSeason={createNewSeason}

@@ -6,6 +6,7 @@ import {
     LEAGUE_POINTS,
 } from '../data/leagueData'
 import { USER_CLUB_ID, hashString, worldClub } from '../data/world'
+import { DEFAULT_DIFFICULTY } from './difficulty'
 
 export const CURRENT_SEASON = 2026
 export const FIXTURES_PER_LEAGUE = 380
@@ -115,10 +116,12 @@ export function generateSeasonFixtures(season = CURRENT_SEASON, clubIds = [], le
     )
 }
 
-export function createInitialLeague(season, leagueId, clubIds) {
+export function createInitialLeague(season, leagueId, clubIds, difficulty = DEFAULT_DIFFICULTY) {
     return {
         season,
         leagueId,
+        // Phase 26C: độ khó của mùa (services/difficulty.js).
+        difficulty,
         clubIds: [...clubIds],
         fixtures: generateSeasonFixtures(season, clubIds, leagueId),
         userMatchStats: {},

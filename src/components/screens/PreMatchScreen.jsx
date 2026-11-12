@@ -3,6 +3,8 @@ import { FORMATIONS } from '../../data/teams'
 import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
 import { KIT_LABELS, KIT_SLOTS, kitsClash, kitsOf } from '../../data/kits'
+import { DIFFICULTIES } from '../../services/difficulty'
+import { UpgradeBadge } from '../CardBits'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
 function KitIcon({ kit }) {
@@ -69,7 +71,38 @@ function ConditionChip({ value }) {
     )
 }
 
-function Lineup({ title, color, players, align, showCondition = false }) {
+// Phase 26C: chọn độ khó của mùa (trước trận đầu tiên), sau đó chỉ hiển thị.
+export function DifficultyPicker({ difficulty, locked, onChange }) {
+    if (!difficulty) return null
+
+    return (
+        <div className="difficulty-picker">
+            <div className="kit-section__head">
+                <span>Season difficulty</span>
+                <small>{locked ? 'Locked until next season' : 'Choose before your first match'}</small>
+            </div>
+            <div className="difficulty-picker__options" role="radiogroup" aria-label="Season difficulty">
+                {DIFFICULTIES.map((item) => (
+                    <button
+                        key={item.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={difficulty.id === item.id}
+                        className={difficulty.id === item.id ? 'is-active' : ''}
+                        disabled={locked && difficulty.id !== item.id}
+                        onClick={() => !locked && onChange?.(item.id)}
+                        title={`Opponent cards around +${item.upgrade} · rewards ×${item.reward}`}
+                    >
+                        <b>{item.label}</b>
+                        <small>+{item.upgrade} · ×{item.reward}</small>
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false }) {
     return (
         <div className={`lineup lineup--${align}`}>
             <div className="lineup__head" style={{ '--team': color }}>
@@ -87,6 +120,7 @@ function Lineup({ title, color, players, align, showCondition = false }) {
                         </span>
                         <em>{player.position}</em>
                         {showCondition && <ConditionChip value={player.condition} />}
+                        {showUpgrade && <UpgradeBadge level={player.upgrade} />}
                         <b>{player.overall}</b>
                     </li>
                 ))}
@@ -109,6 +143,9 @@ export default function PreMatchScreen({
     kits = null,
     blueKitTeam = null,
     onKitChange,
+    difficulty = null,
+    difficultyLocked = false,
+    onDifficultyChange,
     onKickOff,
     onBack,
 }) {
@@ -139,6 +176,7 @@ export default function PreMatchScreen({
                     <p>
                         League position: {USER_TEAM.shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
                         {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
+                        {difficulty && <> · Difficulty {difficulty.label.toUpperCase()} (cards ~+{difficulty.upgrade})</>}
                     </p>
                 </div>
             </div>
@@ -205,6 +243,12 @@ export default function PreMatchScreen({
                             </div>
                         )}
 
+                        <DifficultyPicker
+                            difficulty={difficulty}
+                            locked={difficultyLocked}
+                            onChange={onDifficultyChange}
+                        />
+
                         <button type="button" className="btn btn--block" onClick={onEditLineup}>
                             EDIT LINEUP (DRAG &amp; DROP)
                         </button>
@@ -225,6 +269,7 @@ export default function PreMatchScreen({
                     color={opponentTeam.color}
                     players={opponentTeam.players}
                     align="right"
+                    showUpgrade
                 />
             </div>
         </section>

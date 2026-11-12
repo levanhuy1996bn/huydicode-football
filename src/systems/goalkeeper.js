@@ -1,3 +1,4 @@
+import { keeperReachBonus } from './physique'
 import { FIELD, clamp, distance2D } from './constants'
 import { facingFor, ownGoalSign } from './matchState'
 import { attachBallToPlayer, curlOffset, teamPlayers } from './ball'
@@ -111,7 +112,8 @@ function planSave(ctx, teamId, keeper, keeperItem) {
     const timeToDive = timeToKeeper - reaction
     const maxReach =
         STAND_REACH + DIVE_SPEED * clamp(timeToDive, 0, DIVE_PUSH_TIME) + 0.8 +
-        (diving - 70) * 0.025 + over99(diving) * OVER_99.keeperReach
+        (diving - 70) * 0.025 + over99(diving) * OVER_99.keeperReach +
+        keeperReachBonus(keeperItem)
 
     // Bóng lốp bay qua đầu (cao hơn tầm với ở chỗ đang đứng): lùi về đón
     // bóng lúc nó rơi xuống — trước vạch vôi, hoặc ngay trên vạch nếu bóng rơi

@@ -80,9 +80,12 @@ export function addClubXp(club, amount) {
 }
 
 // Áp dụng một trận giải đấu: XP + tiền thưởng (cộng thẳng vào ngân sách).
-export function applyMatchToClub(club, { goalsFor, goalsAgainst, opponentStrength }) {
-    const xp = matchXp({ goalsFor, goalsAgainst })
-    const { prize, result } = matchPrize({ goalsFor, goalsAgainst, opponentStrength })
+// Phase 26C: rewardFactor = hệ số thưởng của độ khó mùa (0.8 … 2).
+export function applyMatchToClub(club, { goalsFor, goalsAgainst, opponentStrength, rewardFactor = 1 }) {
+    const xp = Math.round(matchXp({ goalsFor, goalsAgainst }) * rewardFactor)
+    const base = matchPrize({ goalsFor, goalsAgainst, opponentStrength })
+    const result = base.result
+    const prize = Math.round((base.prize * rewardFactor) / 1000) * 1000
     const levelBefore = club.level || 0
     const xpBefore = club.xp || 0
     const { club: leveled, levelsGained } = addClubXp(club, xp)
@@ -99,6 +102,7 @@ export function applyMatchToClub(club, { goalsFor, goalsAgainst, opponentStrengt
             xpNow: leveled.xp,
             xpToNext: clubXpToNext(leveled.level),
             levelsGained,
+            rewardFactor,
         },
     }
 }
@@ -112,10 +116,10 @@ export function seasonBonus(position) {
     return 2000000
 }
 
-export function applySeasonBonus(club, season, position) {
+export function applySeasonBonus(club, season, position, rewardFactor = 1) {
     if (club.seasonBonusPaid?.[season]) return { club, bonus: null }
 
-    const amount = seasonBonus(position)
+    const amount = Math.round((seasonBonus(position) * rewardFactor) / 100000) * 100000
 
     return {
         club: {

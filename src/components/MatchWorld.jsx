@@ -490,6 +490,8 @@ export default function MatchWorld({
         isPlaying,
         opponentName,
         userTeamName,
+        // Phase 26C: tốc độ ra quyết định của AI đối thủ theo độ khó.
+        aiSpeed: roster.find((team) => team.id === 'red')?.aiSpeed || 1,
         teamColors: Object.fromEntries(
             roster.map((team) => [team.id, team.color]),
         ),

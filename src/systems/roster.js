@@ -1,6 +1,8 @@
 import { TEAMS } from '../data/teams'
 import { worldClub } from '../data/world'
 import { BENCH_COUNT, STARTER_COUNT, worldSquad } from '../data/worldSquads'
+import { applyUpgradeLevel } from '../services/upgrade'
+import { aiUpgradeFor, difficultyOf } from '../services/difficulty'
 import { ensureCardFields, playerIdOf } from '../services/cards'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
@@ -160,14 +162,21 @@ export function getOpponentColor(teamId) {
 // Phase 26A: đội RED trong trận 3D "đóng vai" CLB thật của vòng đấu: dùng
 // đúng đội hình 22 người tất định của CLB đó (data/worldSquads.js): 11 người
 // đầu vào 11 ô sơ đồ của đội RED (giữ toạ độ ô), 9 người kế tiếp ngồi dự bị.
-export function buildMatchRoster(roster, opponent) {
+//
+// Phase 26C: { difficulty, season } → mỗi cầu thủ đối thủ thành thẻ +N theo độ
+// khó (applyUpgradeLevel cộng điểm như thẻ người chơi), đội có aiSpeed (AI
+// quyết định nhanh / chậm hơn). Không truyền difficulty = thẻ +1 như cũ.
+export function buildMatchRoster(roster, opponent, { difficulty = null, season = 0 } = {}) {
     if (!opponent || opponent.id === 'red') return roster
 
     const squad = worldSquad(opponent.id)
 
     if (!squad.length) return roster
 
-    const toMatchPlayer = (template, player) => ({
+    const boost = (player) =>
+        difficulty ? applyUpgradeLevel(player, aiUpgradeFor(difficulty, player.playerId, season)) : player
+
+    const toMatchPlayer = (template, player) => boost({
         ...template,
         id: player.id,
         playerId: player.playerId,
@@ -185,6 +194,8 @@ export function buildMatchRoster(roster, opponent) {
         age: player.age,
         upgrade: 1,
         rarity: player.rarity,
+        height: player.height,
+        weight: player.weight,
         condition: 100,
     })
 
@@ -200,6 +211,8 @@ export function buildMatchRoster(roster, opponent) {
             name: opponent.name,
             shortName: opponent.shortName,
             color: getOpponentColor(opponent.id),
+            difficulty: difficulty || null,
+            aiSpeed: difficulty ? difficultyOf(difficulty).aiSpeed : 1,
             players: team.players.map((slot, index) =>
                 toMatchPlayer(slot, starters[index] || starters[starters.length - 1]),
             ),

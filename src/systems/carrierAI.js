@@ -427,7 +427,10 @@ export function updateCarrierAI(ctx, dt) {
         return
     }
 
-    carry.decideIn = DECIDE_MIN + Math.random() * DECIDE_JITTER
+    // Phase 26C: độ khó — AI đối thủ (red) quyết định nhanh / chậm hơn.
+    carry.decideIn =
+        (DECIDE_MIN + Math.random() * DECIDE_JITTER) *
+        (ownerItem.teamId === 'red' ? ctx.aiSpeed || 1 : 1)
 
     const opponents = opponentsNear(ctx, ownerItem, owner, 28)
     const pressers = opponents.filter((opponent) => opponent.active)

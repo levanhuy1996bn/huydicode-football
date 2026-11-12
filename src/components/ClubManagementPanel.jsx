@@ -15,6 +15,7 @@ import { USER_TEAM } from '../data/leagueData'
 import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
 import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
 import { StatNum, UpgradeBadge } from './CardBits'
+import { physiqueOf } from '../systems/physique'
 
 const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
 const MARKET_PAGE = 48
@@ -199,7 +200,7 @@ export default function ClubManagementPanel({
             })
             .sort((a, b) => {
                 if (sortBy === 'value') return a.value - b.value
-                if (sortBy === 'age') return a.age - b.age
+                if (sortBy === 'height') return physiqueOf(b).height - physiqueOf(a).height
 
                 return b.overall - a.overall
             })
@@ -684,8 +685,8 @@ export default function ClubManagementPanel({
                                             <option value="value">
                                                 Lowest Price
                                             </option>
-                                            <option value="age">
-                                                Youngest
+                                            <option value="height">
+                                                Tallest
                                             </option>
                                         </select>
                                     </div>
@@ -782,7 +783,7 @@ export default function ClubManagementPanel({
                                                                 marginTop: 4,
                                                             }}
                                                         >
-                                                            {[player.position, `${player.age} years`, player.nationality].filter(Boolean).join(' · ')}
+                                                            {[player.position, `${physiqueOf(player).height} cm · ${physiqueOf(player).weight} kg`, player.nationality].filter(Boolean).join(' · ')}
                                                         </div>
                                                         <div className="market-club-line" title={player.club}>
                                                             {player.club || FREE_AGENT}
@@ -1210,7 +1211,7 @@ export default function ClubManagementPanel({
                                                 fontSize: 11,
                                             }}
                                         >
-                                            {[selectedPlayer.position, `${selectedPlayer.age} years`, selectedPlayer.nationality, selectedPlayer.club].filter(Boolean).join(' · ')}
+                                            {[selectedPlayer.position, `${physiqueOf(selectedPlayer).height} cm · ${physiqueOf(selectedPlayer).weight} kg`, selectedPlayer.nationality, selectedPlayer.club].filter(Boolean).join(' · ')}
                                         </div>
                                     </div>
 

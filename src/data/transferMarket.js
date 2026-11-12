@@ -14,6 +14,7 @@ import { PLAYER_CATALOG } from './playerCatalog'
 import { TEAMS } from './teams'
 import { USER_CLUB_ID, worldClub } from './world'
 import { allWorldPlayers } from './worldSquads'
+import { withPhysique } from '../systems/physique'
 
 export const FREE_AGENT = 'FREE AGENT'
 
@@ -45,6 +46,8 @@ function clubPlayers() {
             wage: Math.max(2000, Math.round((value * 0.003) / 1000) * 1000),
             nationality: 'Manchester United',
             rarity: rarityOf(player.overall),
+            height: player.height,
+            weight: player.weight,
             clubId: USER_CLUB_ID,
             club: worldClub(USER_CLUB_ID)?.name || 'MANCHESTER UNITED',
             countryId: 'eng',
@@ -53,7 +56,7 @@ function clubPlayers() {
 }
 
 const freeAgents = () =>
-    PLAYER_CATALOG.map((player) => ({ ...player, clubId: null, club: FREE_AGENT, countryId: null }))
+    PLAYER_CATALOG.map((player) => withPhysique({ ...player, clubId: null, club: FREE_AGENT, countryId: null }))
 
 export const TRANSFER_MARKET = [...clubPlayers(), ...allWorldPlayers(), ...freeAgents()]
 export const MARKET_BY_PLAYER_ID = new Map(TRANSFER_MARKET.map((player) => [player.playerId, player]))

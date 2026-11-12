@@ -25,6 +25,9 @@ function ClubRewardCard({ report, onOpenCards }) {
                 <div><span>CLUB XP</span><b>+{report.xp}</b></div>
                 <div><span>PRIZE MONEY</span><b>+{formatMoney(report.prize)}</b></div>
                 <div><span>BUDGET</span><b>{formatMoney(report.budget)}</b></div>
+                {report.rewardFactor && report.rewardFactor !== 1 && (
+                    <div><span>DIFFICULTY</span><b>×{report.rewardFactor}</b></div>
+                )}
                 <div className="club-reward__level">
                     <span>CLUB LEVEL {report.level}</span>
                     <div className="xp-bar xp-bar--large">

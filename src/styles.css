@@ -1667,3 +1667,60 @@ nav button { position: relative; }
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* ---- Phase 26C: độ khó của mùa ---- */
+.difficulty-picker {
+    margin: 12px 0;
+}
+
+.difficulty-picker__options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.difficulty-picker__options button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 7px;
+    color: #d6e2d9;
+    background: rgba(255,255,255,.04);
+    font: inherit;
+    cursor: pointer;
+}
+
+.difficulty-picker__options button b {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.difficulty-picker__options button small {
+    color: #8fa597;
+    font-size: 9px;
+}
+
+.difficulty-picker__options button.is-active {
+    border-color: #b9ed70;
+    background: rgba(185,237,112,.14);
+    color: #fff;
+}
+
+.difficulty-picker__options button:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+}
+
+.league-difficulty {
+    margin: 4px 0 6px;
+}
+
+.lineup--right .lineup__list li { grid-template-columns: 28px 1fr 40px 32px 28px; }
+.lineup__list li .upgrade-badge { justify-self: center; }

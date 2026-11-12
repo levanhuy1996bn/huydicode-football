@@ -75,10 +75,11 @@ export function userLeagueId(world) {
     return WORLD_LEAGUES.find((league) => world.divisions[league.id]?.includes(USER_CLUB_ID))?.id || 'eng1'
 }
 
-export function createLeagueForWorld(world) {
+// difficulty: mùa mới giữ độ khó của mùa trước (đổi được trước trận đầu tiên).
+export function createLeagueForWorld(world, difficulty) {
     const leagueId = userLeagueId(world)
 
-    return createInitialLeague(world.season, leagueId, world.divisions[leagueId])
+    return createInitialLeague(world.season, leagueId, world.divisions[leagueId], difficulty)
 }
 
 const sameClubs = (a = [], b = []) => a.length === b.length && a.every((id) => b.includes(id))
