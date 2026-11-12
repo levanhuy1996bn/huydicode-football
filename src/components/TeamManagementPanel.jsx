@@ -1,6 +1,6 @@
 
 import { useMemo, useState } from 'react'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
 
 const STAT_NAMES = [
     ['pace', 'PAC'],
@@ -98,7 +98,7 @@ export default function TeamManagementPanel({
             <div className="team-management-header">
                 <div className="team-management-title">
                     <div>
-                        <strong>{USER_TEAM.name}</strong>
+                        <strong>{userTeam().name}</strong>
                         <small>TEAM MANAGEMENT</small>
                     </div>
 
@@ -225,7 +225,7 @@ export default function TeamManagementPanel({
                     {activeTab === 'formation' && (
                         <div className="team-management-content">
                             <p className="management-description">
-                                Select a formation for {USER_TEAM.name}.
+                                Select a formation for {userTeam().name}.
                             </p>
 
                             <div className="formation-options">

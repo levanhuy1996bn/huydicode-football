@@ -1,10 +1,10 @@
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from './career'
 import { upgradeValueFactor } from './upgrade'
 
 const STORAGE_KEY = 'ultimate-football-club-save'
 
 export const INITIAL_CLUB = {
-    name: USER_TEAM.name,
+    name: userTeam().name,
     budget: 100000000,
     reputation: 4,
     transferWindowOpen: true,

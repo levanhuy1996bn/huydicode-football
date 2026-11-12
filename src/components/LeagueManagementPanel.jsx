@@ -7,7 +7,7 @@ import {
     getSeasonProgress,
     getTeamById,
 } from '../services/leagueService'
-import { USER_TEAM } from '../data/leagueData'
+import { isUserClub, userTeam } from '../services/career'
 import { COUNTRIES, COUNTRY_BY_ID, LEAGUE_BY_ID } from '../data/world'
 import { buildSeasonPlayerStats } from '../services/seasonStats'
 import { leagueView, zoneOf } from '../services/worldService'
@@ -27,7 +27,7 @@ const ZONE_LABELS = {
 const TABS = [
     { id: 'table', label: 'LEAGUE TABLE' },
     { id: 'players', label: 'PLAYER STATS' },
-    { id: 'fixtures', label: `${USER_TEAM.shortName} FIXTURES` },
+    { id: 'fixtures', label: 'FIXTURES' }, // + tên CLB người chơi (Phase 26B)
 ]
 
 // Cột thống kê cầu thủ. minApps: số trận tối thiểu để được xếp hạng ở cột tỉ lệ.
@@ -57,7 +57,7 @@ function formatFixture(fixture) {
 
 function blueStatsPlayed(fixtures) {
     return fixtures.filter(
-        (fixture) => fixture.played && (fixture.homeTeamId === 'blue' || fixture.awayTeamId === 'blue'),
+        (fixture) => fixture.played && (isUserClub(fixture.homeTeamId) || isUserClub(fixture.awayTeamId)),
     ).length
 }
 
@@ -72,7 +72,7 @@ export default function LeagueManagementPanel({
                                               }) {
     const [activeTab, setActiveTab] = useState('table')
     const [sortKey, setSortKey] = useState('goals')
-    const [clubFilter, setClubFilter] = useState('all') // 'all' | 'blue'
+    const [clubFilter, setClubFilter] = useState('all') // 'all' | 'mine'
 
     const fixtures = league?.fixtures || []
     const userLeagueId = league?.leagueId || 'eng1'
@@ -108,7 +108,7 @@ export default function LeagueManagementPanel({
     // Toàn bộ 38 trận của đội mình, theo thứ tự vòng đấu.
     const userFixtures = useMemo(
         () => fixtures
-            .filter((fixture) => fixture.homeTeamId === 'blue' || fixture.awayTeamId === 'blue')
+            .filter((fixture) => isUserClub(fixture.homeTeamId) || isUserClub(fixture.awayTeamId))
             .sort((a, b) => a.round - b.round),
         [fixtures],
     )
@@ -124,7 +124,7 @@ export default function LeagueManagementPanel({
 
     const playerRows = useMemo(() => {
         return seasonPlayers
-            .filter((row) => clubFilter === 'all' || row.clubId === 'blue')
+            .filter((row) => clubFilter === 'all' || isUserClub(row.clubId))
             .filter((row) => (sortColumn.ratio ? row.apps >= minApps && row[sortKey] != null : true))
             .filter((row) => (sortKey === 'cleanSheets' ? row.position === 'GK' : true))
             .sort((a, b) =>
@@ -137,11 +137,11 @@ export default function LeagueManagementPanel({
     }, [seasonPlayers, clubFilter, sortKey, sortColumn, minApps])
 
     const bluePosition = standings.findIndex(
-        (team) => team.teamId === 'blue',
+        (team) => isUserClub(team.teamId),
     ) + 1
 
     const blueStats = standings.find(
-        (team) => team.teamId === 'blue',
+        (team) => isUserClub(team.teamId),
     )
 
     const champion = progress.completed ? standings[0] : null
@@ -149,7 +149,7 @@ export default function LeagueManagementPanel({
     const fixtureResult = (fixture) => {
         if (!fixture.played) return null
 
-        const isHome = fixture.homeTeamId === 'blue'
+        const isHome = isUserClub(fixture.homeTeamId)
         const own = isHome ? fixture.homeGoals : fixture.awayGoals
         const other = isHome ? fixture.awayGoals : fixture.homeGoals
 
@@ -190,7 +190,7 @@ export default function LeagueManagementPanel({
                             }
                             onClick={() => setActiveTab(tab.id)}
                         >
-                            {tab.label}
+                            {tab.id === 'fixtures' ? `${userTeam().shortName} FIXTURES` : tab.label}
                         </button>
                     ))}
                 </nav>
@@ -233,8 +233,8 @@ export default function LeagueManagementPanel({
                             {champion && (
                                 <div className="league-champion-banner">
                                     LEAGUE CHAMPION · <strong>{champion.name}</strong>
-                                    {zoneOf(userLeagueId, bluePosition) === 'promotion' && <> · {USER_TEAM.shortName} PROMOTED</>}
-                                    {zoneOf(userLeagueId, bluePosition) === 'relegation' && <> · {USER_TEAM.shortName} RELEGATED</>}
+                                    {zoneOf(userLeagueId, bluePosition) === 'promotion' && <> · {userTeam().shortName} PROMOTED</>}
+                                    {zoneOf(userLeagueId, bluePosition) === 'relegation' && <> · {userTeam().shortName} RELEGATED</>}
                                 </div>
                             )}
 
@@ -306,7 +306,7 @@ export default function LeagueManagementPanel({
                                         <tr
                                             key={team.teamId}
                                             className={[
-                                                team.teamId === 'blue' ? 'user-team-row' : '',
+                                                isUserClub(team.teamId) ? 'user-team-row' : '',
                                                 zone ? `zone-${zone}` : '',
                                             ].join(' ')}
                                             title={zone ? ZONE_LABELS[zone] : undefined}
@@ -383,7 +383,7 @@ export default function LeagueManagementPanel({
                                 </div>
 
                                 <div className="segmented" role="radiogroup" aria-label="Club filter">
-                                    {[['all', 'ALL CLUBS'], ['blue', USER_TEAM.shortName]].map(([id, label]) => (
+                                    {[['all', 'ALL CLUBS'], ['mine', userTeam().shortName]].map(([id, label]) => (
                                         <button
                                             key={id}
                                             type="button"
@@ -442,7 +442,7 @@ export default function LeagueManagementPanel({
 
                                         <tbody>
                                         {playerRows.map((row, index) => (
-                                            <tr key={row.key} className={row.clubId === 'blue' ? 'user-team-row' : ''}>
+                                            <tr key={row.key} className={isUserClub(row.clubId) ? 'user-team-row' : ''}>
                                                 <td>{index + 1}</td>
                                                 <td className="league-team-name">
                                                     {row.name}
@@ -464,7 +464,7 @@ export default function LeagueManagementPanel({
 
                             <p className="league-table-note">
                                 Top {LIST_LIMIT} players. Pass % and rating rank players with at least {minApps} appearance{minApps === 1 ? '' : 's'}.
-                                Clean sheets count goalkeepers only. {USER_TEAM.name} matches use the real match stats;
+                                Clean sheets count goalkeepers only. {userTeam().name} matches use the real match stats;
                                 other matches are simulated from their score.
                             </p>
                         </section>
@@ -473,12 +473,12 @@ export default function LeagueManagementPanel({
                     {activeTab === 'fixtures' && (
                         <section>
                             <div className="league-section-title">
-                                {USER_TEAM.name} · SEASON FIXTURES
+                                {userTeam().name} · SEASON FIXTURES
                             </div>
 
                             <div className="league-fixture-list">
                                 {userFixtures.map((fixture) => {
-                                    const isHome = fixture.homeTeamId === 'blue'
+                                    const isHome = isUserClub(fixture.homeTeamId)
                                     const opponent = getTeamById(isHome ? fixture.awayTeamId : fixture.homeTeamId)
                                     const result = fixtureResult(fixture)
                                     const isNext = nextFixture?.id === fixture.id

@@ -1,4 +1,7 @@
-import { USER_TEAM } from '../../data/leagueData'
+import ClubCrest from '../ClubCrest'
+import TeamColorPanel from '../TeamColorPanel'
+import { teamColorOf, withTeamColor } from '../../services/teamColor'
+import { isUserClub, userClubId, userTeam } from '../../services/career'
 import { FORMATIONS } from '../../data/teams'
 import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
@@ -7,7 +10,7 @@ import { DIFFICULTIES } from '../../services/difficulty'
 import { UpgradeBadge } from '../CardBits'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
-function KitIcon({ kit }) {
+export function KitIcon({ kit }) {
     return (
         <svg viewBox="0 0 40 44" className="kit-icon" aria-hidden="true">
             <path d="M12 3 L4 8 L1 17 L8 19 L9 15 L9 30 L31 30 L31 15 L32 19 L39 17 L36 8 L28 3 Q20 8 12 3 Z"
@@ -103,14 +106,18 @@ export function DifficultyPicker({ difficulty, locked, onChange }) {
 }
 
 function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false }) {
+    // Phase 26D: OVR hiển thị đã cộng team color (mũi tên xanh, rê chuột xem gốc).
+    const teamColor = teamColorOf(players)
+    const shown = players.map((player) => withTeamColor(player, teamColor.bonus))
+
     return (
         <div className={`lineup lineup--${align}`}>
             <div className="lineup__head" style={{ '--team': color }}>
                 <span>{title}</span>
-                <b>{average(players)} <small>AVG</small></b>
+                <b>{average(shown)} <small>AVG</small></b>
             </div>
             <ol className="lineup__list">
-                {players.map((player) => (
+                {shown.map((player) => (
                     <li key={player.id}>
                         <span className="lineup__number" style={{ '--team': color }}>
                             {player.number}
@@ -121,10 +128,16 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
                         <em>{player.position}</em>
                         {showCondition && <ConditionChip value={player.condition} />}
                         {showUpgrade && <UpgradeBadge level={player.upgrade} />}
-                        <b>{player.overall}</b>
+                        <b
+                            className={player.teamColorBonus ? 'is-boosted' : ''}
+                            title={player.teamColorBonus ? `Base ${player.overall - player.teamColorBonus} + ${player.teamColorBonus} team color` : undefined}
+                        >
+                            {player.overall}
+                        </b>
                     </li>
                 ))}
             </ol>
+            <TeamColorPanel info={teamColor} compact />
         </div>
     )
 }
@@ -160,7 +173,7 @@ export default function PreMatchScreen({
         )
     }
 
-    const isHome = fixture.homeTeamId === 'blue'
+    const isHome = isUserClub(fixture.homeTeamId)
     const opponentId = isHome ? fixture.awayTeamId : fixture.homeTeamId
     const blueColor = blueKitTeam?.color || blueTeam.color
 
@@ -172,9 +185,13 @@ export default function PreMatchScreen({
                     <div className="home-hero__eyebrow">
                         PRE-MATCH · ROUND {fixture.round} · {isHome ? 'HOME' : 'AWAY'}
                     </div>
-                    <h1>{USER_TEAM.name} <span>vs</span> {opponentInfo?.name}</h1>
+                    <h1 className="prematch-title">
+                        <ClubCrest clubId={userClubId()} size={40} />
+                        {userTeam().name} <span>vs</span> {opponentInfo?.name}
+                        <ClubCrest clubId={opponentInfo?.id} size={40} />
+                    </h1>
                     <p>
-                        League position: {USER_TEAM.shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
+                        League position: {userTeam().shortName} {bluePosition || '–'} · {opponentInfo?.shortName}{' '}
                         {opponentPosition || '–'} · Opponent strength {opponentInfo?.strength}
                         {difficulty && <> · Difficulty {difficulty.label.toUpperCase()} (cards ~+{difficulty.upgrade})</>}
                     </p>
@@ -183,7 +200,7 @@ export default function PreMatchScreen({
 
             <div className="prematch-body">
                 <Lineup
-                    title={USER_TEAM.name}
+                    title={userTeam().name}
                     color={blueColor}
                     players={blueTeam.players}
                     align="left"
@@ -227,9 +244,9 @@ export default function PreMatchScreen({
                                     <small>Clashing kits are locked</small>
                                 </div>
                                 <KitPicker
-                                    clubId="blue"
-                                    name={USER_TEAM.shortName}
-                                    current={kits.slots.blue}
+                                    clubId={userClubId()}
+                                    name={userTeam().shortName}
+                                    current={kits.slots[userClubId()]}
                                     otherKit={kits[opponentId]?.kit}
                                     onChange={onKitChange}
                                 />
@@ -237,7 +254,7 @@ export default function PreMatchScreen({
                                     clubId={opponentId}
                                     name={opponentInfo?.shortName || 'OPP'}
                                     current={kits.slots[opponentId]}
-                                    otherKit={kits.blue?.kit}
+                                    otherKit={kits[userClubId()]?.kit}
                                     onChange={onKitChange}
                                 />
                             </div>

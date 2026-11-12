@@ -12,7 +12,7 @@
 // 500 cầu thủ danh mục cũ thành cầu thủ tự do (FREE AGENT).
 import { PLAYER_CATALOG } from './playerCatalog'
 import { TEAMS } from './teams'
-import { USER_CLUB_ID, worldClub } from './world'
+import { MAN_UTD_ID, worldClub } from './world'
 import { allWorldPlayers } from './worldSquads'
 import { withPhysique } from '../systems/physique'
 
@@ -48,8 +48,8 @@ function clubPlayers() {
             rarity: rarityOf(player.overall),
             height: player.height,
             weight: player.weight,
-            clubId: USER_CLUB_ID,
-            club: worldClub(USER_CLUB_ID)?.name || 'MANCHESTER UNITED',
+            clubId: MAN_UTD_ID,
+            club: worldClub(MAN_UTD_ID)?.name || 'MANCHESTER UNITED',
             countryId: 'eng',
         }
     })

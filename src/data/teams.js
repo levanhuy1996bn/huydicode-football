@@ -1,5 +1,4 @@
-import { USER_TEAM } from './leagueData'
-import { worldClub } from './world'
+import { MAN_UTD_ID, worldClub } from './world'
 import { generatePhysique } from '../systems/physique'
 
 const clampStat = (value) => Math.max(1, Math.min(99, value))
@@ -248,12 +247,13 @@ export const FORMATIONS = {
 const RIVAL_TEAM = worldClub('eng-manchester-city')
 
 export const TEAMS = [
-  // Đội người chơi: Manchester United (trước đây là đội hình "RED UNITED").
+  // Phía đội người chơi: đội hình gốc (Manchester United). Tên / áo hiển thị
+  // theo CLB đang quản lý (Phase 26B, GameScene).
   buildTeam(
       'blue',
-      USER_TEAM.name,
-      USER_TEAM.shortName,
-      USER_TEAM.color,
+      worldClub(MAN_UTD_ID).name,
+      worldClub(MAN_UTD_ID).shortName,
+      worldClub(MAN_UTD_ID).color,
       homeFormation,
       redBench,
       -1,

@@ -1,7 +1,8 @@
 import { FORMATIONS } from '../data/teams'
 import { TACTICS } from '../systems/constants'
 import { useState } from 'react'
-import { USER_TEAM } from '../data/leagueData'
+import { userClubId, userTeam } from '../services/career'
+import ClubCrest from './ClubCrest'
 import { StatComparison, useLiveStats } from './MatchStatsPanel'
 
 // Danh sách bàn thắng của một đội: "Tên 23'" (OG = phản lưới).
@@ -26,11 +27,14 @@ export function GoalList({ events, teamId, align }) {
     )
 }
 
-export function Scoreline({ homeName, awayName, homeScore, awayScore, events, size = 'large' }) {
+export function Scoreline({ homeName, awayName, homeScore, awayScore, events, size = 'large', homeClubId = null, awayClubId = null }) {
     return (
         <div className={`scoreline scoreline--${size}`}>
             <div className="scoreline__team">
-                <span>{homeName}</span>
+                <span className="scoreline__name">
+                    {homeClubId && <ClubCrest clubId={homeClubId} size={size === 'large' ? 30 : 22} />}
+                    {homeName}
+                </span>
                 <GoalList events={events} teamId="blue" align="left" />
             </div>
 
@@ -41,7 +45,10 @@ export function Scoreline({ homeName, awayName, homeScore, awayScore, events, si
             </div>
 
             <div className="scoreline__team scoreline__team--away">
-                <span>{awayName}</span>
+                <span className="scoreline__name">
+                    {awayName}
+                    {awayClubId && <ClubCrest clubId={awayClubId} size={size === 'large' ? 30 : 22} />}
+                </span>
                 <GoalList events={events} teamId="red" align="right" />
             </div>
         </div>
@@ -77,6 +84,7 @@ export function PausedStats({ statsRef, opponentName }) {
 // Bảng quản lý đội (bên trái) vẫn dùng được để thay người.
 export function HalfTimeOverlay({
     opponentName,
+    opponentClubId = null,
     blueScore,
     redScore,
     events,
@@ -102,8 +110,10 @@ export function HalfTimeOverlay({
                 <div className="match-card__eyebrow">HALF TIME</div>
 
                 <Scoreline
-                    homeName={USER_TEAM.name}
+                    homeName={userTeam().name}
                     awayName={opponentName}
+                    homeClubId={userClubId()}
+                    awayClubId={opponentClubId}
                     homeScore={blueScore}
                     awayScore={redScore}
                     events={events}
@@ -197,6 +207,7 @@ export function HalfTimeOverlay({
 // Hết giờ: tỉ số thật to + người ghi bàn + các bước tiếp theo.
 export function FullTimeOverlay({
     opponentName,
+    opponentClubId = null,
     blueScore,
     redScore,
     events,
@@ -223,8 +234,10 @@ export function FullTimeOverlay({
                 </div>
 
                 <Scoreline
-                    homeName={USER_TEAM.name}
+                    homeName={userTeam().name}
                     awayName={opponentName}
+                    homeClubId={userClubId()}
+                    awayClubId={opponentClubId}
                     homeScore={blueScore}
                     awayScore={redScore}
                     events={events}

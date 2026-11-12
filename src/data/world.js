@@ -3,12 +3,12 @@
 // Không import gì ngoài worldClubs.js (tránh vòng lặp import).
 import { WORLD_COUNTRIES } from './worldClubs'
 
-// Đội người chơi: Manchester United giữ id nội bộ 'blue' (bản lưu, engine).
-export const USER_CLUB_ID = 'blue'
-const USER_CLUB_NAME = 'Manchester United'
-
-// Id cũ 'red' (Manchester City ở giải bán hư cấu trước Phase 26) → id mới.
-export const LEGACY_CLUB_ALIASES = { red: 'eng-manchester-city' }
+// Phase 26B: mọi CLB (kể cả Manchester United) dùng id thật; CLB người chơi
+// quản lý lưu ở bản lưu thế giới (services/career.js). Id cũ trong bản lưu:
+// 'blue' = Manchester United (trước 26B), 'red' = Manchester City (trước 26A).
+// ('blue' / 'red' trong engine 3D chỉ còn là 2 phía sân: đội mình / đối thủ.)
+export const MAN_UTD_ID = 'eng-manchester-united'
+export const LEGACY_CLUB_ALIASES = { red: 'eng-manchester-city', blue: MAN_UTD_ID }
 
 export function slugify(value) {
     return String(value)
@@ -98,8 +98,6 @@ const clubs = []
 const usedIds = new Set()
 
 function clubIdFor(country, fullName) {
-    if (fullName === USER_CLUB_NAME) return USER_CLUB_ID
-
     let id = `${country.id}-${slugify(fullName)}`
 
     while (usedIds.has(id)) id = `${id}-2`

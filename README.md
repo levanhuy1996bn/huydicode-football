@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A and 26C — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 26B (choose / change club), 27 (C1 / C2), 28 (mobile, graphics, sound, performance), 29 (card seasons, real data). See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25 and 26A–26D — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 27 (C1 / C2), 28 (mobile, graphics, sound, performance), 29 (card seasons, real data). See the status table under Development roadmap.
 
 ## Install and run
 
@@ -188,10 +188,9 @@ The game includes management systems alongside the 3D match gameplay.
 
 ### Clubs (2026-11-10)
 
-- **You manage Manchester United** (red kit, `MUN`). Your squad (Huy Le, Salvatierra…) is your own; the real United stars exist as cards in the transfer market.
-- Since Phase 26A every club comes from the world data (`src/data/worldClubs.js` → `src/data/world.js`, 720 real clubs in 36 leagues). `USER_TEAM` in `src/data/leagueData.js` is read from there.
-  - Internally your team still uses the id `blue` and the engine's opponent slot is `red`; each match fills the `red` slot with the real club's name, kits and squad. Old data pointing at `red` means Manchester City.
-  - Club selection is planned for Phase 26B.
+- **You choose the club you manage** (Phase 26B): any of the 720 clubs; Manchester United by default. Your squad (Huy Le, Salvatierra…) and cards are your own and stay with you when you change club; the real players of every club exist as cards in the transfer market.
+- Every club comes from the world data (`src/data/worldClubs.js` → `src/data/world.js`, 720 real clubs in 36 leagues). The club you manage is `userClubId()` / `userTeam()` in `src/services/career.js`, stored in the world save.
+  - In the 3D engine `blue` is your side of the pitch and `red` the opponent's side; each match fills them with your club's / the opponent's name, kits and squad. Old saves using `blue` as the Manchester United club id (before 26B) and `red` for Manchester City are converted on load.
 - Accent colours in the UI follow your kit through the CSS variable `--user-color`. Opponent kit colours avoid red, so they never clash with United.
 - The roster save key moved to `ultimate-football-roster-save-v2`, so a saved lineup or transfers from the old Blue FC squad are reset once. League progress and club budget are kept.
 
@@ -252,7 +251,9 @@ ultimate-football-manager-3d/
     │   ├── clubService.js
     │   ├── leagueService.js  # your league: fixtures, results, standings, simulation
     │   ├── worldService.js   # world save, virtual leagues, promotion / relegation, history (Phase 26A)
+    │   ├── career.js         # the club you manage: userClubId(), userTeam(), isUserClub() (Phase 26B)
     │   ├── difficulty.js     # season difficulty: opponent card level, reward factor, AI speed (Phase 26C)
+    │   ├── teamColor.js      # team color: card level color + club color of the XI (Phase 26D)
     │   ├── seasonStats.js    # season player stats for all 20 clubs (Phase 22)
     │   ├── cards.js          # cards (playerId / cardId), packs, EP cards (Phase 23)
     │   ├── clubProgress.js   # club level, XP, prize money, level / season rewards (Phase 23)
@@ -303,6 +304,8 @@ ultimate-football-manager-3d/
         ├── ClubManagementPanel.jsx
         ├── LeagueManagementPanel.jsx
         ├── ClubCrest.jsx         # generated SVG crest for every club (Phase 26A)
+        ├── ClubPicker.jsx        # choose / change club (Phase 26B)
+        ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
         └── ...
 ```
 
@@ -324,7 +327,7 @@ ultimate-football-manager-3d/
 The project currently uses browser LocalStorage for local game progress.
 
 - Club information and league progress are stored locally.
-- Keys: `ultimate-football-roster-save-v2` (squad and cards), `ultimate-football-club-save` (EP, level, inventory), `ultimate-football-league-save` (your league: clubs, fixtures, results, match stats), `ultimate-football-world-save` (Phase 26A: the 20 clubs of each of the 36 leagues + season history, ≈ 15–20 KB), `ufm-sound-muted`.
+- Keys: `ultimate-football-roster-save-v2` (squad and cards), `ultimate-football-club-save` (EP, level, inventory), `ultimate-football-league-save` (your league: clubs, fixtures, results, match stats), `ultimate-football-world-save` (Phase 26A: the 20 clubs of each of the 36 leagues + season history, ≈ 15–20 KB; Phase 26B: + `userClubId`, the club you manage), `ufm-sound-muted`.
 - The ~15,800 world players and the 35 other leagues are not stored: they are generated from fixed seeds and always come out the same.
 - Data belongs to the current browser profile.
 - Clearing browser website data may remove saved progress.
@@ -353,8 +356,9 @@ The project currently uses browser LocalStorage for local game progress.
 | 24 | Club kits (home / away / third, fixed per club, picked before each match to avoid clashes) + shooting / passing accuracy by stats | ✅ Done (2026-11-12) |
 | 25 | Player card upgrades (+1 → +10, coloured + badge), player level max 100, stats above 99 with coloured numbers | ✅ Done (2026-11-12) |
 | 26A | World of football: 18 countries × 2 divisions (36 leagues, 720 real clubs), virtual leagues, promotion / relegation, market with every player, crests | ✅ Done (2026-11-12) |
-| 26B | Choose / change club | ⏳ Next |
+| 26B | Choose / change club (first start, new season, Settings), former club becomes AI, real club ids in saves, crests on every screen | ✅ Done (2026-11-12) |
 | 26C | Player height / weight (body + small attribute effects) and season difficulty (opponent card level +N, rewards ×) | ✅ Done (2026-11-12) |
+| 26D | Team color: card level color (lowest card of the XI: bronze / silver / gold / diamond) + club color (11 from one club), also for AI teams | ✅ Done (2026-11-12) |
 | 27 | Champions League / Europa League (C1 / C2) | 🔜 Planned |
 | 28 | Mobile controls and UI, visual polish, performance, sound, release preparation | 🔜 Planned |
 | 29 | Card seasons and real player data (crawl / licensed source) | 🔜 Planned |
@@ -1060,7 +1064,7 @@ Agreed after Phase 25 (the first version made stats above 99 change too little: 
   - Browser test: Huy Le without a duplicate → UPGRADE grey and disabled, success "–"; buy a copy → back on the screen the copy is selected automatically, success 100%, UPGRADE enabled → animation → SUCCESS +1 → +2.
 - **Browser test:** Huy Le (ST, no duplicate) → BUY A COPY ON THE MARKET → TRANSFERS searched "Huy Le" (1 result, OWNED ×1) → signed for 34,400,000 EP → back in UPGRADE CARDS Huy Le shows "1 dup"; no console errors.
 
-### Phase 26 — World of football and club selection (26A ✅ 2026-11-12 · 26B next)
+### Phase 26 — World of football and club selection (26A, 26B ✅ 2026-11-12)
 
 Agreed on 2026-11-12.
 
@@ -1112,13 +1116,17 @@ Agreed on 2026-11-12.
 - **Old saves:** a league save from before Phase 26 is converted on first load: a new season in the real Premier League (next season number if a match had been played, so the season prize is not blocked). Squad, cards, EP, club level and inventory are untouched; a message "NEW WORLD · SEASON … · PREMIER LEAGUE" is shown once.
 - **Not done in 26A (by design):** season player stats only for your own league; second-division season prize money is the same as top league.
 
-#### Phase 26B — Choose and change club
+#### Phase 26B — Choose and change club ✅ (2026-11-12)
 
-- Choose the club when starting a career, at the start of a new season, and from "Change club" in Settings (confirmation if the season is in progress).
-- **Changing club only changes the team:** name, kits, crest and league (a new season starts in that club's league). Your cards, squad, EP, club level and inventory stay exactly the same.
-- The former club (e.g. Manchester United) becomes an AI club with its own squad.
-- Remove the fixed `blue` user slot from the engine / saves and migrate old saves.
-- Crests shown on the home screen, pre- and post-match screens, scoreboard and league tables.
+- **Where:** a CHOOSE YOUR CLUB screen on the very first start (no saves yet), at **START NEW SEASON** (keep the club or pick another before the season starts), and **Settings → CHANGE CLUB** on the home screen. The picker (`src/components/ClubPicker.jsx`) browses country → division (current divisions after promotion / relegation) or searches by name, and shows the crest, league, strength and the three kits.
+- **Changing club only changes the team:** name, kits, crest and league. Cards, squad, EP, club level, inventory, difficulty choice stay exactly the same. Team color still follows the cards' clubs (11 original United players keep United club color even at another club).
+- **When:**
+  - First start / before your first match of the season: switch straight away, the season starts in the new club's league.
+  - At the end of the season: the season is closed with the old club first (promotion / relegation, prizes, history with the club that played it), then the new season starts in the new club's league.
+  - In the middle of a season: the picker warns (red box) and the button says **CHANGE CLUB & RESTART SEASON** — the results of the current season are dropped and the same season starts again from round 1 in the new club's league (the other leagues are not affected).
+- **The former club becomes an AI club** with its own generated squad (for United: Bruno Fernandes, Mbeumo, Lisandro Martínez, Cunha, Šeško + fictional players) and plays on in its league.
+- **Saves:** clubs use their real ids everywhere (Manchester United = `eng-manchester-united`); the world save stores `userClubId`. Old saves that used `blue` as United's id (league fixtures, tables, season player stats, world divisions, history, bought United cards `blue-p01…`) are converted on first load — season progress is kept, nothing is reset. The engine still names the two sides of the pitch `blue` (you) and `red` (opponent): renaming those internal side ids would touch every engine file without changing anything for the player, so only the club identity was separated from them.
+- **Crests** (generated, `ClubCrest.jsx`) on the home screen (next match, mini table, settings), pre-match title, in-match scoreboard, half-time / full-time / post-match scorelines, league tables, results and fixtures.
 
 ### Phase 26C — Height / weight and season difficulty ✅ (2026-11-12)
 
@@ -1150,6 +1158,28 @@ Agreed on 2026-11-12 (done before 26B). No birth year / age changes: age stays a
 - The pre-match screen shows the opponents' +N badges and the difficulty; the post-match reward card shows the multiplier.
 - Only your matches are affected: AI-vs-AI results and the virtual leagues stay the same, so promotion / relegation stays fair.
 - Note: Normal (+3) makes opponents a little stronger than before 26C (they used to be +1 = Easy).
+
+### Phase 26D — Team color ✅ (2026-11-12)
+
+Agreed on 2026-11-12 (FC Online-style team color, done before 26B). Logic in `src/services/teamColor.js`.
+
+- **Only the 11 starters count, and always all 11.** The bonus goes to all 11 on the 6 main stats (+ OVR; detailed attributes follow), only during the match — cards are never changed. Bench and reserves get nothing.
+- **Card level color** — the tier of the **whole team** comes from the **lowest card** of the 11 (same colours as the + badges):
+
+  | Tier | All 11 at least | Bonus |
+  | --- | --- | --- |
+  | Bronze | +2 | +1 |
+  | Silver | +5 | +2 |
+  | Gold | +8 | +4 |
+  | Diamond | +10 | +6 |
+
+  One +1 card in the XI → no card level color.
+- **Club color** — all 11 starters from the same real club → **+3**. The club of a card is the player's club (a Saka card = Arsenal even at Manchester United; the original squad, Huy Le…, = Manchester United; FREE AGENT players have no club). The original United XI therefore already has club color +3.
+- **Both stack:** maximum +9 (diamond + club).
+- **Substitutions recompute at once** (11 at +5 = silver; bring on a +3 → bronze; bring on a +1 → no card color; bring on a player from another club → no club color). A red card does not remove team color (the sent-off player still counts).
+- **AI teams have team color too, same rules.** An AI XI is always 11 from one club (+3); its card color comes from the difficulty: Easy none (+3 total), Normal / Hard bronze (+4), Very hard silver (+5), Legendary gold (+7).
+- **Shown:** TEAM COLOR box on the SQUAD screen (starting XI), in the lineup board (updates while dragging players), under both lineups on the pre-match screen (OVR there includes the bonus, green ▲, tooltip "Base 85 + 3 team color"), and "TEAM COLOR +N" in the in-match player profile. The box also says what is missing, e.g. "2 players below +5 → Silver (+2)". Card lists, the market and the upgrade screen keep showing base stats.
+- Idea for later: nationality team color (needs nationalities for the real-name stars).
 
 ### Phase 27 — Champions League / Europa League (planned)
 
@@ -1214,9 +1244,11 @@ Agreed on 2026-11-12 (done before 26B). No birth year / age changes: age stays a
 | Chỉ số sút / chuyền cao thì chuẩn xác hơn rõ rệt, chỉ số thấp thì kém rõ | Phase 24 ✅ |
 | Nâng cấp thẻ bằng 2 thẻ cùng cầu thủ (+1 → +10), thất bại từ +5 chỉ tụt 1 cấp | Phase 25 ✅ |
 | Thêm giải đấu khác (18 nước × 2 hạng, 720 CLB thật, lên / xuống hạng) | Phase 26A ✅ |
-| Cho chọn / đổi CLB | Phase 26B |
+| Cho chọn / đổi CLB (lần đầu, đầu mùa, Settings; CLB cũ thành AI) | Phase 26B ✅ |
 | Chiều cao, cân nặng của cầu thủ (ảnh hưởng thể hình 3D, sức mạnh, khéo léo, bóng bổng, tầm với thủ môn) | Phase 26C ✅ |
 | Độ khó mỗi mùa: tăng cấp thẻ + của cầu thủ đối thủ, thưởng nhiều hơn khi khó hơn | Phase 26C ✅ |
+| Team color kiểu FO4: cả 11 người đá chính cùng bậc thẻ (theo người thấp nhất) và cùng CLB thì được cộng chỉ số, đội AI cũng có | Phase 26D ✅ |
+| Team color theo quốc tịch | Backlog |
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản, đồ họa, hiệu năng, âm thanh | Phase 28 |
 | Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Phase 29 |
 | Skill riêng cho từng cầu thủ | Backlog |
@@ -1224,7 +1256,7 @@ Agreed on 2026-11-12 (done before 26B). No birth year / age changes: age stays a
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–26A, 26C (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–26D (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

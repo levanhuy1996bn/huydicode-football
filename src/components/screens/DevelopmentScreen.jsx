@@ -1,5 +1,7 @@
+import TeamColorPanel from '../TeamColorPanel'
+import { teamColorOf } from '../../services/teamColor'
 import { useMemo, useState } from 'react'
-import { USER_TEAM } from '../../data/leagueData'
+import { userTeam } from '../../services/career'
 import { ATTRIBUTE_GROUPS, GOALKEEPING_GROUP, getAttributes } from '../../systems/attributes'
 import {
     MAX_LEVEL,
@@ -149,7 +151,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
             <div className="prematch-header">
                 <button type="button" className="link-btn" onClick={() => guard(onBack)}>← HOME</button>
                 <div>
-                    <div className="home-hero__eyebrow">PLAYER DEVELOPMENT · {USER_TEAM.name}</div>
+                    <div className="home-hero__eyebrow">PLAYER DEVELOPMENT · {userTeam().name}</div>
                     <h1>Level up your squad</h1>
                     <p>
                         Players earn XP from every match (minutes, rating, goals, assists, tackles,
@@ -158,6 +160,11 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                         Training can't take Overall above the player's potential (card upgrades +N add on top). {totalUnspent > 0 && <b>{totalUnspent} points waiting.</b>}
                     </p>
                 </div>
+            </div>
+
+            {/* Phase 26D */}
+            <div className="home-card team-color-card">
+                <TeamColorPanel info={teamColorOf(team?.players || [])} title="TEAM COLOR · STARTING XI" />
             </div>
 
             <div className="dev-body">

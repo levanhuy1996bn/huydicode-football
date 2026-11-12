@@ -23,7 +23,7 @@ export const KIT_SLOTS = ['home', 'away', 'third']
 export const KIT_LABELS = { home: 'Home', away: 'Away', third: 'Third' }
 
 export const CLUB_KITS = {
-    blue: { // Manchester United
+    'eng-manchester-united': { // Manchester United
         home: kit('#da291c', '#f4f4f0', '#1d1d1d', '#ffffff'),
         away: kit('#f4f4f0', '#1d1d1d', '#f4f4f0', '#da291c'),
         third: kit('#1f1f24', '#1f1f24', '#1f1f24', '#c9a227'),

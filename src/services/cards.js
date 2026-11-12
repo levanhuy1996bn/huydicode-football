@@ -9,6 +9,7 @@
 import { PLAYER_CATALOG } from '../data/playerCatalog'
 import { allWorldPlayers } from '../data/worldSquads'
 import { withPhysique } from '../systems/physique'
+import { MAN_UTD_ID } from '../data/world'
 
 export const RARITY_LABELS = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' }
 
@@ -25,8 +26,28 @@ export function newCardId(playerId) {
 }
 
 // Bổ sung các trường thẻ cho cầu thủ trong bản lưu cũ (id cũ được giữ làm cardId).
-export function ensureCardFields(player) {
-    if (!player || (player.playerId && player.cardId && player.upgrade && player.rarity && player.height)) return player
+// Phase 26B: thẻ cầu thủ Man United mua trước 26B dùng id CLB cũ 'blue'
+// (playerId blue-p01…, clubId 'blue') → đổi sang id thật để khớp thị trường.
+const LEGACY_MU_PLAYER = /^blue-(p\d{2})$/
+
+function migrateLegacyClub(player) {
+    const legacyPlayer = LEGACY_MU_PLAYER.exec(player.playerId || '')
+
+    if (!legacyPlayer && player.clubId !== 'blue') return player
+
+    return {
+        ...player,
+        ...(legacyPlayer ? { playerId: `${MAN_UTD_ID}-${legacyPlayer[1]}` } : {}),
+        ...(player.clubId === 'blue' ? { clubId: MAN_UTD_ID } : {}),
+    }
+}
+
+export function ensureCardFields(input) {
+    if (!input) return input
+
+    const player = migrateLegacyClub(input)
+
+    if (player.playerId && player.cardId && player.upgrade && player.rarity && player.height) return player
 
     // Phase 26C: thẻ cũ được bổ sung chiều cao / cân nặng (theo playerId).
     return withPhysique({

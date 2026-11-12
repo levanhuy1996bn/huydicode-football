@@ -11,7 +11,7 @@ import {
     getContract,
     formatMoney,
 } from '../services/clubService'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
 import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
 import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
 import { StatNum, UpgradeBadge } from './CardBits'
@@ -455,7 +455,7 @@ export default function ClubManagementPanel({
                                         letterSpacing: 1.5,
                                     }}
                                 >
-                                    TRANSFERS · {USER_TEAM.name}
+                                    TRANSFERS · {userTeam().name}
                                 </div>
 
                                 <div
@@ -1129,7 +1129,7 @@ export default function ClubManagementPanel({
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                {`${USER_TEAM.name} · TRANSFERS · SQUAD ${squad.length}/${SQUAD_LIMITS.total}`}
+                                {`${userTeam().name} · TRANSFERS · SQUAD ${squad.length}/${SQUAD_LIMITS.total}`}
                             </span>
 
                             <strong style={{ flexShrink: 0 }}>

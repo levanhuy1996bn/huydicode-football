@@ -5,7 +5,7 @@
 //     (70% người trong nước, 30% nước ngoài).
 //   - 11 đá chính (đúng sơ đồ 4-3-3 của đội đối thủ trong engine), 9 dự bị,
 //     2 dự bị xa.
-import { CLUB_BY_ID, USER_CLUB_ID, WORLD_CLUBS, hash01, hashString } from './world'
+import { CLUB_BY_ID, WORLD_CLUBS, hash01, hashString } from './world'
 import { COUNTRY_NAMING, FOREIGN_POOLS, NAME_POOLS, POOL_NATIONALITY } from './namePools'
 import { baseStats } from './teams'
 import { STAR_PHYSIQUE } from './starPhysique'
@@ -170,18 +170,14 @@ export function worldSquad(clubId) {
     return squad
 }
 
-// Mọi cầu thủ thế giới cho thị trường / gói thẻ. CLB người chơi (MU) chỉ góp
-// các ngôi sao thật; đội hình gốc MU (Huy Le…) có sẵn trong thị trường.
+// Mọi cầu thủ thế giới cho thị trường / gói thẻ (Phase 26B: cả đội hình AI
+// của Manchester United; đội hình gốc Huy Le… là nhóm riêng trong thị trường).
 let allPlayers = null
 
 export function allWorldPlayers() {
     if (allPlayers) return allPlayers
 
-    allPlayers = WORLD_CLUBS.flatMap((club) => {
-        const squad = worldSquad(club.id)
-
-        return club.id === USER_CLUB_ID ? squad.filter((player) => player.star) : squad
-    })
+    allPlayers = WORLD_CLUBS.flatMap((club) => worldSquad(club.id))
 
     return allPlayers
 }

@@ -90,6 +90,11 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
 
         <div className="player-position">
           #{selectedPlayer.number} · {selectedPlayer.position} · LV {progressOf(selectedPlayer).level}
+          {selectedPlayer.teamColorBonus ? (
+            <span className="team-color-chip" title="Team color bonus on all main stats (this match)">
+              TEAM COLOR +{selectedPlayer.teamColorBonus}
+            </span>
+          ) : null}
         </div>
 
         <div className="stats-list">

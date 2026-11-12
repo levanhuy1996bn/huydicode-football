@@ -1,3 +1,8 @@
+import ClubCrest from './ClubCrest'
+import { LEAGUE_BY_ID } from '../data/world'
+import ClubPicker from './ClubPicker'
+import { isUserClub, userClubId, userTeam } from '../services/career'
+import { teamColorOf, withTeamColor } from '../services/teamColor'
 import ClubManagementPanel from './ClubManagementPanel'
 import LeagueManagementPanel from './LeagueManagementPanel'
 import SubstitutionBoard from './SubstitutionBoard'
@@ -18,11 +23,16 @@ import { resolveMatchKits } from '../data/kits'
 // red = đối thủ với id CLB `opponentClubId`).
 function applyKits(roster, kits, opponentClubId) {
     return roster.map((team) => {
-        const entry = kits?.[team.id === 'blue' ? 'blue' : opponentClubId]
+        const isUserSide = team.id === 'blue'
+        const entry = kits?.[isUserSide ? userClubId() : opponentClubId]
+        // Phase 26B: phía đội mình mang tên CLB người chơi đang quản lý.
+        const identity = isUserSide
+            ? { name: userTeam()?.name || team.name, shortName: userTeam()?.shortName || team.shortName }
+            : {}
 
-        if (!entry) return team
+        if (!entry) return { ...team, ...identity }
 
-        return { ...team, color: entry.kit.shirt, kit: entry.kit, keeperKit: entry.keeper }
+        return { ...team, ...identity, color: entry.kit.shirt, kit: entry.kit, keeperKit: entry.keeper }
     })
 }
 import { buildMatchSummary } from '../systems/matchStats'
@@ -45,9 +55,8 @@ import {
     recordUserFixtureResult,
 } from '../services/leagueService'
 import {
-    advanceWorld,
-    createLeagueForWorld,
     loadGameWorld,
+    switchClub,
     roundsPlayed,
     saveWorld,
     seasonOutcome,
@@ -83,7 +92,6 @@ import {
     matchdayConflict,
     squadOf,
 } from '../systems/roster'
-import { USER_TEAM } from '../data/leagueData'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 
 // Màn hình trận đấu: giao diện (scoreboard, bảng điều khiển, giải đấu, CLB).
@@ -256,13 +264,12 @@ export default function GameScene() {
     )
 
     const opponentId = activeFixture
-        ? activeFixture.homeTeamId === 'blue'
+        ? isUserClub(activeFixture.homeTeamId)
             ? activeFixture.awayTeamId
             : activeFixture.homeTeamId
-        : 'red'
+        : isUserClub('eng-manchester-city') ? 'eng-manchester-united' : 'eng-manchester-city'
 
-    const opponentTeam =
-        getTeamById(opponentId) || getTeamById('red')
+    const opponentTeam = getTeamById(opponentId)
 
     // Phase 24: bộ áo đã chọn trước trận (theo trận), mặc định tránh trùng màu.
     const [kitChoice, setKitChoice] = useState({ fixtureId: null, slots: {} })
@@ -273,7 +280,7 @@ export default function GameScene() {
                 fixture.awayTeamId,
                 kitChoice.fixtureId === fixture.id ? kitChoice.slots : null,
             )
-            : resolveMatchKits('blue', 'eng-manchester-city')
+            : resolveMatchKits(userClubId(), isUserClub('eng-manchester-city') ? 'eng-manchester-united' : 'eng-manchester-city')
 
     const matchKits = kitsForFixture(activeFixture)
 
@@ -288,7 +295,7 @@ export default function GameScene() {
     opponentNameRef.current = opponentTeam?.name || 'OPPONENT'
 
     const isBlueHome = activeFixture
-        ? activeFixture.homeTeamId === 'blue'
+        ? isUserClub(activeFixture.homeTeamId)
         : true
 
     // Lưu đội hình chính, dự bị, sơ đồ và cầu thủ mua/bán.
@@ -336,7 +343,7 @@ export default function GameScene() {
 
         if (teamId === 'blue') {
             setBlueScore((score) => score + 1)
-            setGoalMessage(`${USER_TEAM.name} · ${credit}`)
+            setGoalMessage(`${userTeam().name} · ${credit}`)
         } else {
             setRedScore((score) => score + 1)
             setGoalMessage(`${opponentNameRef.current} · ${credit}`)
@@ -449,12 +456,12 @@ export default function GameScene() {
         recordedFixtureRef.current = activeFixtureId
 
         const homeGoals =
-            fixture.homeTeamId === 'blue'
+            isUserClub(fixture.homeTeamId)
                 ? blueScore
                 : redScore
 
         const awayGoals =
-            fixture.homeTeamId === 'blue'
+            isUserClub(fixture.homeTeamId)
                 ? redScore
                 : blueScore
 
@@ -555,11 +562,11 @@ export default function GameScene() {
                     (item) =>
                         !item.played &&
                         item.id !== fixture.id &&
-                        (item.homeTeamId === 'blue' || item.awayTeamId === 'blue'),
+                        (isUserClub(item.homeTeamId) || isUserClub(item.awayTeamId)),
                 ).length
 
                 if (remainingUserFixtures === 0) {
-                    const isHome = fixture.homeTeamId === 'blue'
+                    const isHome = isUserClub(fixture.homeTeamId)
                     const finalLeague = recordUserFixtureResult(
                         league,
                         fixture.id,
@@ -567,7 +574,7 @@ export default function GameScene() {
                         isHome ? redScore : blueScore,
                     )
                     const position =
-                        getLeagueStandings(finalLeague.fixtures).findIndex((row) => row.teamId === 'blue') + 1
+                        getLeagueStandings(finalLeague.fixtures).findIndex((row) => isUserClub(row.teamId)) + 1
                     const bonus = applySeasonBonus(nextClub, league.season || 2026, position, difficulty.reward)
 
                     nextClub = bonus.club
@@ -702,7 +709,7 @@ export default function GameScene() {
         setScreen('match')
 
         const nextOpponentId =
-            fixture.homeTeamId === 'blue'
+            isUserClub(fixture.homeTeamId)
                 ? fixture.awayTeamId
                 : fixture.homeTeamId
 
@@ -714,36 +721,33 @@ export default function GameScene() {
     }, [])
 
     // Bắt đầu mùa giải mới.
-    const createNewSeason = useCallback(() => {
-        // Phase 26A: tính bảng cuối 36 giải, lên / xuống hạng, rồi tạo giải mới
-        // cho người chơi (có thể là giải khác nếu MU lên / xuống hạng).
-        const nextWorld = advanceWorld(world, league)
-        const nextLeague = createLeagueForWorld(nextWorld, league.difficulty)
-        const outcome = seasonOutcome(world, nextWorld)
-
+    // Đưa thế giới + giải mới vào game (mùa mới, hoặc đổi CLB).
+    const applyLeagueChange = useCallback((nextWorld, nextLeague, message, { rest = false } = {}) => {
         setWorld(nextWorld)
         setLeague(nextLeague)
 
         // Mùa mới: cả đội hồi phục hoàn toàn (Phase 19).
-        const rested = (players) =>
-            (players || []).map((player) =>
-                player.condition == null || player.condition === 100
-                    ? player
-                    : { ...player, condition: 100 },
-            )
+        if (rest) {
+            const rested = (players) =>
+                (players || []).map((player) =>
+                    player.condition == null || player.condition === 100
+                        ? player
+                        : { ...player, condition: 100 },
+                )
 
-        setRoster((current) =>
-            current.map((team) =>
-                team.id !== 'blue'
-                    ? team
-                    : {
-                        ...team,
-                        players: rested(team.players),
-                        substitutes: rested(team.substitutes),
-                        reserves: rested(team.reserves || []),
-                    },
-            ),
-        )
+            setRoster((current) =>
+                current.map((team) =>
+                    team.id !== 'blue'
+                        ? team
+                        : {
+                            ...team,
+                            players: rested(team.players),
+                            substitutes: rested(team.substitutes),
+                            reserves: rested(team.reserves || []),
+                        },
+                ),
+            )
+        }
 
         const firstFixture = getNextUserFixture(
             nextLeague.fixtures,
@@ -751,6 +755,7 @@ export default function GameScene() {
 
         setActiveFixtureId(firstFixture?.id || null)
         recordedFixtureRef.current = null
+        setKitChoice({ fixtureId: null, slots: {} })
 
         setBlueScore(0)
         setRedScore(0)
@@ -764,14 +769,63 @@ export default function GameScene() {
         resetMatchFlow()
 
         setIsLeagueOpen(false)
-        setActionMessage(
-            outcome.movement === 'promoted'
-                ? `PROMOTED! NEW SEASON IN ${outcome.to?.name.toUpperCase()}`
-                : outcome.movement === 'relegated'
-                    ? `RELEGATED · NEW SEASON IN ${outcome.to?.name.toUpperCase()}`
-                    : 'NEW SEASON STARTED',
-        )
-    }, [league, world])
+        setActionMessage(message)
+    }, [resetMatchFlow])
+
+    // Phase 26B: chọn / đổi CLB.
+    //   start  — lần đầu chơi (chưa có bản lưu)
+    //   season — bấm START NEW SEASON: giữ CLB hoặc đổi trước khi sang mùa
+    //   change — Settings → CHANGE CLUB (giữa mùa: mùa này bắt đầu lại)
+    const [clubPicker, setClubPicker] = useState(() => (boot.firstRun ? { mode: 'start' } : null))
+    const seasonComplete = getSeasonProgress(league.fixtures).completed
+
+    const createNewSeason = useCallback(() => {
+        setIsLeagueOpen(false)
+        setClubPicker({ mode: 'season' })
+    }, [])
+
+    const openChangeClub = useCallback(() => {
+        setClubPicker({ mode: seasonComplete ? 'season' : 'change' })
+    }, [seasonComplete])
+
+    const confirmClub = useCallback((clubId) => {
+        const mode = clubPicker?.mode
+        const newSeason = mode === 'season'
+        const sameClub = isUserClub(clubId)
+
+        setClubPicker(null)
+
+        if (sameClub && !newSeason) return
+
+        const previousWorld = world
+        const next = switchClub(world, league, clubId, { newSeason })
+        const club = getTeamById(clubId)
+        const leagueName = LEAGUE_BY_ID.get(next.league.leagueId)?.name.toUpperCase()
+
+        if (newSeason) {
+            // Phase 26A: tính bảng cuối 36 giải, lên / xuống hạng, rồi tạo giải
+            // mới cho người chơi (giải của CLB đang quản lý).
+            const outcome = seasonOutcome(previousWorld, next.world)
+            const movement =
+                outcome.movement === 'promoted'
+                    ? 'PROMOTED! '
+                    : outcome.movement === 'relegated'
+                        ? 'RELEGATED · '
+                        : ''
+
+            applyLeagueChange(
+                next.world,
+                next.league,
+                sameClub
+                    ? `${movement}NEW SEASON IN ${leagueName}`
+                    : `${movement}NEW SEASON · ${club?.name} · ${leagueName}`,
+                { rest: true },
+            )
+            return
+        }
+
+        applyLeagueChange(next.world, next.league, `NOW MANAGING ${club?.name} · ${leagueName}`)
+    }, [clubPicker, world, league, applyLeagueChange])
 
     const totalGameMinutes = Math.floor(
         (matchTime / matchDuration) * 90,
@@ -803,7 +857,7 @@ export default function GameScene() {
 
     const nextOpponent = nextFixture
         ? getTeamById(
-            nextFixture.homeTeamId === 'blue'
+            isUserClub(nextFixture.homeTeamId)
                 ? nextFixture.awayTeamId
                 : nextFixture.homeTeamId,
         )
@@ -1282,20 +1336,20 @@ export default function GameScene() {
     const positionOf = (teamId) =>
         standings.findIndex((team) => team.teamId === teamId) + 1
 
-    const blueRow = standings.find((team) => team.teamId === 'blue')
+    const blueRow = standings.find((team) => isUserClub(team.teamId))
     const blueTeam = roster.find((team) => team.id === 'blue')
 
     const opponentIdOf = (fixture) =>
-        fixture.homeTeamId === 'blue' ? fixture.awayTeamId : fixture.homeTeamId
+        isUserClub(fixture.homeTeamId) ? fixture.awayTeamId : fixture.homeTeamId
 
     const homeNextMatch = nextFixture && nextOpponent
         ? {
             fixture: nextFixture,
-            isHome: nextFixture.homeTeamId === 'blue',
+            isHome: isUserClub(nextFixture.homeTeamId),
             opponent: nextOpponent,
             opponentColor: getOpponentColor(nextOpponent.id),
             opponentPosition: positionOf(nextOpponent.id),
-            blueStrength: getTeamById('blue')?.strength,
+            blueStrength: userTeam()?.strength,
         }
         : null
 
@@ -1303,13 +1357,13 @@ export default function GameScene() {
         .filter(
             (fixture) =>
                 fixture.played &&
-                (fixture.homeTeamId === 'blue' || fixture.awayTeamId === 'blue'),
+                (isUserClub(fixture.homeTeamId) || isUserClub(fixture.awayTeamId)),
         )
         .sort((a, b) => b.round - a.round)[0]
 
     const lastResult = lastPlayedFixture
         ? (() => {
-            const isHome = lastPlayedFixture.homeTeamId === 'blue'
+            const isHome = isUserClub(lastPlayedFixture.homeTeamId)
             const blueGoals = isHome ? lastPlayedFixture.homeGoals : lastPlayedFixture.awayGoals
             const opponentGoals = isHome ? lastPlayedFixture.awayGoals : lastPlayedFixture.homeGoals
 
@@ -1375,9 +1429,20 @@ export default function GameScene() {
         }))
     }
 
-    const selectedPlayerProfile = matchRoster
-        .flatMap((team) => [...team.players, ...(team.substitutes || [])])
-        .find((player) => player.id === selectedId)
+    // Phase 26D: người đá chính hiện chỉ số đã cộng team color.
+    const selectedPlayerProfile = (() => {
+        for (const team of matchRoster) {
+            const starter = team.players.find((player) => player.id === selectedId)
+
+            if (starter) return withTeamColor(starter, teamColorOf(team.players).bonus)
+
+            const sub = (team.substitutes || []).find((player) => player.id === selectedId)
+
+            if (sub) return sub
+        }
+
+        return undefined
+    })()
 
     const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
 
@@ -1387,7 +1452,7 @@ export default function GameScene() {
                 screen={screen}
                 inMatch={inMatch}
                 season={league.season || 2026}
-                record={blueRow ? { position: positionOf('blue'), points: blueRow.points } : null}
+                record={blueRow ? { position: positionOf(userClubId()), points: blueRow.points } : null}
                 onNavigate={navigate}
                 cardsCount={(club.inventory || []).length}
                 clubLevel={club.level || 0}
@@ -1412,6 +1477,7 @@ export default function GameScene() {
                     onOpenClub={() => setIsClubOpen(true)}
                     onOpenDevelopment={openDevelopment}
                     onNewSeason={createNewSeason}
+                    onChangeClub={openChangeClub}
                 />
             )}
 
@@ -1421,7 +1487,7 @@ export default function GameScene() {
                     blueTeam={blueTeam}
                     opponentTeam={prematchRoster.find((team) => team.id === 'red')}
                     opponentInfo={prematchOpponent}
-                    bluePosition={positionOf('blue')}
+                    bluePosition={positionOf(userClubId())}
                     opponentPosition={prematchOpponent ? positionOf(prematchOpponent.id) : null}
                     tacticKey={tacticKey}
                     onTacticChange={changeTactic}
@@ -1450,6 +1516,7 @@ export default function GameScene() {
                 <PostMatchScreen
                     summary={matchSummary}
                     opponentName={opponentTeam?.name || 'OPPONENT'}
+                    opponentClubId={opponentTeam?.id}
                     fixture={activeFixture}
                     nextFixture={nextFixture}
                     nextOpponentName={nextOpponent?.name || 'OPPONENT'}
@@ -1538,7 +1605,7 @@ export default function GameScene() {
                             letterSpacing: 1,
                         }}
                     >
-                        {USER_TEAM.shortName}
+                        <span className="scoreboard-club"><ClubCrest clubId={userClubId()} size={16} />{userTeam().shortName}</span>
                     </div>
 
                     <div
@@ -1606,7 +1673,7 @@ export default function GameScene() {
                             letterSpacing: 1,
                         }}
                     >
-                        {opponentTeam?.shortName || 'OPP'}
+                        <span className="scoreboard-club">{opponentTeam?.shortName || 'OPP'}<ClubCrest clubId={opponentTeam?.id} size={16} /></span>
                     </div>
 
                     <div
@@ -1792,6 +1859,7 @@ export default function GameScene() {
             {matchStatus === 'halftime' && (
                 <HalfTimeOverlay
                     opponentName={opponentTeam?.name || 'OPPONENT'}
+                    opponentClubId={opponentTeam?.id}
                     blueScore={blueScore}
                     redScore={redScore}
                     events={matchEvents}
@@ -1815,6 +1883,7 @@ export default function GameScene() {
             {matchStatus === 'fulltime' && !isLeagueOpen && (
                 <FullTimeOverlay
                     opponentName={opponentTeam?.name || 'OPPONENT'}
+                    opponentClubId={opponentTeam?.id}
                     blueScore={blueScore}
                     redScore={redScore}
                     events={matchEvents}
@@ -1921,6 +1990,18 @@ export default function GameScene() {
                         }}
                     />
                 </div>
+            )}
+
+            {/* Phase 26B: chọn / đổi CLB */}
+            {clubPicker && (
+                <ClubPicker
+                    mode={clubPicker.mode}
+                    world={world}
+                    currentClubId={userClubId()}
+                    roundsPlayed={getSeasonProgress(league.fixtures).userPlayed}
+                    onConfirm={confirmClub}
+                    onCancel={() => setClubPicker(null)}
+                />
             )}
 
             {isSubsOpen && (

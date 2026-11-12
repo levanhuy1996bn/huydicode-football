@@ -9,13 +9,18 @@
 // - Hết mùa: tính bảng cuối của cả 36 giải, 3 đội cuối hạng nhất xuống hạng,
 //   3 đội đầu hạng hai lên hạng; lưu nhà vô địch, top 6 mỗi giải hạng nhất
 //   (suất C1 / C2 cho Phase 27) và vị trí của người chơi vào lịch sử.
+// - Phase 26B: world.userClubId = CLB người chơi đang quản lý (đổi được).
 import {
     COUNTRIES,
     INITIAL_DIVISIONS,
     LEAGUE_BY_ID,
-    USER_CLUB_ID,
+    LEGACY_CLUB_ALIASES,
     WORLD_LEAGUES,
+    worldClub,
 } from '../data/world'
+import { DEFAULT_USER_CLUB, setUserClubId, userClubId } from './career'
+import { LEAGUE_STORAGE_KEY } from '../data/leagueData'
+import { ROSTER_STORAGE_KEY } from '../systems/roster'
 import {
     CURRENT_SEASON,
     createInitialLeague,
@@ -32,10 +37,11 @@ export const PROMOTION_SPOTS = 3
 export const QUALIFIER_SPOTS = 6
 const HISTORY_LIMIT = 30
 
-export function createInitialWorld(season = CURRENT_SEASON) {
+export function createInitialWorld(season = CURRENT_SEASON, clubId = DEFAULT_USER_CLUB) {
     return {
         version: WORLD_VERSION,
         season,
+        userClubId: clubId,
         divisions: Object.fromEntries(
             Object.entries(INITIAL_DIVISIONS).map(([leagueId, clubIds]) => [leagueId, [...clubIds]]),
         ),
@@ -49,18 +55,43 @@ function isValidWorld(world) {
 
     const all = WORLD_LEAGUES.flatMap((league) => world.divisions[league.id] || [])
 
-    return all.length === 720 && new Set(all).size === 720 && all.includes(USER_CLUB_ID)
+    return all.length === 720 && new Set(all).size === 720 && all.includes(world.userClubId)
 }
 
-export function loadWorld() {
+// Phase 26B: bản lưu cũ dùng 'blue' cho Manchester United → đổi sang id thật.
+// (Chỉ thay giá trị đúng bằng "blue" hoặc khoá "blue:…" của thống kê cầu
+// thủ; id cầu thủ như "blue-9" giữ nguyên.)
+function migrateLegacyIds(data) {
+    if (!data) return data
+
+    const legacy = 'blue'
+    const target = LEGACY_CLUB_ALIASES[legacy]
+    const json = JSON.stringify(data)
+
+    if (!json.includes(`"${legacy}"`) && !json.includes(`"${legacy}:`)) return data
+
+    return JSON.parse(
+        json.split(`"${legacy}"`).join(`"${target}"`).split(`"${legacy}:`).join(`"${target}:`),
+    )
+}
+
+function readWorldSave() {
     try {
         const saved = localStorage.getItem(WORLD_STORAGE_KEY)
-        const parsed = saved ? JSON.parse(saved) : null
 
-        return isValidWorld(parsed) ? parsed : null
+        return saved ? JSON.parse(saved) : null
     } catch {
         return null
     }
+}
+
+export function loadWorld() {
+    const parsed = migrateLegacyIds(readWorldSave())
+
+    if (parsed && !parsed.userClubId) parsed.userClubId = DEFAULT_USER_CLUB
+    if (parsed && !worldClub(parsed.userClubId)) parsed.userClubId = DEFAULT_USER_CLUB
+
+    return isValidWorld(parsed) ? parsed : null
 }
 
 export function saveWorld(world) {
@@ -71,8 +102,8 @@ export function saveWorld(world) {
     }
 }
 
-export function userLeagueId(world) {
-    return WORLD_LEAGUES.find((league) => world.divisions[league.id]?.includes(USER_CLUB_ID))?.id || 'eng1'
+export function userLeagueId(world, clubId = world.userClubId || userClubId()) {
+    return WORLD_LEAGUES.find((league) => world.divisions[league.id]?.includes(clubId))?.id || 'eng1'
 }
 
 // difficulty: mùa mới giữ độ khó của mùa trước (đổi được trước trận đầu tiên).
@@ -84,18 +115,34 @@ export function createLeagueForWorld(world, difficulty) {
 
 const sameClubs = (a = [], b = []) => a.length === b.length && a.every((id) => b.includes(id))
 
+// Bản lưu giải trước Phase 26 (giải bán hư cấu, đội mình là 'blue').
 const userPlayedAny = (league) =>
     (league?.fixtures || []).some(
-        (fixture) => fixture.played && (fixture.homeTeamId === USER_CLUB_ID || fixture.awayTeamId === USER_CLUB_ID),
+        (fixture) => fixture.played && (fixture.homeTeamId === 'blue' || fixture.awayTeamId === 'blue'),
     )
+
+const hasSave = (key) => {
+    try {
+        return localStorage.getItem(key) != null
+    } catch {
+        return false
+    }
+}
 
 // Nạp thế giới + giải của người chơi. Bản lưu giải cũ (trước Phase 26, giải
 // 20 CLB bán hư cấu) được chuyển sang thế giới mới: bắt đầu mùa mới ở
 // Premier League thật (đã đá trận nào thì sang mùa kế tiếp). Đội hình, thẻ,
 // EP, cấp CLB, kho đồ không bị đụng tới.
+//
+// Phase 26B: trả thêm firstRun (chưa có bản lưu nào → cho chọn CLB) và đặt
+// CLB người chơi (career.js) theo bản lưu thế giới.
 export function loadGameWorld() {
+    const firstRun = ![WORLD_STORAGE_KEY, LEAGUE_STORAGE_KEY, ROSTER_STORAGE_KEY].some(hasSave)
     let world = loadWorld()
-    const saved = readLeagueSave()
+    const raw = readLeagueSave()
+    const saved = raw?.leagueId ? migrateLegacyIds(raw) : raw
+
+    setUserClubId(world?.userClubId || DEFAULT_USER_CLUB)
 
     if (isValidLeagueSave(saved)) {
         if (!world || world.season !== saved.season) {
@@ -103,7 +150,7 @@ export function loadGameWorld() {
         }
 
         if (sameClubs(world.divisions[saved.leagueId], saved.clubIds)) {
-            return { world, league: saved, migrated: false }
+            return { world, league: saved, migrated: false, firstRun }
         }
     }
 
@@ -112,9 +159,24 @@ export function loadGameWorld() {
         ? (saved.season || CURRENT_SEASON) + (userPlayedAny(saved) ? 1 : 0)
         : world?.season || CURRENT_SEASON
 
-    if (!world || world.season !== season) world = createInitialWorld(season)
+    if (!world || world.season !== season) world = createInitialWorld(season, userClubId())
 
-    return { world, league: createLeagueForWorld(world), migrated: legacy }
+    return { world, league: createLeagueForWorld(world), migrated: legacy, firstRun }
+}
+
+// ---- Phase 26B: đổi CLB ----
+// - Đầu mùa / cuối mùa (newSeason): tính hết mùa như bình thường với CLB cũ
+//   (lên / xuống hạng, lịch sử), rồi mùa mới bắt đầu ở giải của CLB mới.
+// - Giữa mùa: mùa hiện tại bắt đầu lại từ vòng 1 ở giải của CLB mới (kết
+//   quả mùa đang đá bị bỏ); thế giới (các giải, mùa) giữ nguyên.
+// Độ khó giữ như cũ (đổi lại được vì chưa đá trận nào).
+export function switchClub(world, league, clubId, { newSeason = false } = {}) {
+    const base = newSeason ? advanceWorld(world, league) : world
+    const nextWorld = { ...base, userClubId: clubId }
+
+    setUserClubId(clubId)
+
+    return { world: nextWorld, league: createLeagueForWorld(nextWorld, league?.difficulty) }
 }
 
 // ---- Giải ảo ----
@@ -135,8 +197,10 @@ export function virtualFixtures(season, leagueId, clubIds) {
 
 // Số vòng người chơi đã đá: các giải khác chạy song song tới cùng vòng.
 export function roundsPlayed(league) {
+    const userId = userClubId()
+
     return (league?.fixtures || []).filter(
-        (fixture) => fixture.played && (fixture.homeTeamId === USER_CLUB_ID || fixture.awayTeamId === USER_CLUB_ID),
+        (fixture) => fixture.played && (fixture.homeTeamId === userId || fixture.awayTeamId === userId),
     ).length
 }
 
@@ -206,13 +270,13 @@ export function advanceWorld(world, league) {
     })
 
     const userTable = final(league.leagueId)
-    const userPosition = userTable.indexOf(USER_CLUB_ID) + 1
+    const userPosition = userTable.indexOf(world.userClubId || userClubId()) + 1
     const entry = {
         season: world.season,
         champions,
         promoted,
         relegated,
-        user: { leagueId: league.leagueId, position: userPosition },
+        user: { clubId: world.userClubId || userClubId(), leagueId: league.leagueId, position: userPosition },
     }
 
     return {
@@ -226,8 +290,11 @@ export function advanceWorld(world, league) {
 
 // Tóm tắt mùa vừa xong của người chơi (dùng cho thông báo).
 export function seasonOutcome(previousWorld, nextWorld) {
-    const before = userLeagueId(previousWorld)
-    const after = userLeagueId(nextWorld)
+    // CLB đã đá mùa vừa xong (nếu người chơi đổi CLB lúc sang mùa thì vẫn
+    // báo lên / xuống hạng của CLB cũ).
+    const clubId = previousWorld.userClubId || userClubId()
+    const before = userLeagueId(previousWorld, clubId)
+    const after = userLeagueId(nextWorld, clubId)
     const last = nextWorld.history?.[nextWorld.history.length - 1]
     const beforeTier = LEAGUE_BY_ID.get(before)?.tier
     const afterTier = LEAGUE_BY_ID.get(after)?.tier

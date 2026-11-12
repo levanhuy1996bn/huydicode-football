@@ -5,7 +5,8 @@ import {
     LEAGUE_STORAGE_KEY,
     LEAGUE_POINTS,
 } from '../data/leagueData'
-import { USER_CLUB_ID, hashString, worldClub } from '../data/world'
+import { hashString, worldClub } from '../data/world'
+import { isUserClub, userClubId } from './career'
 import { DEFAULT_DIFFICULTY } from './difficulty'
 
 export const CURRENT_SEASON = 2026
@@ -146,7 +147,7 @@ export function isValidLeagueSave(league) {
         league.leagueId &&
         Array.isArray(league.clubIds) &&
         league.clubIds.length === 20 &&
-        league.clubIds.includes(USER_CLUB_ID) &&
+        league.clubIds.includes(userClubId()) &&
         Array.isArray(league.fixtures) &&
         league.fixtures.length === FIXTURES_PER_LEAGUE,
     )
@@ -235,8 +236,8 @@ export function getNextUserFixture(fixtures) {
         .filter((fixture) =>
             !fixture.played &&
             (
-                fixture.homeTeamId === 'blue' ||
-                fixture.awayTeamId === 'blue'
+                isUserClub(fixture.homeTeamId) ||
+                isUserClub(fixture.awayTeamId)
             ),
         )
         .sort((a, b) =>
@@ -303,8 +304,8 @@ export function simulateOtherMatchesInRound(league, round) {
         }
 
         if (
-            fixture.homeTeamId === 'blue' ||
-            fixture.awayTeamId === 'blue'
+            isUserClub(fixture.homeTeamId) ||
+            isUserClub(fixture.awayTeamId)
         ) {
             return fixture
         }
@@ -355,8 +356,8 @@ export function getSeasonProgress(fixtures) {
     const total = fixtures.length
     const played = fixtures.filter((fixture) => fixture.played).length
     const userFixtures = fixtures.filter((fixture) =>
-        fixture.homeTeamId === 'blue' ||
-        fixture.awayTeamId === 'blue',
+        isUserClub(fixture.homeTeamId) ||
+        isUserClub(fixture.awayTeamId),
     )
     const userPlayed = userFixtures.filter(
         (fixture) => fixture.played,

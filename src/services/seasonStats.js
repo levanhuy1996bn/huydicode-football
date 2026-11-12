@@ -6,11 +6,11 @@
 //   đường chuyền và điểm số một cách tất định theo từng trận (cùng seed thì
 //   luôn ra cùng kết quả), nên không cần lưu và luôn khớp với tỉ số.
 import { worldClub } from '../data/world'
+import { isUserClub, userClubId } from './career'
 import { buildMatchRoster, createInitialRoster, getRole } from '../systems/roster'
 import { clamp } from '../systems/constants'
 import { ratePlayer } from '../systems/matchStats'
 
-const USER_CLUB = 'blue'
 
 function hashString(value) {
     let hash = 2166136261
@@ -69,7 +69,7 @@ export function clubSquad(clubId) {
 }
 
 export const playerKey = (clubId, player) =>
-    clubId === USER_CLUB ? `${USER_CLUB}:${player.id}` : `${clubId}:${player.number}`
+    isUserClub(clubId) ? `${clubId}:${player.id}` : `${clubId}:${player.number}`
 
 function emptyEntry(clubId, player) {
     return {
@@ -208,7 +208,7 @@ export function userMatchEntries({ stats, bluePlayers, redPlayers, opponentClubI
         })
 
     return [
-        ...side(USER_CLUB, bluePlayers, blueScore, redScore),
+        ...side(userClubId(), bluePlayers, blueScore, redScore),
         ...side(opponentClubId, redPlayers, redScore, blueScore),
     ]
 }

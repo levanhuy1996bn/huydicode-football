@@ -1,4 +1,5 @@
-import { USER_TEAM } from '../../data/leagueData'
+import ClubCrest from '../ClubCrest'
+import { isUserClub, userClubId, userTeam } from '../../services/career'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
 // trận tiếp theo, bảng xếp hạng thu gọn, kết quả gần nhất, đội hình,
 // CLB, tiến độ mùa giải và cài đặt.
@@ -15,12 +16,11 @@ const LABEL_MODES = [
     ['off', 'OFF'],
 ]
 
-function TeamBadge({ name, shortName, color, strength, position, side }) {
+function TeamBadge({ clubId, name, strength, position, side }) {
     return (
         <div className={`home-team home-team--${side}`}>
-            <div className="home-team__crest" style={{ '--crest': color }}>
-                {shortName}
-            </div>
+            {/* Phase 26B: huy hiệu CLB */}
+            <ClubCrest clubId={clubId} size={68} className="home-team__badge" />
             <div className="home-team__name">{name}</div>
             <div className="home-team__meta">
                 {position ? `${position}${ordinal(position)} · ` : ''}STR {strength}
@@ -53,8 +53,9 @@ export default function HomeScreen({
     onOpenClub,
     onOpenDevelopment,
     onNewSeason,
+    onChangeClub,
 }) {
-    const bluePosition = standings.findIndex((team) => team.teamId === 'blue') + 1
+    const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
     const topRows = standings.slice(0, 6)
     const blueRow = standings[bluePosition - 1]
     const showBlueRow = bluePosition > 6
@@ -73,18 +74,16 @@ export default function HomeScreen({
                         <div className="home-hero__teams">
                             <TeamBadge
                                 side="home"
-                                name={USER_TEAM.name}
-                                shortName={USER_TEAM.shortName}
-                                color={USER_TEAM.color}
+                                clubId={userClubId()}
+                                name={userTeam().name}
                                 strength={nextMatch.blueStrength}
                                 position={bluePosition}
                             />
                             <div className="home-hero__vs">VS</div>
                             <TeamBadge
                                 side="away"
+                                clubId={nextMatch.opponent.id}
                                 name={nextMatch.opponent.name}
-                                shortName={nextMatch.opponent.shortName}
-                                color={nextMatch.opponentColor}
                                 strength={nextMatch.opponent.strength}
                                 position={nextMatch.opponentPosition}
                             />
@@ -135,9 +134,9 @@ export default function HomeScreen({
                         </thead>
                         <tbody>
                             {topRows.map((team, index) => (
-                                <tr key={team.teamId} className={team.teamId === 'blue' ? 'is-user' : ''}>
+                                <tr key={team.teamId} className={isUserClub(team.teamId) ? 'is-user' : ''}>
                                     <td>{index + 1}</td>
-                                    <td>{team.name}</td>
+                                    <td><span className="home-table__club"><ClubCrest clubId={team.teamId} size={15} />{team.name}</span></td>
                                     <td>{team.played}</td>
                                     <td>{team.goalDifference}</td>
                                     <td><b>{team.points}</b></td>
@@ -146,7 +145,7 @@ export default function HomeScreen({
                             {showBlueRow && blueRow && (
                                 <tr className="is-user is-separated">
                                     <td>{bluePosition}</td>
-                                    <td>{blueRow.name}</td>
+                                    <td><span className="home-table__club"><ClubCrest clubId={blueRow.teamId} size={15} />{blueRow.name}</span></td>
                                     <td>{blueRow.played}</td>
                                     <td>{blueRow.goalDifference}</td>
                                     <td><b>{blueRow.points}</b></td>
@@ -165,7 +164,7 @@ export default function HomeScreen({
                                 {lastResult.outcome.toUpperCase()}
                             </span>
                             <div className="last-result__score">
-                                {USER_TEAM.name} <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
+                                {userTeam().name} <b>{lastResult.blueGoals} – {lastResult.opponentGoals}</b>{' '}
                                 {lastResult.opponentName}
                             </div>
                             <small>ROUND {lastResult.round}</small>
@@ -226,6 +225,17 @@ export default function HomeScreen({
                 {/* Cài đặt */}
                 <div className="home-card">
                     <div className="home-card__head"><span>SETTINGS</span></div>
+                    {/* Phase 26B */}
+                    <div className="setting-row setting-row--club">
+                        <span>Club</span>
+                        <div className="setting-club">
+                            <ClubCrest clubId={userClubId()} size={22} />
+                            <b>{userTeam().name}</b>
+                            <button type="button" className="btn btn--small" onClick={onChangeClub}>
+                                CHANGE CLUB
+                            </button>
+                        </div>
+                    </div>
                     <div className="setting-row">
                         <span>Match length</span>
                         <div className="segmented">

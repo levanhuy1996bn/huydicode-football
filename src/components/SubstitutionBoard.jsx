@@ -1,3 +1,5 @@
+import TeamColorPanel from './TeamColorPanel'
+import { teamColorOf } from '../services/teamColor'
 import { useState } from 'react'
 import { shortPlayerName } from '../utils/names'
 
@@ -219,6 +221,9 @@ export default function SubstitutionBoard({
                         </div>
                     )}
                 </div>
+
+                {/* Phase 26D: team color của 11 người đá chính (tính lại khi đổi người) */}
+                <TeamColorPanel info={teamColorOf(team.players)} compact />
 
                 <div className="sub-board__body">
                     {/* Sân dọc: khung thành nhà ở dưới, tấn công lên trên */}

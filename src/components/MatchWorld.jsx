@@ -1,3 +1,4 @@
+import { teamColorOf, withTeamColor } from '../services/teamColor'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Billboard, ContactShadows } from '@react-three/drei'
@@ -28,7 +29,7 @@ import { resetPositions } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
 import { noteUserInput, stepMatch } from '../systems/matchEngine'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
 
 function FixedCamera({ ballRef }) {
     const { camera, size } = useThree()
@@ -433,17 +434,22 @@ export default function MatchWorld({
     useChargeHud(chargeHudRef, state)
     useRadar(radarRef, ctxRef.current)
 
+    // Phase 26D: team color tính trên 11 người đá chính của mỗi đội (kể cả
+    // người bị thẻ đỏ, nên thẻ đỏ không làm mất team color); thay người thì
+    // roster đổi → tính lại. Engine dùng chỉ số đã cộng; roster gốc không đổi.
     const players = useMemo(
         () =>
-            roster.flatMap((team) =>
-                team.players
+            roster.flatMap((team) => {
+                const bonus = teamColorOf(team.players).bonus
+
+                return team.players
                     .filter((player) => !sentOff.includes(player.id))
                     .map((player) => ({
-                        ...player,
+                        ...withTeamColor(player, bonus),
                         teamId: team.id,
                         role: getRole(player),
-                    })),
-            ),
+                    }))
+            }),
         [roster, sentOff],
     )
 
@@ -466,7 +472,7 @@ export default function MatchWorld({
         roster.find((team) => team.id === 'red')?.name || 'OPPONENT'
 
     const userTeamName =
-        roster.find((team) => team.id === 'blue')?.name || USER_TEAM.name
+        roster.find((team) => team.id === 'blue')?.name || userTeam().name
 
     // ctx là object ổn định, được cập nhật giá trị mới nhất mỗi lần render.
     const ctx = ctxRef.current

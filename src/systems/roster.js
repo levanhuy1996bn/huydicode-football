@@ -196,6 +196,7 @@ export function buildMatchRoster(roster, opponent, { difficulty = null, season =
         rarity: player.rarity,
         height: player.height,
         weight: player.weight,
+        clubId: player.clubId,
         condition: 100,
     })
 

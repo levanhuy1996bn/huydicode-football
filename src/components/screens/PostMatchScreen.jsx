@@ -1,4 +1,4 @@
-import { USER_TEAM } from '../../data/leagueData'
+import { userClubId, userTeam } from '../../services/career'
 import { Scoreline } from '../MatchOverlays'
 import { shortPlayerName } from '../../utils/names'
 import { MatchTimeline, ShotMap, StatComparison, TopPerformers } from '../MatchStatsPanel'
@@ -68,6 +68,7 @@ function ratingClass(rating) {
 export default function PostMatchScreen({
     summary,
     opponentName,
+    opponentClubId = null,
     fixture,
     nextFixture,
     nextOpponentName,
@@ -106,8 +107,10 @@ export default function PostMatchScreen({
                 </div>
 
                 <Scoreline
-                    homeName={USER_TEAM.name}
+                    homeName={userTeam().name}
                     awayName={opponentName}
+                    homeClubId={userClubId()}
+                    awayClubId={opponentClubId}
                     homeScore={summary.blueScore}
                     awayScore={summary.redScore}
                     events={[...(summary.goalEvents || []), ...(summary.cardEvents || [])].sort((a, b) => a.minute - b.minute)}
@@ -141,7 +144,7 @@ export default function PostMatchScreen({
                 <div className="home-card">
                     <div className="home-card__head">
                         <span>MATCH STATS</span>
-                        <span className="stat-legend">{USER_TEAM.shortName} · {opponentName}</span>
+                        <span className="stat-legend">{userTeam().shortName} · {opponentName}</span>
                     </div>
 
                     {summary.forfeit ? (
@@ -152,7 +155,7 @@ export default function PostMatchScreen({
                 </div>
 
                 <div className="home-card">
-                    <div className="home-card__head"><span>PLAYER RATINGS · {USER_TEAM.name}</span></div>
+                    <div className="home-card__head"><span>PLAYER RATINGS · {userTeam().name}</span></div>
 
                     {motm && (
                         <div className="motm">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { USER_TEAM } from '../data/leagueData'
+import { userTeam } from '../services/career'
 import { passAccuracy } from '../systems/matchStats'
 import { shortPlayerName } from '../utils/names'
 
@@ -62,7 +62,7 @@ export function StatComparison({ source, compact = false, twoColumns = false, op
         <div className={className}>
             {opponentName && (
                 <div className="stat-compare__teams">
-                    <span>{USER_TEAM.shortName}</span>
+                    <span>{userTeam().shortName}</span>
                     <span>{opponentName}</span>
                 </div>
             )}
@@ -241,7 +241,7 @@ export function ShotMap({ shots = [], opponentName }) {
 
     return (
         <div className="shotmap">
-            <HalfPitch title={`${USER_TEAM.shortName} · ${summary('blue')}`}>
+            <HalfPitch title={`${userTeam().shortName} · ${summary('blue')}`}>
                 <ShotDots shots={shots} teamId="blue" />
             </HalfPitch>
             <HalfPitch title={`${opponentName} · ${summary('red')}`}>
