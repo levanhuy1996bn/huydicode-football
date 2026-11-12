@@ -1353,6 +1353,10 @@ Agreed on 2026-11-12 (both A and B). Today (Phase 25): rates drop to 8% for +8 �
     - A goal with no shot behind it (tap-in, a touch or control that goes in) is now recorded as a shot from where the scorer touched the ball, with its xG.
     - A shot that goes in off the keeper or a defender within 2.5 seconds is credited to the **shooter** ("deflected"), not counted as an own goal.
 
+#### Quick update after Phase 29B — sale confirmation (2026-11-12)
+
+- **SELL PLAYER** (TRANSFERS → SQUAD & SALES) no longer sells at once: a **CONFIRM SALE** box shows the card (OVR, position, +level, rarity), its value, what you receive (85%) and the budget after the sale, warns when a +2 or higher card would lose its upgrade level, and notes that a sale cannot be undone. **SELL FOR …** confirms; **CANCEL**, Esc or a click outside closes it.
+
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).

@@ -123,6 +123,8 @@ export default function ClubManagementPanel({
     }
     // Phase 22: màn TRANSFERS mở thẳng vào thị trường chuyển nhượng.
     const [tab, setTab] = useState('market')
+    // Sau Phase 29B: bán cầu thủ phải xác nhận (trước đây bấm là bán luôn).
+    const [sellConfirm, setSellConfirm] = useState(null)
 
     const [search, setSearch] = useState(initialSearch || '')
     const [positionFilter, setPositionFilter] = useState('ALL')
@@ -292,7 +294,42 @@ export default function ClubManagementPanel({
         )
     }
 
+    // Bấm SELL PLAYER: kiểm tra điều kiện rồi mở hộp xác nhận.
+    const requestSell = (player) => {
+        if (!club.transferWindowOpen) {
+            showMessage('TRANSFER WINDOW IS CLOSED')
+            return
+        }
+
+        if (!blueTeam) return
+
+        if (squadGroupOf(blueTeam, player.id) !== 'reserve') {
+            showMessage(
+                `${player.name.toUpperCase()} IS IN THE MATCHDAY SQUAD`,
+                'error',
+                'Starters and bench players cannot be sold. Move him to the reserves in the lineup screen first.',
+            )
+            return
+        }
+
+        setSellConfirm(player)
+    }
+
+    // Esc = huỷ.
+    useEffect(() => {
+        if (!sellConfirm) return undefined
+
+        const onKey = (event) => {
+            if (event.key === 'Escape') setSellConfirm(null)
+        }
+
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [sellConfirm])
+
     const sellPlayer = (player) => {
+        setSellConfirm(null)
+
         if (!club.transferWindowOpen) {
             showMessage('TRANSFER WINDOW IS CLOSED')
             return
@@ -980,7 +1017,7 @@ export default function ClubManagementPanel({
 
                                                 <button
                                                     disabled={isStarter}
-                                                    onClick={() => sellPlayer(player)}
+                                                    onClick={() => requestSell(player)}
                                                     style={{
                                                         ...buttonStyle,
                                                         width: '100%',
@@ -1001,6 +1038,58 @@ export default function ClubManagementPanel({
                                     })}
                                 </div>
                             )}
+
+                            {sellConfirm && (() => {
+                                const value = getPlayerValue(sellConfirm)
+                                const saleValue = Math.round(value * 0.85)
+                                const level = sellConfirm.upgrade || 1
+                                const copies = squad.filter(
+                                    (item) => item.id !== sellConfirm.id && playerIdOf(item) === playerIdOf(sellConfirm),
+                                ).length
+
+                                return (
+                                    <div
+                                        className="sell-confirm-overlay"
+                                        role="dialog"
+                                        aria-modal="true"
+                                        aria-label={`Sell ${sellConfirm.name}`}
+                                        onClick={() => setSellConfirm(null)}
+                                    >
+                                        <div className="sell-confirm" onClick={(event) => event.stopPropagation()}>
+                                            <div className="home-hero__eyebrow">CONFIRM SALE</div>
+                                            <h3>SELL {sellConfirm.name.toUpperCase()}?</h3>
+                                            <div className="sell-confirm__card">
+                                                <StatNum value={sellConfirm.overall} />
+                                                <span>{sellConfirm.position}</span>
+                                                <UpgradeBadge level={level} />
+                                                <small>{RARITY_LABELS[sellConfirm.rarity] || ''}</small>
+                                            </div>
+                                            <dl className="sell-confirm__money">
+                                                <div><dt>Card value</dt><dd>{formatMoney(value)}</dd></div>
+                                                <div><dt>You receive (85%)</dt><dd className="is-gain">+{formatMoney(saleValue)}</dd></div>
+                                                <div><dt>Budget after sale</dt><dd>{formatMoney(club.budget + saleValue)}</dd></div>
+                                            </dl>
+                                            {level >= 2 && (
+                                                <p className="sell-confirm__warn">
+                                                    This is a +{level} card — the upgrade level is lost when you sell it.
+                                                </p>
+                                            )}
+                                            {copies === 0 && level < 2 && (
+                                                <p className="sell-confirm__note">You have no other card of this player.</p>
+                                            )}
+                                            <p className="sell-confirm__note">A sale cannot be undone.</p>
+                                            <div className="sell-confirm__actions">
+                                                <button type="button" className="btn" onClick={() => setSellConfirm(null)} autoFocus>
+                                                    CANCEL
+                                                </button>
+                                                <button type="button" className="btn btn--danger" onClick={() => sellPlayer(sellConfirm)}>
+                                                    SELL
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
 
                             {tab === 'contracts' && (
                                 <div style={{ display: 'grid', gap: 8 }}>
