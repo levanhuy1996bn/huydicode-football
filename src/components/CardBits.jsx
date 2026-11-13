@@ -3,6 +3,7 @@ import { statTier, upgradeTier } from '../services/upgrade'
 import { RARITY_LABELS } from '../services/cards'
 import { FORM_LEVELS, formOf } from '../systems/form'
 import PlayerPortrait from './PlayerPortrait'
+import { ovrTierClass } from '../utils/ovrTier'
 
 // Phase 25: những mảnh giao diện dùng chung cho thẻ cầu thủ.
 
@@ -57,7 +58,8 @@ export function PlayerCardView({ player, size = 'large', hideBadge = false, port
     const rarity = player.rarity || 'bronze'
 
     return (
-        <div className={`player-card player-card--${rarity} player-card--${size}`}>
+        // Phase 32: vòng viền + quầng sáng theo màu OVR (mặt thẻ vẫn theo độ hiếm).
+        <div className={`player-card player-card--${rarity} player-card--${size} ovr-ring ${ovrTierClass(player)}`}>
             <div className="player-card__top">
                 <div className="player-card__ovr">
                     <b className={statClass(player.overall)}>{player.overall}</b>
