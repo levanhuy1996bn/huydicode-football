@@ -27,7 +27,7 @@ import {
     resetMatchProgress,
 } from '../systems/matchState'
 import { attachBallToPlayer } from '../systems/ball'
-import { resetPositions } from '../systems/rules'
+import { resetPositions, restartAtSpot } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { startShootout, stopShootout } from '../systems/shootout'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
@@ -529,7 +529,10 @@ export default function MatchWorld({
     const ctx = ctxRef.current
 
     // Kiểm thử tự động (chỉ bản build VITE_E2E=1): đọc vị trí / trạng thái trận.
-    if (import.meta.env.VITE_E2E && typeof window !== 'undefined') window.__ufmCtx = ctx
+    if (import.meta.env.VITE_E2E && typeof window !== 'undefined') {
+        window.__ufmCtx = ctx
+        window.__ufmRestart = (teamId, type, x, z) => restartAtSpot(ctx, teamId, type, x, z)
+    }
 
     Object.assign(ctx, {
         state,

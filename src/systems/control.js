@@ -298,6 +298,21 @@ export function updateControlledPlayer(ctx, dt) {
     // khi đối thủ có bóng).
     if (!hasBall && updatePress(ctx, controlled, direction, dt)) return
 
+    // Phase 36: người chơi vừa ném biên mà chưa bấm hướng → tự bước vào sân.
+    const thrown = state.throwerReturn
+
+    if (!direction && !hasBall && thrown?.id === ctx.selectedId && thrown.time < 1.2) {
+        const inward = -Math.sign(controlled.position.x) || 1
+
+        if (Math.abs(controlled.position.x) > FIELD.maxX - 4) {
+            controlled.position.x += inward * 4.5 * dt
+            controlled.rotation.y = Math.atan2(inward, 0)
+            clampPlayer(controlled)
+        }
+
+        return
+    }
+
     if (!direction) {
         updateContain(ctx, controlled, sprinting, dt)
         return

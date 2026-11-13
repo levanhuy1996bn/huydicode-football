@@ -251,6 +251,55 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
     const chaseId = !ownerItem && !looseJob && chasers[0] ? chasers[0].item.id : null
     const secondChaseId = !ownerItem && !looseJob && chasers[1] ? chasers[1].item.id : null
 
+    // ---- Phase 36: ném biên — hai đồng đội gần nhất chạy về nhận ngắn ----
+    // (FIFA / FO4): một người chéo lên phía trên, một người lùi về phía sau
+    // làm điểm an toàn, cách người ném 5–8m bên trong sân, tránh chỗ đối
+    // phương đứng. Người ném xong bước vào sân (throwerReturn).
+    const throwOffers = new Map()
+    const throwIn = state.restart?.type === 'throw-in' && state.restart.teamId === teamId ? state.restart : null
+    const thrower = throwIn ? objects[throwIn.playerId] : null
+
+    if (thrower) {
+        const inward = -Math.sign(thrower.position.x) || 1
+        const freeSpot = (x, z) => {
+            let spot = { x, z }
+
+            for (let tries = 0; tries < 3; tries += 1) {
+                const crowded = opponents.some((opponent) => Math.hypot(opponent.x - spot.x, opponent.z - spot.z) < 2.2)
+
+                if (!crowded) break
+                spot = { x: spot.x + inward * 2.5, z: spot.z }
+            }
+
+            return {
+                x: clamp(spot.x, FIELD.minX + 2, FIELD.maxX - 2),
+                z: clamp(spot.z, FIELD.minZ + 2, FIELD.maxZ - 2),
+            }
+        }
+        const spots = [
+            freeSpot(thrower.position.x + inward * 6, thrower.position.z + direction * 5),
+            freeSpot(thrower.position.x + inward * 4.5, thrower.position.z - direction * 5.5),
+        ]
+        const helpers = outfield
+            .filter((entry) => entry.item.id !== throwIn.playerId && !isUserControlled(entry.item))
+            .map((entry) => ({ ...entry, gap: distance2D(entry.object.position, thrower.position) }))
+            .sort((a, b) => a.gap - b.gap)
+            .slice(0, 2)
+        const used = new Set()
+
+        helpers.forEach((helper) => {
+            const index = spots
+                .map((spot, i) => ({ i, d: used.has(i) ? Infinity : distance2D(helper.object.position, spot) }))
+                .sort((a, b) => a.d - b.d)[0].i
+
+            used.add(index)
+            throwOffers.set(helper.item.id, spots[index])
+        })
+    }
+
+    // Người vừa ném biên: bước vào sân ~4m (1.6s), hướng lên phía trên một chút.
+    const returning = state.throwerReturn?.teamId === teamId ? state.throwerReturn : null
+
     // ---- Khối phòng ngự ----
     const dl = tactic.defensiveLine
     let defLineA = clamp(ballA - (14 + (1 - dl) * 14), -41, -12 + dl * 18)
@@ -355,8 +404,19 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
         let speedScale = 1.05
 
         const press = pressTargets.get(item.id)
+        const offer = throwOffers.get(item.id)
 
-        if (press) {
+        if (returning && returning.id === item.id && returning.time < 1.6) {
+            const inward = -Math.sign(object.position.x) || 1
+
+            targetX = clamp(object.position.x + inward * 4, FIELD.minX + 3, FIELD.maxX - 3)
+            targetA = object.position.z * direction + 2
+            speedScale = 1.15
+        } else if (offer) {
+            targetX = offer.x
+            targetA = offer.z * direction
+            speedScale = 1.15
+        } else if (press) {
             targetX = press.x
             targetA = press.z * direction
             speedScale = press.speed
@@ -707,7 +767,7 @@ function updatePrePassRun(ctx, dt) {
 
     state.prePassReceiver = null
 
-    if (!charge || charge.action !== 'pass' || state.pendingPass) return
+    if (!charge || (charge.action !== 'pass' && charge.action !== 'through') || state.pendingPass) return
 
     const passer = objects[charge.playerId]
     const passerItem = getPlayer(ctx, charge.playerId)
@@ -715,11 +775,12 @@ function updatePrePassRun(ctx, dt) {
     if (!passer || passerItem?.teamId !== 'blue' || state.restart) return
 
     const direction = aimFromKeys(ctx.keys)
+    const through = charge.action === 'through'
     const target = findPassTarget(
         ctx,
         charge.playerId,
-        'pass',
-        direction ? { direction, power: charge.power } : null,
+        charge.action,
+        direction ? { direction, power: charge.power } : through ? { direction: { x: 0, z: attackDir(state, 'blue') }, power: charge.power, loose: true } : null,
     )
 
     if (!target || target.outOfAim || target.item.role === 'GK') return
@@ -727,9 +788,27 @@ function updatePrePassRun(ctx, dt) {
     const receiver = objects[target.item.id]
     const distance = receiver ? distance2D(receiver.position, passer.position) : 0
 
-    if (!receiver || distance < 7 || distance > 28) return
+    if (!receiver || distance < 7 || distance > (through ? 34 : 28)) return
 
     state.prePassReceiver = target.item.id
+
+    // Phase 36: giữ W (chọc khe) → người nhận bứt lên khoảng trống phía trước
+    // ngay từ lúc lấy lực (như FO4), không đợi bóng rời chân.
+    if (through) {
+        const forward = attackDir(state, 'blue')
+
+        moveAIPlayer(
+            ctx,
+            target.item,
+            {
+                x: clamp(receiver.position.x, FIELD.minX + 2, FIELD.maxX - 2),
+                z: clamp(receiver.position.z + forward * 6, FIELD.minZ + 2, FIELD.maxZ - 2),
+            },
+            1.4,
+            dt,
+        )
+        return
+    }
 
     // Tiến về phía người chuyền vài mét (không chạy hẳn tới chân người chuyền).
     const step = Math.min(4, distance - 6) / distance
@@ -868,6 +947,12 @@ export function updateReceiverRun(ctx, dt) {
 
     updatePrePassRun(ctx, dt)
 
+    // Phase 36: đếm thời gian người vừa ném biên bước vào sân.
+    if (state.throwerReturn) {
+        state.throwerReturn.time += dt
+        if (state.throwerReturn.time > 1.6) state.throwerReturn = null
+    }
+
     if (ball) updateLooseReceive(ctx, dt)
 
     if (!pendingPass || !ball) return
@@ -933,6 +1018,7 @@ export function updateReceiverRun(ctx, dt) {
         dt,
     )
 }
+
 
 // Quyết định của cầu thủ AI đang giữ bóng: sút, chuyền hoặc dẫn bóng.
 
