@@ -143,6 +143,7 @@ import {
 } from '../systems/roster'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
+import { applyPreset } from '../services/lineupHelper'
 
 
 // Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
@@ -1717,6 +1718,54 @@ export default function GameScene() {
         return fail('Drag between the pitch, the bench and the reserves.')
     }
 
+    // Phase 29K: đặt cả đội hình một lần (AUTO PICK XI, UNDO, đội hình lưu sẵn).
+    // next = { players, substitutes, reserves, formationKey? } — chỉ trước trận.
+    const setBlueLineup = (next) => {
+        if (!next?.players?.length) return { ok: false, message: 'Lineup not found.' }
+
+        setRoster((current) =>
+            current.map((team) =>
+                team.id !== 'blue'
+                    ? team
+                    : {
+                        ...team,
+                        players: next.players,
+                        substitutes: next.substitutes ?? team.substitutes,
+                        reserves: next.reserves ?? team.reserves,
+                        formationKey: next.formationKey || team.formationKey,
+                    },
+            ),
+        )
+
+        if (selectedId && !next.players.some((player) => player.id === selectedId)) {
+            setSelectedId(next.players.find((player) => player.position !== 'GK')?.id || next.players[0].id)
+        }
+
+        return { ok: true }
+    }
+
+    // Phase 29K: nạp một đội hình đã lưu (đổi sơ đồ trước nếu khác).
+    const applyLineupPreset = (preset) => {
+        const team = roster.find((item) => item.id === 'blue')
+
+        if (!team || !preset) return { ok: false, message: 'Saved lineup not found.' }
+
+        const formationKey = preset.formationKey && FORMATIONS[preset.formationKey] ? preset.formationKey : team.formationKey
+        const base = formationKey !== team.formationKey
+            ? { ...team, players: assignFormation(team.players, FORMATIONS[formationKey]) }
+            : team
+        const result = applyPreset(base, preset, SQUAD_LIMITS.bench)
+
+        if (!result) return { ok: false, message: 'Could not load this lineup (not enough players).' }
+
+        setBlueLineup({ ...result.team, formationKey })
+
+        return {
+            ok: true,
+            message: `Loaded "${preset.name}" (${formationKey})${result.missing ? ` · ${result.missing} player${result.missing === 1 ? '' : 's'} no longer available, replaced by the best option` : ''}.`,
+        }
+    }
+
     // Đổi vị trí hai cầu thủ đang trên sân (không tính lượt thay người).
     const swapStarters = (firstId, secondId) => {
         const blueTeam = roster.find((team) => team.id === 'blue')
@@ -1915,7 +1964,9 @@ export default function GameScene() {
     }
 
     // Phase 23: tab CARDS (mở gói cầu thủ, thẻ EP).
-    const openCards = () => {
+    const [cardsFocus, setCardsFocus] = useState(null)
+    const openCards = (options = {}) => {
+        setCardsFocus(options?.shop ? 'shop' : null)
         exitWorldCupSession()
         setIsLeagueOpen(false)
         setIsClubOpen(false)
@@ -1955,6 +2006,15 @@ export default function GameScene() {
         setLineupMode('prematch')
         resumeAfterSubsRef.current = false
         setIsSubsOpen(true)
+    }
+
+    // Phase 29K: thẻ Thể lực / Phong độ — dùng chung cho PLAY và SQUAD.
+    const squadItemsProps = {
+        fitness: itemCount(club, 'fitness'),
+        form: itemCount(club, 'form'),
+        onUseFitness: () => applySquadItem('fitness'),
+        onUseForm: () => applySquadItem('form'),
+        onBuy: () => openCards({ shop: true }),
     }
 
     // ---- Dữ liệu cho các màn hình ngoài trận ----
@@ -2325,12 +2385,7 @@ export default function GameScene() {
                     onBack={goHome}
                     matchDuration={settings.matchDuration}
                     onMatchDurationChange={(value) => updateSettings({ matchDuration: value })}
-                    squadItems={wcSession ? null : {
-                        fitness: itemCount(club, 'fitness'),
-                        form: itemCount(club, 'form'),
-                        onUseFitness: () => applySquadItem('fitness'),
-                        onUseForm: () => applySquadItem('form'),
-                    }}
+                    squadItems={wcSession ? null : squadItemsProps}
                 />
             )}
 
@@ -2384,6 +2439,8 @@ export default function GameScene() {
                     team={blueTeam}
                     onUpdatePlayer={updateBluePlayer}
                     onBack={goHome}
+                    onEditLineup={openLineupEditor}
+                    squadItems={squadItemsProps}
                 />
             )}
 
@@ -2408,6 +2465,7 @@ export default function GameScene() {
 
             {screen === 'cards' && (
                 <CardsScreen
+                    focus={cardsFocus}
                     club={club}
                     onClubChange={setClub}
                     team={blueTeam}
@@ -3001,6 +3059,8 @@ export default function GameScene() {
                         }
                         onSwap={swapStarters}
                         onMoveSquad={moveSquadPlayer}
+                        onSetLineup={lineupMode === 'prematch' ? setBlueLineup : null}
+                        onApplyPreset={lineupMode === 'prematch' ? applyLineupPreset : null}
                         benchLimit={SQUAD_LIMITS.bench}
                         onClose={closeSubstitutions}
                     />

@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Next:** the last mobile phase 29A4 (29A split on 2026-11-13) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29B–29K — all done ✅ (2026-11-13).** Latest: 29K (lineup editor with player info, team-color helper, AUTO PICK XI, saved lineups; Fitness / Form cards under TEAM SETUP). Next: 29A4. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Next:** the last mobile phase 29A4 (29A split on 2026-11-13) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -412,6 +412,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 29A2 | Basic touch controls: joystick + PASS / THROUGH / SHOOT / SPRINT buttons, ☰ menu | ✅ Done (2026-11-13) |
 | 29A3 | Advanced touch controls: swipe variants, vibration, button size / opacity / joystick settings | ✅ Done (2026-11-13) |
 | 29A5 | Phone performance: AUTO graphics, adaptive resolution, LOW mid-match when needed, pause when leaving the app, install as an app + offline | ✅ Done (2026-11-13) |
+| 29K | Lineup & squad: Fitness / Form cards under TEAM SETUP and in SQUAD, clear EDIT LINEUP in PLAY and SQUAD, player info card when you click a player, team-color helper, AUTO PICK XI, pre-kick-off warnings, compare, saved lineups | ✅ Done (2026-11-13) |
 | 29A4 | Mobile UI for the management screens (bottom tab bar, step-by-step screens) | 🔜 Next |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
@@ -896,7 +897,7 @@ Hold a modifier, then press or charge the action key. The modifier also counts i
 
 ### Later phases (not started)
 
-Everything up to and including Phase 25 is done. Roadmap agreed on 2026-11-12:
+Everything up to and including Phase 29K and 29A1–29A3, 29A5 is done (see the status table). Next: **29A4**. Roadmap originally agreed on 2026-11-12:
 
 ### Phase 22 — Match feel, screens and squad rules, season player stats ✅ (2026-11-12)
 
@@ -1569,6 +1570,43 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 - The 3D players used one skin colour, one dark-brown hair colour and one hair shape for all 22. Now `Player.jsx` takes skin, hair colour, hair style, beard and headband from the card portrait (`portraitTraits`, by `playerId`), so a blond player with a quiff on his card is blond with a quiff on the pitch.
 - Simplified 3D hair (seen from the high camera): short / quiff (cap + raised front), buzz (thin cap), curly (small balls), long (down to the neck), afro (big round volume), shaved (none); full beard and goatee as a patch on the chin; headband in the kit trim colour.
 - **LOW graphics:** colours change too, but every player keeps the basic hair cap and no beard (fewest shapes). HIGH adds at most 2–8 small shapes per player; no FPS change seen in the test; a few KB of code, saves unchanged.
+
+### Phase 29K — Lineup, player info and squad cards ✅ (2026-11-13)
+
+Playtest requests on 2026-11-13, done before 29A4. New files: `src/services/lineupHelper.js`, `src/components/PlayerInfoPanel.jsx`, `src/components/SquadCardsBox.jsx`.
+
+**1. Fitness / Form cards where you pick the team**
+
+- New **SQUAD CARDS** box directly **under TEAM SETUP** on the PLAY (pre-match) screen:
+  - Fitness and Form cards owned, what each does (whole squad → condition 100 / form ⬆ +3), **USE** — or **BUY** with 0 cards (opens CARDS and scrolls to the SHOP).
+  - State of the starting XI: average fitness, how many below 70 %, form arrows (e.g. ➡9 ⬇1 ⬆1).
+  - **BEFORE KICK-OFF** warnings: tired starters (< 60 %), players out of position (natural → played), a Fitness card available while the XI is tired, 3+ starters in poor form while you own a Form card, fewer than 11 starters.
+- The old quick-use buttons under KICK OFF are gone (one place only).
+- The same box at the top of the **SQUAD** tab, next to TEAM COLOR.
+- **Phone** (≤ 760 px): a compact strip right under your lineup (XI fitness % · ♥ n · USE · ⬆ n · USE); moves into the SQUAD screen of the bottom tab bar in 29A4.
+- Not shown for World Cup matches.
+
+**2. Edit the lineup from PLAY and SQUAD**
+
+- PLAY: a full-width **✎ EDIT LINEUP** button under the lineup header (was a small EDIT ✎ button in the header).
+- SQUAD: **✎ EDIT LINEUP** under TEAM COLOR. Same editor as HOME; changes before kick-off use no substitutions.
+
+**3. Player info card**
+
+- Click / tap any player in the PLAY lineups (yours and the opponent's, read-only) → a dialog with the large card and portrait, club with crest, nation, age (when known), height / weight, natural position and the position he plays (penalty in red), fitness, form, level / potential, market value, detailed attributes (open with **DETAILED ATTRIBUTES ▼**) and a **TEAM COLOR** box: club / nation / card level and what he means for the XI (e.g. "From Arsenal — 9/11 starters from Arsenal, 2 more needed for club color +3", "Lowest card in the XI (+1) — every starter needs +2 for Bronze"). Esc or a click outside closes it.
+- SQUAD: **ⓘ CARD** next to the player's name opens the same dialog.
+- In the lineup editor the panel opens beside the pitch (below it on narrower screens).
+
+**4. Lineup editor (team-color helper)**
+
+- **Click = info, second click = compare:** the first click opens the player info panel; clicking a second player shows a stat-by-stat **comparison** (OVR at the position he would play, PAC…PHY, fitness, with + / −) and a **⇄ SWAP** button (clicking the second player again also swaps). Drag-and-drop still swaps at once. Works the same with fingers (tap, tap, SWAP).
+- Every tile shows the club crest, nation code (bench / reserves) and the +N card badge.
+- **Swap preview:** while a player is selected, every other tile shows what swapping would do to the XI — team color change (`TC +3`) and average OVR change (`+0.8`), green / red.
+- **HIGHLIGHT** chips: SAME CLUB (the club most of your XI comes from), SAME NATION, CARD ≥ +5 / ≥ +8 / +10 — matching players glow, the rest fade.
+- **⚡ AUTO PICK XI** (before the match): the best XI for the current formation, scoring OVR at each position + form − fatigue (100 − fitness × 0.12) + team color × 11. It starts from the current XI, a greedy pick and team-color candidates (11 from one club, one nationality, every card ≥ +2 / +5 / +8 / +10), then improves by single swaps — so it is never worse than the current XI. Players left out go to the bench (a back-up keeper first, best players, max 9), the rest to the reserves; no two cards of the same player in the matchday squad. **↶ UNDO** restores the previous lineup.
+- **SAVED LINEUPS:** 3 slots per club (in this browser): SAVE (optional name), LOAD (also switches to the saved formation; players sold since are replaced by the best option), ✕ delete; UNDO also works after LOAD.
+
+- Tests: Node tests for auto pick (11 players, one keeper, no duplicate cards, a tired starter is rested, never lower than the current XI), swap preview, warnings, presets; browser test (desktop and 390 px phone) for the SQUAD CARDS box and USE, info dialogs for both teams, compare + SWAP, previews, highlight, auto pick + UNDO, saved lineups, SQUAD tab buttons — no console errors.
 
 ### Backlog
 

@@ -15,6 +15,8 @@ import {
 } from '../../systems/progression'
 import { shortPlayerName } from '../../utils/names'
 import { FormArrow, UpgradeBadge, statClass } from '../CardBits'
+import SquadCardsBox from '../SquadCardsBox'
+import { PlayerInfoModal } from '../PlayerInfoPanel'
 
 // Phase 19B: màn phát triển cầu thủ — cấp độ, XP, điểm chưa dùng, tiềm năng
 // và cộng điểm chỉ số (giá theo vị trí), có nút tự cộng theo vị trí.
@@ -45,7 +47,7 @@ export function LevelBadge({ player, compact = false }) {
     )
 }
 
-export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
+export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEditLineup = null, squadItems = null }) {
     const players = useMemo(
         () => [...(team?.players || []), ...(team?.substitutes || []), ...(team?.reserves || [])],
         [team],
@@ -56,6 +58,8 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
         return (withPoints || players[0])?.id || null
     })
     const [feedback, setFeedback] = useState(null)
+    // Phase 29K: bảng thông tin cầu thủ (thẻ lớn, team color).
+    const [infoOpen, setInfoOpen] = useState(false)
     // Playtest 3: cộng điểm vào bản nháp trước, bấm CONFIRM mới lưu.
     // history = các bản nháp trước đó (để hoàn tác từng bước).
     const [draft, setDraft] = useState(null)
@@ -162,9 +166,17 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                 </div>
             </div>
 
-            {/* Phase 26D */}
-            <div className="home-card team-color-card">
-                <TeamColorPanel info={teamColorOf(team?.players || [])} title="TEAM COLOR · STARTING XI" />
+            {/* Phase 26D + 29K: team color, thẻ Thể lực / Phong độ, sửa đội hình */}
+            <div className="squad-top">
+                <div className="home-card team-color-card">
+                    <TeamColorPanel info={teamColorOf(team?.players || [])} title="TEAM COLOR · STARTING XI" />
+                    {onEditLineup && (
+                        <button type="button" className="btn btn--primary squad-top__edit" onClick={() => guard(onEditLineup)}>
+                            ✎ EDIT LINEUP
+                        </button>
+                    )}
+                </div>
+                {squadItems && <SquadCardsBox team={team} items={squadItems} />}
             </div>
 
             <div className="dev-body">
@@ -204,7 +216,12 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                     <div className="dev-detail__head">
                         <div>
                             <div className="home-hero__eyebrow">#{selected.number} · {selected.position}</div>
-                            <h2>{selected.name}</h2>
+                            <h2>
+                                {selected.name}{' '}
+                                <button type="button" className="link-btn dev-detail__card" onClick={() => setInfoOpen(true)} title="Player card, club, nation and team color">
+                                    ⓘ CARD
+                                </button>
+                            </h2>
                             <div className="dev-detail__level">
                                 Level <b>{progress.level}</b>
                                 {progress.level < MAX_LEVEL
@@ -293,6 +310,12 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                     </div>
                 </div>
             </div>
+            <PlayerInfoModal
+                player={infoOpen ? saved : null}
+                onClose={() => setInfoOpen(false)}
+                xi={team?.players || []}
+                zone={team?.players?.some((player) => player.id === saved?.id) ? 'pitch' : team?.substitutes?.some((player) => player.id === saved?.id) ? 'bench' : 'reserves'}
+            />
         </section>
     )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatMoney } from '../../services/clubService'
 import {
     FITNESS_PRICE,
@@ -44,10 +44,21 @@ const ITEM_TEXT = {
     ep: 'Adds EP to the transfer budget',
 }
 
-export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers }) {
+export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers, focus = null }) {
     const [tab, setTab] = useState('rewards') // 'rewards' | 'upgrade' (Phase 25)
     const [reveal, setReveal] = useState(null)
     const [notice, setNotice] = useState(null)
+
+    // Phase 29K: mở từ nút BUY (thẻ Thể lực / Phong độ) → cuộn tới SHOP.
+    useEffect(() => {
+        if (focus !== 'shop') return
+
+        const timer = setTimeout(() => {
+            document.querySelector('.cards-shop')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 80)
+
+        return () => clearTimeout(timer)
+    }, [focus])
 
     const inventory = club.inventory || []
     const squad = squadOf(team)
