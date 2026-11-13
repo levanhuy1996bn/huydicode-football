@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ClubCrest from '../ClubCrest'
+import { matchSoundEvent } from '../../utils/matchSound'
 
 // Phase 28: hoạt cảnh mô phỏng nhanh. Kết quả đã tính và lưu sẵn; màn này
 // chỉ phát lại: đồng hồ 0' → 90' (~24 giây, ×2 hoặc bỏ qua), sân 2D nhìn từ
@@ -81,6 +82,20 @@ export default function SimulationScreen({ label, blue, red, result, onDone, onS
         }),
         [shown],
     )
+
+    // Phase 30A: dội cột / xà → tiếng "ping".
+    const woodworkCount = shown.filter((event) => event.type === 'woodwork').length
+    const seenWoodwork = useRef(0)
+
+    useEffect(() => {
+        if (woodworkCount > seenWoodwork.current) {
+            const last = [...shown].reverse().find((event) => event.type === 'woodwork')
+
+            matchSoundEvent('woodwork', { power: 0.8, part: last?.text?.includes('crossbar') ? 'crossbar' : 'post' })
+        }
+
+        seenWoodwork.current = woodworkCount
+    }, [woodworkCount, shown])
 
     // Hiệu ứng bàn thắng.
     useEffect(() => {

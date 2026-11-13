@@ -449,6 +449,8 @@ export default function MatchWorld({
     onWhistleDone,
     onAutoPilotChange,
     onCard,
+    // Phase 30A: bóng trúng cột dọc / xà ngang.
+    onWoodwork,
     // Phase 29B: chất lượng đồ hoạ ('high' | 'low').
     quality = 'high',
     // Phase 29D: luân lưu tự đá — lệnh { type: 'start' | 'stop', nonce, first, kicks }.
@@ -558,6 +560,7 @@ export default function MatchWorld({
         onActionMessage,
         onGoal,
         onCard,
+        onWoodwork,
         onSentOff: (id) => setSentOff((list) => (list.includes(id) ? list : [...list, id])),
         // Phase 29B: âm thanh trận đấu (còi, chạm bóng, cứu thua, sút trượt).
         onSound: matchSoundEvent,

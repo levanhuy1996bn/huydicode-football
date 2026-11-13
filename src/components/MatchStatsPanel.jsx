@@ -15,6 +15,8 @@ export const STAT_ROWS = [
     { key: 'xg', label: 'Expected goals (xG)', value: (s, id) => team(s, id).xg || 0, decimals: 1, compact: true },
     { key: 'shots', label: 'Shots', value: (s, id) => team(s, id).shots || 0, compact: true },
     { key: 'onTarget', label: 'Shots on target', value: (s, id) => team(s, id).onTarget || 0, compact: true },
+    // Phase 30A
+    { key: 'woodwork', label: 'Hit the woodwork', value: (s, id) => team(s, id).woodwork || 0 },
     { key: 'passes', label: 'Passes', value: (s, id) => team(s, id).passes || 0 },
     { key: 'passAccuracy', label: 'Pass accuracy', unit: '%', value: (s, id) => passAccuracy(team(s, id)), share: false, compact: true },
     { key: 'tackles', label: 'Tackles won', value: (s, id) => team(s, id).tackles || 0 },
@@ -142,12 +144,14 @@ export function MatchTimeline({ events = [] }) {
     const icon = (event) => {
         if (event.card) return <i className={`card-chip card-chip--${event.card}`} />
         if (event.sub) return <b className="timeline__sub">⇄</b>
+        if (event.woodwork) return <b className="timeline__wood">┃</b>
         return <b className="timeline__goal">●</b>
     }
 
     const label = (event) => {
         if (event.sub) return `${event.minute}' ${event.sub.on} on, ${event.sub.off} off`
         if (event.card) return `${event.minute}' ${event.card} card · ${event.name || ''}`
+        if (event.woodwork) return `${event.minute}' ${event.woodwork === 'crossbar' ? 'Crossbar' : 'Post'} · ${event.name || 'Unknown'}`
         const tag = event.ownGoal ? ' (OG)' : event.deflected ? ' (deflected)' : event.rebound ? ' (rebound)' : ''
 
         return `${event.minute}' GOAL · ${event.name || 'Unknown'}${tag}`

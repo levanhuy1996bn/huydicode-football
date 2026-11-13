@@ -22,6 +22,8 @@ export function createMatchStats() {
         blocks: 0,
         // Phase 29F: chuyền dài (bóng bổng / chọc khe ≥ 25m), chưa hiện trên giao diện
         longPasses: 0,
+        // Phase 30A: trúng cột dọc / xà ngang
+        woodwork: 0,
     })
 
     return {
@@ -52,6 +54,7 @@ function playerEntry(stats, playerId) {
             passesCompleted: 0,
             xg: 0,
             blocks: 0,
+            woodwork: 0,
         }
     }
 

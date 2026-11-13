@@ -32,6 +32,8 @@ import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
 import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
 import NationPicker from './NationPicker'
+import { pendingAchievementCount } from '../services/upgradeAchievements'
+import { applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
 import { nationStrength, nationalTeamForMatch, suggestedNation } from '../services/nationalTeams'
 import {
     WC_DAILY_LIMIT,
@@ -326,6 +328,8 @@ export default function GameScene() {
     const [sentOffIds, setSentOffIds] = useState([])
     // Phase 21: thay người (dòng thời gian) và bảng thống kê trực tiếp.
     const [subEvents, setSubEvents] = useState([])
+    // Phase 30A: bóng trúng cột dọc / xà ngang ({ teamId, name, minute, woodwork: 'post' | 'crossbar' }).
+    const [woodworkEvents, setWoodworkEvents] = useState([])
     const [isLiveStatsOpen, setIsLiveStatsOpen] = useState(false)
     // Phase 22: bảng hướng dẫn phím (thay nút NAMES).
     const [isControlsOpen, setIsControlsOpen] = useState(false)
@@ -385,6 +389,7 @@ export default function GameScene() {
         setCardEvents([])
         setSentOffIds([])
         setSubEvents([])
+        setWoodworkEvents([])
         setForfeit(null)
         setIsQuitOpen(false)
         setIsSubsOpen(false)
@@ -427,6 +432,15 @@ export default function GameScene() {
     const difficulty = difficultyOf(league.difficulty || DEFAULT_DIFFICULTY)
     const difficultyLocked = roundsPlayed(league) > 0
     const matchOptions = { difficulty: difficulty.id, season: league.season }
+    // Phase 30C: World Cup có độ khó riêng (chọn khi bắt đầu giải) và cấp
+    // World Cup (cả đội tuyển +N). Giải cũ chưa có độ khó → độ khó mùa giải.
+    const wcDifficulty = difficultyOf(worldCupDifficultyId(worldCup, league.difficulty || DEFAULT_DIFFICULTY))
+    const wcMatchOptions = { difficulty: wcDifficulty.id, season: league.season }
+    const optionsFor = (fixture) => (fixture?.competition === 'wc' ? wcMatchOptions : matchOptions)
+    const wcProgress = worldCupProgress(world)
+    // Phase 31: thành tích đập thẻ chờ CLAIM → cộng vào số đỏ trên tab CARDS.
+    const achievementsPending = pendingAchievementCount(club, squadOf((clubRosterRef.current || roster).find((team) => team.id === 'blue')))
+    const [wcStartDifficulty, setWcStartDifficulty] = useState(null)
     const changeDifficulty = useCallback((id) => {
         setLeague((current) => (roundsPlayed(current) > 0 ? current : { ...current, difficulty: id }))
     }, [])
@@ -435,6 +449,8 @@ export default function GameScene() {
     const recordedFixtureRef = useRef(null)
     // Phase 27: kết quả cúp của trận vừa xong (màn sau trận).
     const cupInfoRef = useRef(null)
+    // Phase 30C: XP / cấp World Cup của trận vừa xong (màn sau trận).
+    const wcReportRef = useRef(null)
 
     const activeFixture = useMemo(
         () => findFixture(activeFixtureId),
@@ -464,8 +480,8 @@ export default function GameScene() {
 
     // Đội hình 3D của đối thủ theo đúng đội trong vòng đấu.
     const matchRoster = useMemo(
-        () => applyKits(buildMatchRoster(roster, opponentTeam, { ...matchOptions, formSeed: activeFixture?.id }), matchKits, opponentTeam?.id || 'red'),
-        [roster, opponentTeam, activeFixture?.id, kitChoice, league.difficulty, league.season],
+        () => applyKits(buildMatchRoster(roster, opponentTeam, { ...optionsFor(activeFixture), formSeed: activeFixture?.id }), matchKits, opponentTeam?.id || 'red'),
+        [roster, opponentTeam, activeFixture?.id, kitChoice, league.difficulty, league.season, wcDifficulty.id],
     )
 
     const opponentNameRef = useRef('OPPONENT')
@@ -581,6 +597,18 @@ export default function GameScene() {
         ])
 
         setMatchStatus('goal')
+    }, [])
+
+    const handleWoodwork = useCallback((info) => {
+        const minute = Math.min(
+            90,
+            Math.floor((matchTimeRef.current / matchDurationRef.current) * 90) + 1,
+        )
+
+        setWoodworkEvents((events) => [
+            ...events,
+            { teamId: info.teamId, name: info.name, minute, woodwork: info.part },
+        ])
     }, [])
 
     const handleCard = useCallback((info) => {
@@ -783,16 +811,21 @@ export default function GameScene() {
         if (fixture.competition === 'wc') {
             const isHomeWc = isUserClub(fixture.homeTeamId)
 
-            setWorld((current) => ({
-                ...current,
-                worldCup: recordWorldCupResult(
+            // Phase 30C: + XP World Cup (lên cấp → cả đội tuyển +N), vô địch → mở độ khó tiếp theo.
+            setWorld((current) => {
+                const after = recordWorldCupResult(
                     current.worldCup,
                     activeFixtureId,
                     isHomeWc ? blueScore : redScore,
                     isHomeWc ? redScore : blueScore,
                     playedShootout(activeFixtureId),
-                ),
-            }))
+                )
+
+                return applyWorldCupMatch(current, after, activeFixtureId, {
+                    difficultyId: worldCupDifficultyId(current.worldCup, league.difficulty || DEFAULT_DIFFICULTY),
+                    forfeit: Boolean(forfeit),
+                }).world
+            })
             setActionMessage('FULL TIME - RESULT SAVED')
             return
         }
@@ -881,6 +914,7 @@ export default function GameScene() {
             progressionReportRef.current = reports
             formChangesRef.current = formed.changes
             clubReportRef.current = null
+            wcReportRef.current = null
 
             // Phase 22: thống kê cầu thủ cả mùa (cả hai đội) cho trận giải đấu.
             // Bỏ trận (xử thua 0–3) thì không ghi số liệu cầu thủ.
@@ -933,6 +967,10 @@ export default function GameScene() {
 
                 cupInfo = describeWorldCupResult(after, fixture.id)
                 wcAfter = after
+                // Phase 30C: XP / cấp World Cup cho màn tổng kết (cùng hàm với lúc lưu).
+                wcReportRef.current = forfeit
+                    ? null
+                    : applyWorldCupMatch(world, after, fixture.id, { difficultyId: wcDifficulty.id }).report
             }
 
             cupInfoRef.current = cupInfo
@@ -948,7 +986,7 @@ export default function GameScene() {
                     opponentStrength: isWc ? nationStrength(opponentId) : opponentTeam?.strength,
                     // Phase 27: trận cúp thưởng nhiều hơn (C1 ×1.5, C2 ×1.25).
                     // Phase 29H: trận World Cup ×1.5 như C1 (trước đây quên áp dụng).
-                    rewardFactor: difficulty.reward * (isCup || isWc ? CUP_MATCH_FACTOR[fixture.competition] || 1 : 1),
+                    rewardFactor: (isWc ? wcDifficulty.reward : difficulty.reward) * (isCup || isWc ? CUP_MATCH_FACTOR[fixture.competition] || 1 : 1),
                 })
                 let nextClub = rewarded.club
                 let seasonReward = null
@@ -957,7 +995,7 @@ export default function GameScene() {
                 // Phase 29H: thưởng World Cup theo thành tích cao nhất, trao một
                 // lần khi giải kết thúc (bị loại / đá xong chung kết).
                 if (isWc && wcAfter?.status === 'done' && !wcAfter.skipped) {
-                    const prize = Math.round((worldCupPrize(wcAfter.finalStanding) * difficulty.reward) / 100000) * 100000
+                    const prize = Math.round((worldCupPrize(wcAfter.finalStanding) * wcDifficulty.reward) / 100000) * 100000
                     const label = `World Cup ${wcAfter.edition} · ${WC_STANDING_LABELS[wcAfter.finalStanding] || 'finished'}`
 
                     if (prize > 0) {
@@ -1037,6 +1075,8 @@ export default function GameScene() {
             ...summary,
             cardEvents,
             subEvents,
+            woodworkEvents,
+            wcReport: wcReportRef.current,
             shots: [...(statsRef.current?.stats?.shots || [])],
             progression: progressionReportRef.current || [],
             formChanges: formChangesRef.current || [],
@@ -1331,9 +1371,12 @@ export default function GameScene() {
         if (activeWorldCup || wcStartsLeft <= 0) return
 
         const number = nextWorldCupNumber(world)
+        const options = wcDifficultyOptions(world)
+        const chosen = options.find((item) => item.id === wcStartDifficulty && !item.locked)
         const created = createWorldCup(league.season || 2026, nationId, {
             number,
             seed: (Date.now() % 2147483000) + number,
+            difficulty: chosen?.id || wcDefaultDifficulty(world),
         })
 
         setWorld((current) => ({
@@ -1876,22 +1919,31 @@ export default function GameScene() {
     )
 
     // Phase 29E: vào / rời chế độ World Cup (đội tuyển thay cho đội CLB).
+    // Phase 30C: đội tuyển chỉ gồm cầu thủ quốc gia, cả đội +N theo cấp World
+    // Cup; đang trong World Cup mà lên cấp (khác +N) thì dựng lại đội tuyển.
     const enterWorldCupSession = () => {
-        if (wcSessionRef.current || !worldCup) return
+        if (!worldCup) return
 
-        const clubBlue = roster.find((team) => team.id === 'blue')
+        const upgrade = wcProgress.upgrade
+        const session = wcSessionRef.current
 
-        clubRosterRef.current = roster
-        setRoster(roster.map((team) =>
+        if (session && session.nationId === worldCup.nationId && session.upgrade === upgrade) return
+
+        const clubRoster = session ? clubRosterRef.current || roster : roster
+        const clubBlue = clubRoster.find((team) => team.id === 'blue')
+        const currentFormation = session ? roster.find((team) => team.id === 'blue')?.formationKey : clubBlue?.formationKey
+
+        clubRosterRef.current = clubRoster
+        setRoster(clubRoster.map((team) =>
             team.id === 'blue'
                 ? nationalTeamForMatch(clubBlue, worldCup.nationId, {
-                    userCards: squadOf(clubBlue),
-                    formationKey: clubBlue?.formationKey,
+                    formationKey: currentFormation || clubBlue?.formationKey,
+                    upgrade,
                 })
                 : team,
         ))
-        setWcSession({ nationId: worldCup.nationId })
-        wcSessionRef.current = { nationId: worldCup.nationId }
+        setWcSession({ nationId: worldCup.nationId, upgrade })
+        wcSessionRef.current = { nationId: worldCup.nationId, upgrade }
     }
 
     const exitWorldCupSession = () => {
@@ -2113,9 +2165,9 @@ export default function GameScene() {
     const prematchRoster = useMemo(
         () =>
             prematchOpponent
-                ? applyKits(buildMatchRoster(roster, prematchOpponent, { ...matchOptions, formSeed: prematchFixture?.id }), prematchKits, prematchOpponent.id)
+                ? applyKits(buildMatchRoster(roster, prematchOpponent, { ...optionsFor(prematchFixture), formSeed: prematchFixture?.id }), prematchKits, prematchOpponent.id)
                 : roster,
-        [roster, prematchOpponent, prematchFixture?.id, kitChoice, league.difficulty, league.season],
+        [roster, prematchOpponent, prematchFixture?.id, kitChoice, league.difficulty, league.season, wcDifficulty.id],
     )
 
     // Đổi bộ áo của một đội (người chơi hoặc máy) cho trận sắp đá.
@@ -2259,6 +2311,7 @@ export default function GameScene() {
             ...summary,
             cardEvents: sim.cardEvents,
             subEvents: [],
+            woodworkEvents: sim.woodworkEvents || [],
             shots: sim.stats.shots,
             progression: reports,
             formChanges: formed.changes,
@@ -2315,7 +2368,7 @@ export default function GameScene() {
                 season={league.season || 2026}
                 record={blueRow ? { position: positionOf(userClubId()), points: blueRow.points } : null}
                 onNavigate={navigate}
-                cardsCount={(club.inventory || []).length}
+                cardsCount={(club.inventory || []).length + achievementsPending}
                 clubLevel={club.level || 0}
                 budget={club.budget || 0}
                 onOpenSettings={openSettings}
@@ -2325,7 +2378,7 @@ export default function GameScene() {
             <MobileTabBar
                 active={isLeagueOpen ? 'league' : isClubOpen ? 'club' : screen}
                 onNavigate={navigate}
-                cardsCount={(club.inventory || []).length}
+                cardsCount={(club.inventory || []).length + achievementsPending}
                 onOpenSettings={openSettings}
                 hidden={screen === 'match'}
             />
@@ -2386,8 +2439,8 @@ export default function GameScene() {
                     kits={prematchKits}
                     blueKitTeam={prematchRoster.find((team) => team.id === 'blue')}
                     onKitChange={changeKit}
-                    difficulty={difficulty}
-                    difficultyLocked={difficultyLocked}
+                    difficulty={prematchFixture?.competition === 'wc' ? wcDifficulty : difficulty}
+                    difficultyLocked={prematchFixture?.competition === 'wc' ? 'wc' : difficultyLocked}
                     onDifficultyChange={changeDifficulty}
                     simsLeft={simsLeft}
                     onSimulate={prematchFixture?.competition === 'wc' ? null : () => runQuickSimulation(prematchFixture)}
@@ -2418,7 +2471,12 @@ export default function GameScene() {
                     world={world}
                     nextFixture={wcNextFixture}
                     startsLeft={wcStartsLeft}
-                    rewardFactor={difficulty.reward}
+                    rewardFactor={(activeWorldCup ? wcDifficulty : difficultyOf(wcStartDifficulty || wcDefaultDifficulty(world))).reward}
+                    progress={wcProgress}
+                    difficulties={wcDifficultyOptions(world)}
+                    startDifficulty={wcStartDifficulty || wcDefaultDifficulty(world)}
+                    onStartDifficultyChange={setWcStartDifficulty}
+                    activeDifficulty={activeWorldCup ? wcDifficulty : null}
                     onStart={() => setNationPicker(true)}
                     onPlay={() => openPrematch(wcNextFixture)}
                     onSimulateRest={simulateRestWorldCup}
@@ -2516,6 +2574,7 @@ export default function GameScene() {
                             resetKey={resetKey}
                             onGoal={handleGoal}
                             onCard={handleCard}
+                            onWoodwork={handleWoodwork}
                             shootoutCommand={shootoutCommand}
                             onShootoutUpdate={handleShootoutUpdate}
                             onShootoutEnd={handleShootoutEnd}
@@ -2767,12 +2826,7 @@ export default function GameScene() {
                     </button>
                 )}
 
-                <button
-                    onClick={openLeague}
-                    style={matchButtonStyle}
-                >
-                    LEAGUE
-                </button>
+                {/* Phase 30A: trong trận không có nút LEAGUE (xem ở sảnh). */}
 
                 {matchStatus === 'playing' && (
                     <button
@@ -2810,7 +2864,7 @@ export default function GameScene() {
                         onClick={openSubstitutions}
                         style={matchButtonStyle}
                     >
-                        SUBS {substitutionCount}/{MAX_SUBSTITUTIONS}
+                        TEAM · SUBS {substitutionCount}/{MAX_SUBSTITUTIONS}
                     </button>
                 )}
 
@@ -2868,7 +2922,7 @@ export default function GameScene() {
                         RESUME
                     </button>
                     <button type="button" className="btn" onClick={openSubstitutions}>
-                        SUBSTITUTIONS
+                        TEAM &amp; SUBS
                     </button>
                     <button type="button" className="btn btn--ghost" onClick={restartMatch}>
                         RESTART MATCH
@@ -3038,7 +3092,9 @@ export default function GameScene() {
                         (clubRosterRef.current || roster).find((team) => team.id === 'blue')?.players || [],
                         getTeamById(userClubId())?.countryId,
                     )}
-                    userCards={squadOf((clubRosterRef.current || roster).find((team) => team.id === 'blue'))}
+                    upgrade={wcProgress.upgrade}
+                    level={wcProgress.level}
+                    difficulty={difficultyOf(wcStartDifficulty || wcDefaultDifficulty(world))}
                     onConfirm={startWorldCup}
                     onCancel={() => setNationPicker(false)}
                 />
@@ -3071,6 +3127,9 @@ export default function GameScene() {
                         onMoveSquad={moveSquadPlayer}
                         onSetLineup={lineupMode === 'prematch' ? setBlueLineup : null}
                         onApplyPreset={lineupMode === 'prematch' ? applyLineupPreset : null}
+                        tacticKey={tacticKey}
+                        onTacticChange={lineupMode === 'prematch' ? null : (key) => changeTactic({ target: { value: key } })}
+                        onFormationChange={lineupMode === 'prematch' ? null : changeFormation}
                         benchLimit={SQUAD_LIMITS.bench}
                         onClose={closeSubstitutions}
                     />

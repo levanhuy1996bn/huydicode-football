@@ -10,6 +10,7 @@ import { PLAYER_CATALOG } from '../data/playerCatalog'
 import { NATIONS, NATION_BY_ID, NATION_BY_NATIONALITY } from '../data/nations'
 import { nationalityOf } from '../data/starNationality'
 import { SQUAD_TEMPLATE, allWorldPlayers, generatedNationSquad } from '../data/worldSquads'
+import { applyUpgradeLevel } from './upgrade'
 import { FORMATIONS } from '../data/teams'
 import { withPhysique } from '../systems/physique'
 
@@ -129,17 +130,18 @@ export function nationStrength(nationId) {
 
 // Đội tuyển của người chơi cho trận 3D (đội 'blue'): 11 người xếp vào sơ đồ,
 // 9 dự bị, còn lại dự bị xa. baseTeam = đội blue của CLB (giữ chiến thuật…).
-export function nationalTeamForMatch(baseTeam, nationId, { userCards = [], formationKey = '4-3-3' } = {}) {
+// Phase 30C: đội tuyển chỉ gồm cầu thủ của quốc gia đó (không gọi thẻ CLB của
+// người chơi nữa) và cả đội là thẻ +upgrade theo cấp World Cup.
+export function nationalTeamForMatch(baseTeam, nationId, { userCards = [], formationKey = '4-3-3', upgrade = 1 } = {}) {
     const nation = NATION_BY_ID.get(nationId)
     const squad = nationalSquad(nationId, { userCards })
     const formation = FORMATIONS[formationKey] || FORMATIONS['4-3-3']
-    const toPlayer = (player) => ({
+    const toPlayer = (player) => applyUpgradeLevel({
         ...player,
-        id: player.ownCard ? player.id : player.id,
         upgrade: player.upgrade || 1,
         naturalPosition: player.position,
         condition: 100,
-    })
+    }, Math.max(player.upgrade || 1, upgrade))
     const [startersRaw, benchRaw, reservesRaw] = [squad.slice(0, 11), squad.slice(11, 20), squad.slice(20)]
     const starters = formation.map(([position, x, z], index) => ({
         ...toPlayer(startersRaw[index] || startersRaw[startersRaw.length - 1]),
@@ -155,6 +157,7 @@ export function nationalTeamForMatch(baseTeam, nationId, { userCards = [], forma
         color: nation?.color || baseTeam?.color,
         formationKey: FORMATIONS[formationKey] ? formationKey : '4-3-3',
         nationId,
+        wcUpgrade: upgrade,
         players: starters,
         substitutes: benchRaw.map((player, index) => ({ ...toPlayer(player), x: -28 + index * 7, z: 48 })),
         reserves: reservesRaw.map(toPlayer),

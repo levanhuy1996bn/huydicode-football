@@ -116,6 +116,34 @@ export function kick(power = 0.5) {
     burst(ctx, { duration: 0.05 + p * 0.04, volume: 0.05 + p * 0.12, from: 2400, to: 700 })
 }
 
+// ---- Phase 30A: bóng trúng cột dọc / xà ngang ----
+// Tiếng "ping" kim loại: vài hoạ âm không điều hoà tắt dần + tiếng gõ ngắn.
+export function woodwork(power = 0.7, part = 'post') {
+    const ctx = audioContext()
+    if (!ctx) return
+
+    const p = Math.max(0.35, Math.min(1, power))
+    const base = part === 'crossbar' ? 880 : 1040
+    const t0 = ctx.currentTime
+
+    ;[[1, 1.4, 0.16], [2.76, 0.7, 0.07], [5.4, 0.35, 0.035], [8.93, 0.18, 0.015]].forEach(([ratio, decay, volume]) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(base * ratio, t0)
+        gain.gain.setValueAtTime(0.0001, t0)
+        gain.gain.exponentialRampToValueAtTime(volume * (0.5 + p), t0 + 0.004)
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay)
+        osc.connect(gain).connect(ctx.destination)
+        osc.start(t0)
+        osc.stop(t0 + decay + 0.05)
+    })
+
+    burst(ctx, { duration: 0.035, volume: 0.06 + p * 0.08, type: 'highpass', from: 2600, to: 1800 })
+    tone(ctx, { from: 160, to: 70, duration: 0.07, volume: 0.08 + p * 0.1 })
+}
+
 // ---- Khán giả (Phase 29F) ----
 export const CROWD_VOLUMES = { off: 0, low: 0.5, medium: 1 }
 let crowdVolume = 1
@@ -332,6 +360,10 @@ export function matchSoundEvent(type, data = {}) {
     if (type === 'kick') kick(data.power ?? 0.5)
     else if (type === 'save') ooh(0.8)
     else if (type === 'miss') ooh(data.close ? 1 : 0.6)
+    else if (type === 'woodwork') {
+        woodwork(data.power ?? 0.7, data.part)
+        ooh(1.15)
+    }
     else if (type === 'foul') whistle('short')
     else if (type === 'whistle') whistle(data.kind)
     // Phase 29D: luân lưu — vào lưới (khán giả reo, to hơn nếu đội mình sút) / hỏng.
