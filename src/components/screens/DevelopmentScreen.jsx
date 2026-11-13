@@ -17,6 +17,7 @@ import { shortPlayerName } from '../../utils/names'
 import { FormArrow, UpgradeBadge, statClass } from '../CardBits'
 import SquadCardsBox from '../SquadCardsBox'
 import { PlayerInfoModal } from '../PlayerInfoPanel'
+import { ovrTierClass } from '../../utils/ovrTier'
 
 // Phase 19B: màn phát triển cầu thủ — cấp độ, XP, điểm chưa dùng, tiềm năng
 // và cộng điểm chỉ số (giá theo vị trí), có nút tự cộng theo vị trí.
@@ -233,13 +234,11 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
             <div className="dev-body">
                 <div className="home-card dev-list phone-tab--players">
                     {players.map((player) => {
-                        const item = progressOf(player)
-
                         return (
                             <button
                                 key={player.id}
                                 type="button"
-                                className={`dev-row${player.id === selected.id ? ' is-active' : ''}`}
+                                className={`dev-row ovr-row ${ovrTierClass(player)}${player.id === selected.id ? ' is-active' : ''}`}
                                 onClick={() => selectPlayer(player)}
                             >
                                 <span className="lineup__number">{player.number}</span>
@@ -249,8 +248,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
                                 </span>
                                 <LevelBadge player={player} />
                                 <FormArrow player={player} />
-                                <b>{player.overall}</b>
-                                <small>/{item.potential}</small>
+                                <b className="ovr-num">{player.overall}</b>
                             </button>
                         )
                     })}

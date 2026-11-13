@@ -3181,7 +3181,8 @@ b.is-off-position::after {
 .lineup--left .lineup__list li { grid-template-columns: 28px 1fr 40px 42px 18px 38px; }
 .lineup--right .lineup__list li { grid-template-columns: 28px 1fr 40px 18px 32px 38px; }
 .lineup__list li .form-arrow { justify-self: center; }
-.dev-row { grid-template-columns: 28px 1fr auto 16px 28px 30px; }
+/* Sau Phase 32: bỏ /tiềm năng trong danh sách → bỏ cột cuối. */
+.dev-row { grid-template-columns: 28px 1fr auto 16px 34px; }
 
 /* ---- Phase 29J: chân dung trên thẻ lớn ---- */
 .player-card--large .player-card__top { align-items: flex-start; gap: 4px; }
@@ -4135,4 +4136,104 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
   .ach-toast { grid-template-columns: auto minmax(0, 1fr) auto; }
   .ach-toast .btn { grid-column: 2 / -1; justify-self: start; }
   .ach-toast > .link-btn { grid-column: 3; grid-row: 1; align-self: start; }
+}
+
+/* ==== Phase 32: màu theo OVR của thẻ ====
+   ≤ 79 trắng · 80–89 xanh lá · 90–99 vàng · 100–109 đỏ hồng · 110–119 tím · ≥ 120 cầu vồng.
+   Lớp ovr-tier--* (utils/ovrTier.js) chỉ đặt mã màu; ovr-row = dòng tô nền nhạt
+   (vạch trái đậm, nhạt dần sang phải), ovr-num = số OVR, ovr-ring = vòng sáng thẻ. */
+.ovr-tier--white { --tier-rgb: 217, 226, 230; --tier-text: #e6edf0; }
+.ovr-tier--green { --tier-rgb: 61, 220, 132; --tier-text: #5ee89c; }
+.ovr-tier--gold { --tier-rgb: 245, 197, 66; --tier-text: #ffd45c; }
+.ovr-tier--pink { --tier-rgb: 255, 77, 125; --tier-text: #ff7097; }
+.ovr-tier--purple { --tier-rgb: 166, 107, 255; --tier-text: #c39bff; }
+.ovr-tier--prism { --tier-rgb: 166, 107, 255; --tier-text: #ffffff; }
+
+.ovr-row {
+  --ovr-bg:
+    linear-gradient(rgb(var(--tier-rgb)), rgb(var(--tier-rgb))) left top / 4px 100% no-repeat,
+    linear-gradient(90deg, rgba(var(--tier-rgb), 0.34), rgba(var(--tier-rgb), 0.1));
+  background: var(--ovr-bg), var(--ovr-base, #11251d);
+  border-color: rgba(var(--tier-rgb), 0.5);
+}
+.ovr-row.ovr-tier--prism {
+  --ovr-bg:
+    linear-gradient(180deg, #a66bff, #4fc3ff, #3ddc84, #f5c542, #ff4d7d) left top / 4px 100% no-repeat,
+    linear-gradient(90deg, rgba(166, 107, 255, 0.4), rgba(79, 195, 255, 0.26), rgba(61, 220, 132, 0.2), rgba(245, 197, 66, 0.24));
+  border-color: rgba(166, 107, 255, 0.65);
+}
+.ovr-row.ovr-tier--white { border-color: rgba(217, 226, 230, 0.32); }
+.dev-row.ovr-row:hover,
+.upgrade-row.ovr-row:hover { background: var(--ovr-bg), var(--ovr-base, #11251d); filter: brightness(1.15); }
+
+/* Từng loại dòng: chừa chỗ cho vạch trái */
+.lineup__list li.ovr-row { border: 1px solid rgba(var(--tier-rgb), 0.5); padding-left: 9px; background: var(--ovr-bg), var(--ovr-base, #11251d); }
+.lineup__list li.ovr-row.ovr-tier--white { border-color: rgba(217, 226, 230, 0.32); }
+.market-card.ovr-row { border: 1px solid rgba(var(--tier-rgb), 0.5); padding-left: 14px !important; }
+.market-card.ovr-row.ovr-tier--white { border-color: rgba(217, 226, 230, 0.32); }
+.sub-card.ovr-row { padding-left: 9px; --ovr-base: rgba(7, 19, 15, 0.94); }
+.sub-card.ovr-row:not(.is-picked):not(.is-drop-target):not(.is-compared):not(.is-match) { border-color: rgba(var(--tier-rgb), 0.55); }
+.dev-row.ovr-row { padding-left: 9px; }
+.upgrade-row.ovr-row { padding-left: 12px; }
+
+/* Số OVR trong dòng: màu của mức; ▲ (team color / phong độ) vẫn xanh, đá trái vị trí vẫn đỏ */
+.ovr-row .ovr-num { color: var(--tier-text); }
+.lineup__list li.ovr-row b.ovr-num.is-boosted { color: var(--tier-text); }
+.lineup__list li.ovr-row b.ovr-num.is-boosted::after { color: #b9ed70; }
+.ovr-row.ovr-tier--prism .ovr-num { text-shadow: 0 0 8px rgba(166, 107, 255, 0.9); }
+
+/* Thẻ (lớn / nhỏ): vòng viền + quầng sáng, mặt thẻ vẫn theo độ hiếm */
+.player-card.ovr-ring {
+  box-shadow: 0 0 0 3px rgb(var(--tier-rgb)), 0 0 22px 3px rgba(var(--tier-rgb), 0.5), 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.player-card.ovr-ring.ovr-tier--white {
+  box-shadow: 0 0 0 2px rgba(217, 226, 230, 0.85), 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.player-card.ovr-ring.ovr-tier--prism {
+  box-shadow: 0 0 26px 5px rgba(166, 107, 255, 0.5), 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.player-card.ovr-ring.ovr-tier--prism::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 18px;
+  padding: 4px;
+  background: linear-gradient(120deg, #a66bff, #4fc3ff, #3ddc84, #f5c542, #ff4d7d, #a66bff);
+  background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ovr-prism 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes ovr-prism { to { background-position: 300% 0; } }
+html.gfx-low .player-card.ovr-ring.ovr-tier--prism::before { animation: none; }
+
+/* Đập thẻ lên mức màu mới */
+.ovr-tier-banner {
+  justify-self: center;
+  align-self: center;
+  margin: 4px auto 0;
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: 2px solid rgb(var(--tier-rgb));
+  background: rgba(var(--tier-rgb), 0.1);
+  color: var(--tier-text);
+  font: 900 16px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 3px;
+  box-shadow: 0 0 22px rgba(var(--tier-rgb), 0.55);
+  animation: ovr-tier-pop 0.6s ease-out both;
+}
+.ovr-tier-banner.ovr-tier--prism {
+  border-color: transparent;
+  background: linear-gradient(#0d1f18, #0d1f18) padding-box, linear-gradient(90deg, #a66bff, #4fc3ff, #3ddc84, #f5c542, #ff4d7d) border-box;
+}
+@keyframes ovr-tier-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-card.ovr-ring.ovr-tier--prism::before,
+  .ovr-tier-banner { animation: none; }
 }

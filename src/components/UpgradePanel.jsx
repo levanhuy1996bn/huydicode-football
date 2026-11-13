@@ -17,6 +17,7 @@ import { squadGroupOf, squadOf } from '../systems/roster'
 import { shortPlayerName } from '../utils/names'
 import { userClubId } from '../services/career'
 import { milestoneLabel, recordUpgradeSuccess, rewardFor, rewardLabel } from '../services/upgradeAchievements'
+import { ovrTierClass } from '../utils/ovrTier'
 
 // Phase 25: màn đập thẻ (tab UPGRADE trong CARDS).
 //  - Thẻ chính: bất kỳ thẻ nào (đá chính / dự bị / đội hình ngoài).
@@ -36,11 +37,11 @@ function CardRow({ player, group, active, disabled, note, onClick }) {
     return (
         <button
             type="button"
-            className={['upgrade-row', active ? 'is-active' : '', disabled ? 'is-disabled' : ''].join(' ')}
+            className={['upgrade-row', 'ovr-row', ovrTierClass(player), active ? 'is-active' : '', disabled ? 'is-disabled' : ''].join(' ')}
             onClick={onClick}
             disabled={disabled}
         >
-            <StatNum value={player.overall} className="upgrade-row__ovr" />
+            <StatNum value={player.overall} className="upgrade-row__ovr ovr-num" />
             <span className="upgrade-row__name" title={player.name}>
                 {shortPlayerName(player.name, 18)}
                 <small>{player.position}{group ? ` · ${GROUP_LABELS[group]}` : ''}</small>

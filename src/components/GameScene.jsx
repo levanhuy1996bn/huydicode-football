@@ -308,6 +308,11 @@ export default function GameScene() {
     // cài đặt hoặc đổi màn hình (máy đã tự hạ LOW ở trận trước).
     const graphicsQuality = useMemo(() => resolveGraphics(settings.graphics), [settings.graphics, screen])
 
+    // Phase 32: html.gfx-low → tắt hiệu ứng ánh sáng chạy của viền OVR cầu vồng.
+    useEffect(() => {
+        document.documentElement.classList.toggle('gfx-low', graphicsQuality === 'low')
+    }, [graphicsQuality])
+
     const updateSettings = useCallback((patch) => {
         setSettings((current) => {
             const next = { ...current, ...patch }

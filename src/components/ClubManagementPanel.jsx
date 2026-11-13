@@ -17,6 +17,7 @@ import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../
 import { StatNum, UpgradeBadge } from './CardBits'
 import PlayerInfoPanel from './PlayerInfoPanel'
 import { physiqueOf } from '../systems/physique'
+import { ovrTierClass } from '../utils/ovrTier'
 
 const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
 const MARKET_PAGE = 48
@@ -815,12 +816,10 @@ export default function ClubManagementPanel({
                                         {availablePlayers.slice(0, marketLimit).map((player) => (
                                             <div
                                                 key={player.id}
-                                                className="market-card"
+                                                className={`market-card ovr-row ${ovrTierClass(player)}`}
                                                 style={{
                                                     padding: 11,
                                                     borderRadius: 8,
-                                                    background: '#172f24',
-                                                    border: '1px solid #355642',
                                                     minWidth: 0,
                                                 }}
                                             >
@@ -976,12 +975,10 @@ export default function ClubManagementPanel({
                                         return (
                                             <div
                                                 key={player.id}
-                                                className="market-card"
+                                                className={`market-card ovr-row ${ovrTierClass(player)}`}
                                                 style={{
                                                     padding: 11,
                                                     borderRadius: 8,
-                                                    background: '#172f24',
-                                                    border: '1px solid #355642',
                                                     minWidth: 0,
                                                 }}
                                             >
@@ -1019,7 +1016,7 @@ export default function ClubManagementPanel({
                                                             fontSize: 18,
                                                         }}
                                                     >
-                                                        <StatNum value={player.overall} />
+                                                        <StatNum value={player.overall} className="ovr-num" />
                                                     </strong>
                                                 </div>
 

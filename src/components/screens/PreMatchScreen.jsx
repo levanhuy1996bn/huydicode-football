@@ -18,6 +18,7 @@ import { MATCH_LENGTHS } from '../SettingsRows'
 import { withForm } from '../../systems/form'
 import SquadCardsBox from '../SquadCardsBox'
 import { PlayerInfoModal } from '../PlayerInfoPanel'
+import { ovrTierClass } from '../../utils/ovrTier'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
 export function KitIcon({ kit }) {
@@ -148,6 +149,7 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
                 {shown.map((player, index) => (
                     <li
                         key={player.id}
+                        className={`ovr-row ${ovrTierClass(player)}`}
                         role={onOpenPlayer ? 'button' : undefined}
                         tabIndex={onOpenPlayer ? 0 : undefined}
                         title={onOpenPlayer ? `${player.name} — click for details` : undefined}
@@ -170,7 +172,7 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
                         <FormArrow player={player} />
                         {showUpgrade && <UpgradeBadge level={player.upgrade} />}
                         <b
-                            className={player.positionPenalty || player.formBonus < 0 ? 'is-off-position' : player.teamColorBonus || player.formBonus > 0 ? 'is-boosted' : ''}
+                            className={`ovr-num ${player.positionPenalty || player.formBonus < 0 ? 'is-off-position' : player.teamColorBonus || player.formBonus > 0 ? 'is-boosted' : ''}`.trim()}
                             title={
                                 [
                                     `Base ${player.baseOverall}`,

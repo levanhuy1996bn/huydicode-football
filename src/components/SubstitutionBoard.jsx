@@ -19,6 +19,7 @@ import {
     previewSwap,
     savePreset,
 } from '../services/lineupHelper'
+import { ovrTierClass } from '../utils/ovrTier'
 
 // Bảng thay người kiểu FIFA Online:
 // - Kéo cầu thủ dự bị thả lên cầu thủ trên sân  → thay người.
@@ -75,6 +76,9 @@ function PlayerCard({
             className={[
                 'sub-card',
                 `sub-card--${zone}`,
+                // Phase 32: nền / vạch trái theo màu OVR của thẻ.
+                'ovr-row',
+                ovrTierClass(player),
                 isPicked ? 'is-picked' : '',
                 isCompared ? 'is-compared' : '',
                 isDisabled ? 'is-disabled' : '',
@@ -126,13 +130,13 @@ function PlayerCard({
                 {/* Sau Phase 27: trên sân, OVR theo vị trí đang đá (đá trái vị trí → giảm). */}
                 {zone === 'pitch' && positionPenalty(naturalPositionOf(player), player.position) > 0 ? (
                     <b
-                        className="is-off-position"
+                        className="ovr-num is-off-position"
                         title={`${naturalPositionOf(player)} playing ${player.position}: ${player.overall} → ${positionOverall(player)}`}
                     >
                         {positionOverall(player)}
                     </b>
                 ) : (
-                    <b>{player.overall}</b>
+                    <b className="ovr-num">{player.overall}</b>
                 )}
             </span>
             {/* Phase 29K: CLB · quốc tịch · cấp thẻ (để ghép team color) */}
