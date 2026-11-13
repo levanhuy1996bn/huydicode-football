@@ -139,7 +139,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                                 <ol className="trophy-wins">
                                     {selected.wins.map((win) => (
                                         <li key={win.id}>
-                                            <span className="trophy-wins__season">{win.edition ? win.edition : seasonLabel(win.season)}</span>
+                                            <span className="trophy-wins__season">{win.edition ? (String(win.edition).startsWith("#") ? `WC ${win.edition}` : win.edition) : seasonLabel(win.season)}</span>
                                             <span className="trophy-wins__club">
                                                 <ClubCrest clubId={win.clubId} size={18} />
                                                 {worldClub(win.clubId)?.name || win.clubId}

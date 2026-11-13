@@ -3115,3 +3115,38 @@ b.is-off-position::after {
 .prematch-length { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: #799487; font-size: 10px; letter-spacing: 1px; }
 .prematch-length .segmented button { font-size: 11px; padding: 4px 10px; }
 .season-label { white-space: nowrap; }
+
+/* ---- Phase 29H: tab WORLD CUP ---- */
+.wc-top { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 900px) { .wc-top { grid-template-columns: 1fr; } }
+.wc-hero { margin: 0; }
+.wc-hero__match { display: flex; align-items: center; justify-content: center; gap: 28px; margin: 14px 0 6px; }
+.wc-hero__match span { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 150px; }
+.wc-hero__match b { font: 700 22px 'Barlow Condensed', sans-serif; letter-spacing: .5px; text-transform: uppercase; }
+.wc-hero__match em { color: #799487; font-style: normal; font-weight: 800; }
+.wc-limit { color: #ffd166; font-size: 11px; align-self: center; }
+.wc-prizes ol { list-style: none; margin: 6px 0 8px; padding: 0; }
+.wc-prizes li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 0; border-bottom: 1px solid #1f3529; font-size: 12px; }
+.wc-prizes li b { color: #c7fa7c; }
+.wc-prizes li small { grid-column: 1 / -1; color: #ffd166; font-size: 10px; }
+.wc-history { margin-top: 16px; }
+.home-wc-strip {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 10px 16px;
+  border: 1px solid #2f5a3e;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(11, 110, 79, .25), rgba(216, 176, 74, .12));
+  color: #e6f1e9;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.home-wc-strip:hover { border-color: #d8b04a; }
+.home-wc-strip b { color: #d8b04a; letter-spacing: 1.5px; font-size: 11px; white-space: nowrap; }
+.home-wc-strip span { flex: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.home-wc-strip em { color: #c7fa7c; font-style: normal; font-weight: 800; font-size: 11px; white-space: nowrap; }
+.topbar nav button { white-space: nowrap; }

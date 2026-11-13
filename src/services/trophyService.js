@@ -47,7 +47,7 @@ const countriesByRank = [...COUNTRIES].sort((a, b) => a.rank - b.rank)
 
 export const TROPHY_CATALOG = [
     // Phase 29E: World Cup — mẫu cúp thứ 39 (quả cầu có hai vòng quỹ đạo).
-    { id: 'wc', kind: 'wc', name: 'World Cup', subtitle: 'International · every 4 years', shape: 'orbit', metal: 'gold', flag: ['#0b6e4f', '#d8b04a'] },
+    { id: 'wc', kind: 'wc', name: 'World Cup', subtitle: 'International · national teams', shape: 'orbit', metal: 'gold', flag: ['#0b6e4f', '#d8b04a'] },
     { id: 'c1', kind: 'c1', name: CUPS.c1.name, subtitle: 'Continental · C1', shape: 'bigears', metal: 'silver', flag: ['#1d3c8f', '#d8b04a'] },
     { id: 'c2', kind: 'c2', name: CUPS.c2.name, subtitle: 'Continental · C2', shape: 'tall', metal: 'amber', flag: ['#7a1f1f', '#f08a24'] },
     ...countriesByRank.map((country, index) => ({
@@ -176,7 +176,8 @@ export function awardTrophies(world, league) {
     const wc = base.worldCup
 
     if (wc?.status === 'done' && !wc.skipped && wc.champion && wc.champion === wc.nationId) {
-        const id = trophyId(wc.season, 'wc', wc.nationId)
+        // Phase 29H: nhiều kỳ trong một mùa → id theo kỳ (bản lưu cũ: theo mùa).
+        const id = wc.key ? `wc-${wc.key}-${wc.nationId}` : trophyId(wc.season, 'wc', wc.nationId)
 
         if (!known.has(id)) {
             known.add(id)

@@ -10,6 +10,8 @@ const TABS = [
     ['development', 'SQUAD'],
     ['cards', 'CARDS'],
     ['league', 'LEAGUE'],
+    // Phase 29H
+    ['worldcup', 'WORLD CUP'],
     ['trophies', 'TROPHIES'],
     ['club', 'TRANSFERS'],
 ]
