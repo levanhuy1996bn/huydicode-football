@@ -193,8 +193,10 @@ export function updateDuels(ctx, dt) {
     // Cầu thủ đội người chơi không tự hất được bóng khỏi chân đối thủ chỉ
     // bằng tì vai: người chơi phải bấm tắc / xoạc (yêu cầu playtest). Máy thì
     // vẫn có thể thắng tay đôi.
+    // Phase 35: người chơi đang giữ PRESS / E + mũi tên (lao vào tì người)
+    // thì được thắng tay đôi bằng sức (tì vai hất bóng).
     const passiveAllowed =
-        rival.item.teamId !== 'blue' || ctx.autoPlay || state.autoPilot
+        rival.item.teamId !== 'blue' || ctx.autoPlay || state.autoPilot || state.pressingId === rival.item.id
 
     const loseChance = passiveAllowed
         ? clamp(

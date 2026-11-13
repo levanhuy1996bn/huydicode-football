@@ -4252,3 +4252,16 @@ html.gfx-low .player-card.ovr-ring.ovr-tier--prism::before { animation: none; }
   vertical-align: 1px;
 }
 .inventory-item__actions { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ==== Phase 34: mã + bảng DEV trong Settings ==== */
+.dev-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.dev-form label { grid-column: 1 / -1; font-size: 11px; color: #9fb8a9; font-weight: 700; }
+.dev-form input {
+  min-width: 0; background: #0d1f18; color: #fff; border: 1px solid #3b5d4c; border-radius: 6px;
+  padding: 7px 9px; font: 700 14px Inter, sans-serif; letter-spacing: 1px;
+}
+.setting-row--dev .dev-toggle { justify-self: start; border-color: #ffd166; color: #ffd166; }
+.dev-panel { display: grid; gap: 10px; padding: 10px; border-radius: 8px; border: 1px dashed rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.05); }
+.setting-note--error { color: #ff8a7a; }
+.upgrade-dev__pct { color: #ffd166; }
+@media (pointer: coarse) { .dev-form input { font-size: 16px; } }

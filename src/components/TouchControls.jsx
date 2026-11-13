@@ -27,7 +27,7 @@ const TAP_TIME = 220
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
 
 const KEY_NAMES = {
-    KeyS: 's', KeyW: 'w', KeyD: 'd', KeyE: 'e', KeyA: 'a', KeyQ: 'q', KeyZ: 'z', KeyC: 'c', Space: ' ',
+    KeyS: 's', KeyW: 'w', KeyD: 'd', KeyE: 'e', KeyA: 'a', KeyQ: 'q', KeyZ: 'z', KeyC: 'c', KeyX: 'x', ShiftLeft: 'Shift', Space: ' ',
     ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight',
 }
 
@@ -81,10 +81,14 @@ const BUTTONS = {
     ],
     defend: [
         { id: 'pass', code: 'KeyS', label: 'SWITCH', className: 'touch-btn--pass' },
-        { id: 'through', code: 'KeyW', label: 'SUPPORT', className: 'touch-btn--through' },
+        // Phase 35: giữ PRESS (X) = lao vào người cầm bóng, tì người (như nút
+        // "Pressure" của FC Mobile); vuốt ↑ = gọi đồng đội áp sát (W, SUPPORT cũ).
+        { id: 'through', code: 'KeyX', label: 'PRESS', className: 'touch-btn--through', swipes: { up: { replace: 'KeyW', label: 'SUPPORT' } }, haptic: 10 },
         { id: 'top', code: 'KeyA', label: 'SLIDE', className: 'touch-btn--top is-defend', haptic: 20 },
-        // Giữ = chạy nhanh (E); chạm nhanh (< 220 ms) = tắc bóng (Space).
-        { id: 'big', code: 'KeyE', tapCode: 'Space', label: 'SPRINT\n& TACKLE', className: 'touch-btn--big is-defend', haptic: 18 },
+        // Giữ = chạy nhanh; chạm nhanh (< 220 ms) = tắc bóng (Space).
+        // Phase 35: chạy nhanh bằng Shift (không phải E) — trên máy tính E +
+        // mũi tên khi phòng ngự là lao vào lấy bóng, nút to vẫn chỉ là chạy nhanh.
+        { id: 'big', code: 'ShiftLeft', tapCode: 'Space', label: 'SPRINT\n& TACKLE', className: 'touch-btn--big is-defend', haptic: 18 },
     ],
 }
 

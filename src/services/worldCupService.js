@@ -81,7 +81,9 @@ export const GROUP_NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 // Phase 29H: thưởng theo thành tích CAO NHẤT của cả giải (không cộng dồn),
 // trao khi giải kết thúc (× độ khó). Vô địch thêm gói Premium + thẻ bảo vệ.
 // Giải bị bỏ qua / mô phỏng phần còn lại thì không có thưởng.
+// Phase 34: bị loại ở vòng bảng → thưởng an ủi 2M (× độ khó).
 export const WC_PRIZES = {
+    group: 2000000,
     r16: 5000000,
     qf: 8000000,
     fourth: 12000000,

@@ -1092,6 +1092,18 @@ function releaseKick(ctx, windup) {
     const ball = ctx.ballRef.current
     const { direction, isThrowIn, action, teamId, isAI } = windup
     let { power, lift } = windup
+
+    // Phase 34: sút (D) luôn đi ngang hoặc lên phía khung thành đối phương,
+    // không bao giờ lùi về phía khung thành nhà (dù bấm mũi tên hướng nào).
+    if (action === 'shoot' && !isThrowIn) {
+        const attack = attackDir(state, teamId)
+
+        if (direction.z * attack < 0) {
+            direction.z = 0
+            if (Math.abs(direction.x) < 0.01) direction.x = 1
+            direction.normalize()
+        }
+    }
     const playerId = windup.playerId
     let message = windup.message
 
@@ -1577,6 +1589,17 @@ export function updateShotBlock(ctx) {
     const keep = SHOT_BLOCK.keep[0] + Math.random() * (SHOT_BLOCK.keep[1] - SHOT_BLOCK.keep[0])
 
     ;[rx, rz] = [rx * cos - rz * sin, rx * sin + rz * cos]
+
+    // Phase 34: cú sút bị chặn không bao giờ bật ngược về phía khung thành
+    // nhà của người sút — ít nhất đi ngang ra biên hoặc lên phía trước.
+    const shooterAttack = kick.teamId ? attackDir(state, kick.teamId) : 0
+
+    if (isShot && shooterAttack && rz * shooterAttack < 0) {
+        const speed = Math.hypot(rx, rz)
+
+        rz = Math.abs(rz) * 0.25 * shooterAttack
+        rx = (Math.sign(rx) || (Math.random() < 0.5 ? -1 : 1)) * Math.sqrt(Math.max(0, speed * speed - rz * rz))
+    }
 
     ball.setTranslation(
         {

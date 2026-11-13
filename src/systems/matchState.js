@@ -50,6 +50,8 @@ export function createMatchState() {
 
         // Cầu thủ đang áp sát (giữ D) — va chạm không đẩy lùi được.
         containingId: null,
+        // Phase 35: cầu thủ người chơi đang lao vào tì người (X / E + mũi tên).
+        pressingId: null,
 
         // Phase 17 (xem duels.js): ai đang che bóng, đối thủ đang bị che,
         // AI che bóng theo thời gian, đấu sức đang diễn ra, hệ số chậm do tì vai.

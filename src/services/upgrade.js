@@ -5,6 +5,7 @@
 //   ngoài, thêm tối đa 5 thẻ phụ (+tối đa 10% tổng). Nguyên liệu và thẻ phụ
 //   luôn mất. Thất bại từ +5 tụt đúng 1 cấp. Không tốn EP.
 // Không import systems/progression (tránh vòng phụ thuộc).
+import { devUpgradeBonus } from '../utils/devTools'
 
 export const MAX_UPGRADE = 10
 
@@ -59,7 +60,7 @@ export const protectionUseful = (card) => {
 export function rateBreakdown(main, material, extras = [], boost = 0) {
     const current = main?.upgrade || 1
 
-    if (!main || !material || current >= MAX_UPGRADE) return { base: 0, insurance: 0, boost: 0, total: 0 }
+    if (!main || !material || current >= MAX_UPGRADE) return { base: 0, insurance: 0, boost: 0, dev: 0, total: 0 }
 
     const baseRate = BASE_RATES[current + 1] ?? 0
     const factor = materialFactor((material.upgrade || 1) - current)
@@ -70,8 +71,10 @@ export function rateBreakdown(main, material, extras = [], boost = 0) {
     const base = Math.max(0, Math.min(1, baseRate * factor + extra))
     const insurance = insuranceOf(main, current + 1)
     const boosted = Math.max(0, Math.min(0.25, boost || 0))
+    // Phase 34: +% từ bảng DEV (chỉ trong phiên, mặc định 0).
+    const dev = devUpgradeBonus()
 
-    return { base, insurance, boost: boosted, total: Math.min(1, base + insurance + boosted) }
+    return { base, insurance, boost: boosted, dev, total: Math.min(1, base + insurance + boosted + dev) }
 }
 
 export function successRate(main, material, extras = []) {

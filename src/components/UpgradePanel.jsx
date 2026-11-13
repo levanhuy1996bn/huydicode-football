@@ -315,13 +315,14 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
                                     <span>SUCCESS</span>
                                     <b>{material && !atMax ? pct(rate) : '–'}</b>
                                 </div>
-                                {material && !atMax && (breakdown.insurance > 0 || breakdown.boost > 0) && (
+                                {material && !atMax && (breakdown.insurance > 0 || breakdown.boost > 0 || breakdown.dev > 0) && (
                                     <p className="upgrade-insurance">
                                         Base {pct(breakdown.base)}
                                         {breakdown.insurance > 0 && (
                                             <> + <b>insurance {pct(breakdown.insurance)}</b>{breakdown.insurance >= INSURANCE_MAX ? ' (max)' : ''}</>
                                         )}
                                         {breakdown.boost > 0 && <> + <b className="upgrade-boost__pct">boost {pct(breakdown.boost)}</b></>}
+                                        {breakdown.dev > 0 && <> + <b className="upgrade-dev__pct">dev {pct(breakdown.dev)}</b></>}
                                     </p>
                                 )}
                                 {/* Phase 29I: thẻ tăng tỉ lệ đập */}

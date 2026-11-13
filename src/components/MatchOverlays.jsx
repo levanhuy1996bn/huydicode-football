@@ -211,6 +211,8 @@ export function HalfTimeOverlay({
 
 // Hết giờ: tỉ số thật to + người ghi bàn + các bước tiếp theo.
 export function FullTimeOverlay({
+    // Phase 34: đang đá World Cup → nút WORLD CUP thay cho LEAGUE TABLE / mùa mới.
+    worldCup = false,
     opponentName,
     opponentClubId = null,
     blueScore,
@@ -262,7 +264,7 @@ export function FullTimeOverlay({
 
                 {fixture && (
                     <div className="match-card__subtitle">
-                        {resultSaved ? 'League result saved' : 'Saving result…'}
+                        {resultSaved ? (worldCup ? 'World Cup result saved' : 'League result saved') : 'Saving result…'}
                     </div>
                 )}
 
@@ -280,6 +282,10 @@ export function FullTimeOverlay({
                         <button type="button" className="btn" onClick={onNextMatch}>
                             NEXT MATCH · {nextOpponentName}
                         </button>
+                    ) : worldCup ? (
+                        <button type="button" className="btn" onClick={onOpenLeague}>
+                            BACK TO WORLD CUP
+                        </button>
                     ) : (
                         <button type="button" className="btn" onClick={onNewSeason}>
                             SEASON COMPLETE · NEW SEASON
@@ -290,9 +296,11 @@ export function FullTimeOverlay({
                             SIMULATE NEXT {simsLeft}/5
                         </button>
                     )}
-                    <button type="button" className="btn" onClick={onOpenLeague}>
-                        LEAGUE TABLE
-                    </button>
+                    {!(worldCup && !nextFixture) && (
+                        <button type="button" className="btn" onClick={onOpenLeague}>
+                            {worldCup ? 'WORLD CUP' : 'LEAGUE TABLE'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
