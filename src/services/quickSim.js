@@ -134,6 +134,7 @@ export function simulateQuickMatch({ bluePlayers, redPlayers, venue = 'blue', ra
     const timeline = []
     const goalEvents = []
     const cardEvents = []
+    const woodworkEvents = []
     const score = { blue: 0, red: 0 }
 
     stats.possession = { blue: possessionBlue, red: 100 - possessionBlue }
@@ -142,7 +143,7 @@ export function simulateQuickMatch({ bluePlayers, redPlayers, venue = 'blue', ra
         if (!stats.players[id]) {
             stats.players[id] = {
                 goals: 0, assists: 0, shots: 0, passes: 0, tackles: 0, saves: 0,
-                interceptions: 0, duels: 0, fouls: 0, passesCompleted: 0, xg: 0, blocks: 0,
+                interceptions: 0, duels: 0, fouls: 0, passesCompleted: 0, xg: 0, blocks: 0, woodwork: 0,
             }
         }
 
@@ -208,6 +209,14 @@ export function simulateQuickMatch({ bluePlayers, redPlayers, venue = 'blue', ra
                 }
 
                 timeline.push({ minute, type: 'save', team, text: `${shooter.name} shoots — saved by ${lastName(keeper?.name) || 'the keeper'}` })
+            } else if (random() < 0.035) {
+                // Phase 30A: dội cột dọc / xà ngang.
+                const part = random() < 0.65 ? 'post' : 'crossbar'
+
+                shooterLine.woodwork += 1
+                stats.teams[team].woodwork += 1
+                woodworkEvents.push({ teamId: team, name: shooter.name, minute, woodwork: part })
+                timeline.push({ minute, type: 'woodwork', team, text: `${shooter.name} hits the ${part}!` })
             } else {
                 timeline.push({ minute, type: 'miss', team, text: `${shooter.name} shoots wide` })
             }
@@ -267,6 +276,7 @@ export function simulateQuickMatch({ bluePlayers, redPlayers, venue = 'blue', ra
         stats,
         goalEvents: goalEvents.sort((a, b) => a.minute - b.minute),
         cardEvents: cardEvents.sort((a, b) => a.minute - b.minute),
+        woodworkEvents,
         timeline,
         ratings,
         expected: lambda,

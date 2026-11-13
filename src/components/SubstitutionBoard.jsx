@@ -1,5 +1,7 @@
 import { naturalPositionOf, positionOverall, positionPenalty } from '../systems/roster'
 import TeamColorPanel from './TeamColorPanel'
+import FormationPicker from './FormationPicker'
+import { TACTICS } from '../systems/constants'
 import { clubOfPlayer, teamColorOf } from '../services/teamColor'
 import { useMemo, useState } from 'react'
 import { shortPlayerName } from '../utils/names'
@@ -174,6 +176,10 @@ export default function SubstitutionBoard({
     // Phase 29K
     onSetLineup = null,
     onApplyPreset = null,
+    // Phase 30A: trong trận đổi được sơ đồ + chiến thuật ngay trong bảng này.
+    tacticKey = null,
+    onTacticChange = null,
+    onFormationChange = null,
 }) {
     const [picked, setPicked] = useState(null)
     const [compare, setCompare] = useState(null)
@@ -395,7 +401,7 @@ export default function SubstitutionBoard({
                     <div>
                         <div className="match-card__eyebrow">TEAM MANAGEMENT</div>
                         <div className="sub-board__title">
-                            {isPrematch ? 'Starting lineup' : 'Substitutions'}
+                            {isPrematch ? 'Starting lineup' : 'Team & substitutions'}
                         </div>
                     </div>
                     {isPrematch ? (
@@ -442,6 +448,32 @@ export default function SubstitutionBoard({
                         </div>
                     )}
                 </div>
+
+                {/* Phase 30A: sơ đồ + chiến thuật trong trận (áp dụng khi đá tiếp) */}
+                {!isPrematch && (onFormationChange || onTacticChange) && (
+                    <div className="sub-tactics">
+                        {onTacticChange && (
+                            <label className="sub-tactics__tactic">
+                                <span>TACTIC</span>
+                                <select value={tacticKey || 'balanced'} onChange={(event) => onTacticChange(event.target.value)} aria-label="Team tactic">
+                                    {Object.entries(TACTICS).map(([key, value]) => (
+                                        <option key={key} value={key}>{value.label}</option>
+                                    ))}
+                                </select>
+                                <small>{TACTICS[tacticKey]?.summary}</small>
+                            </label>
+                        )}
+                        {onFormationChange && (
+                            <div className="sub-tactics__formation">
+                                <span>FORMATION · {team.formationKey}</span>
+                                <FormationPicker value={team.formationKey} onChange={onFormationChange} compact />
+                            </div>
+                        )}
+                        <p className="sub-tactics__note">
+                            Changing formation, tactic or swapping two starters does not use a substitution.
+                        </p>
+                    </div>
+                )}
 
                 {isPrematch && onApplyPreset && (
                     <div className="sub-presets" aria-label="Saved lineups">

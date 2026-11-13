@@ -190,7 +190,7 @@ export function HalfTimeOverlay({
                         <div className="halftime-settings__subs">
                             <em>{substitutionCount}/{maxSubstitutions} used</em>
                             <button type="button" className="btn btn--small" onClick={onOpenSubs}>
-                                OPEN SUBSTITUTIONS
+                                TEAM &amp; SUBSTITUTIONS
                             </button>
                         </div>
                     </div>

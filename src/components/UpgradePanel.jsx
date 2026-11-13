@@ -16,6 +16,7 @@ import {
 import { squadGroupOf, squadOf } from '../systems/roster'
 import { shortPlayerName } from '../utils/names'
 import { userClubId } from '../services/career'
+import { milestoneLabel, recordUpgradeSuccess, rewardFor, rewardLabel } from '../services/upgradeAchievements'
 
 // Phase 25: màn đập thẻ (tab UPGRADE trong CARDS).
 //  - Thẻ chính: bất kỳ thẻ nào (đá chính / dự bị / đội hình ngoài).
@@ -50,7 +51,9 @@ function CardRow({ player, group, active, disabled, note, onClick }) {
     )
 }
 
-export default function UpgradePanel({ club, team, onRosterChange, onClubChange, onFindCopy }) {
+export default function UpgradePanel({ club, team, onRosterChange, onClubChange, onFindCopy, onOpenAchievements = null }) {
+    // Phase 31: mốc thành tích vừa đạt sau một lần đập ([{ level, milestone }]).
+    const [achieved, setAchieved] = useState(null)
     const [mainId, setMainId] = useState(null)
     const [materialId, setMaterialId] = useState(null)
     const [extraIds, setExtraIds] = useState([])
@@ -167,6 +170,9 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
         const outcome = rollUpgrade(main, material, extras, Math.random, { protect: protecting, boost: boostTotal })
         const boostIds = boostUsed.map((item) => item.id)
         const consumed = new Set([material.id, ...extras.map((card) => card.id)])
+        // Phase 31: đập thành công → đếm cho thành tích mốc +N (trước khi đổi đội hình).
+        const squadBefore = squadOf(team)
+        const reached = outcome.success ? recordUpgradeSuccess(club, outcome.to, squadBefore).reached : []
 
         onRosterChange((current) =>
             current.map((entry) => {
@@ -191,10 +197,14 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
 
             consumed.forEach((id) => delete contracts[id])
 
-            const next = spendItemsById({ ...current, contracts }, boostIds)
+            let next = spendItemsById({ ...current, contracts }, boostIds)
 
-            return protecting ? spendProtection(next) || next : next
+            next = protecting ? spendProtection(next) || next : next
+
+            return outcome.success ? recordUpgradeSuccess(next, outcome.to, squadBefore).club : next
         })
+
+        setAchieved(reached.length ? reached : null)
 
         setAnim({
             before: main,
@@ -224,6 +234,20 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
 
     return (
         <div className="upgrade-panel" data-step={main ? 'detail' : 'list'}>
+            {/* Phase 31: vừa đạt mốc thành tích (hiện sau khi đóng hoạt cảnh) */}
+            {achieved && !anim && (
+                <div className="ach-toast" role="status">
+                    <span className="ach-toast__star" aria-hidden="true">★</span>
+                    <div>
+                        <b>ACHIEVEMENT · {achieved.map((item) => milestoneLabel(item.level, item.milestone)).join(' · ')}</b>
+                        <small>{achieved.map((item) => rewardLabel(rewardFor(item.level, item.milestone))).join(' · ')} — claim it in ACHIEVEMENTS</small>
+                    </div>
+                    {onOpenAchievements && (
+                        <button type="button" className="btn btn--small btn--primary" onClick={onOpenAchievements}>CLAIM →</button>
+                    )}
+                    <button type="button" className="link-btn" onClick={() => setAchieved(null)} aria-label="Dismiss">✕</button>
+                </div>
+            )}
             <div className="home-card upgrade-panel__list">
                 <div className="home-card__head">
                     <span>CHOOSE A CARD</span>

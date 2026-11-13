@@ -290,7 +290,10 @@ function SetupCard({
                 {tab === 'difficulty' && (
                     difficultyLocked ? (
                         <p className="setup-card__hint">
-                            <b>{difficulty?.label}</b> · locked until next season (choose before your first match of a season).
+                            {/* Phase 30C: World Cup có độ khó riêng, chọn khi bắt đầu giải */}
+                            <b>{difficulty?.label}</b> · {difficultyLocked === 'wc'
+                                ? 'World Cup difficulty, chosen when the tournament started.'
+                                : 'locked until next season (choose before your first match of a season).'}
                         </p>
                     ) : (
                         <DifficultyPicker

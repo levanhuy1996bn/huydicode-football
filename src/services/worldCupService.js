@@ -57,6 +57,7 @@ export function archiveWorldCup(world, wc) {
         skipped: Boolean(wc.skipped),
         season: wc.season,
         prize: wc.prize || 0,
+        difficulty: wc.difficulty || null,
     }
     const history = (world.worldCupHistory || []).filter((item) => item.key !== entry.key)
 
@@ -104,7 +105,8 @@ function seeded(seed) {
 
 // ---- Tạo giải ----
 // number: số thứ tự kỳ (World Cup #number); seed: hạt giống bốc thăm / mô phỏng.
-export function createWorldCup(season, nationId, { number = 1, seed = null } = {}) {
+// Phase 30C: difficulty = độ khó của giải (đối thủ + thưởng), chọn khi bắt đầu.
+export function createWorldCup(season, nationId, { number = 1, seed = null, difficulty = null } = {}) {
     const edition = `#${number}`
     const key = `n${number}`
     const drawSeed = seed ?? hashString(`wc:${key}:${nationId}`)
@@ -138,6 +140,7 @@ export function createWorldCup(season, nationId, { number = 1, seed = null } = {
         simulatedTo: 0,
         status: 'active',
         champion: null,
+        difficulty,
     }
 }
 

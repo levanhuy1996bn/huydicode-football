@@ -1,4 +1,4 @@
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier'
 
 const HALF_WIDTH = 3.66
 const HEIGHT = 2.5
@@ -10,18 +10,21 @@ export default function Goal({ z = -52.5 }) {
 
     return (
         <group position={[0, 0, z]}>
-            {/* Collider cột dọc + xà ngang: bóng dội ra */}
-            <RigidBody type="fixed" colliders={false} restitution={0.6} friction={0.3}>
+            {/* Collider cột dọc + xà ngang: bóng dội ra. Phase 30A: cột tròn
+                (trước là hộp vuông → góc bật lạ), nảy hơn; tiếng "ping" và thống kê
+                ở systems/woodwork.js. */}
+            <RigidBody type="fixed" colliders={false} restitution={0.78} friction={0.25}>
                 {[-HALF_WIDTH, HALF_WIDTH].map((x) => (
-                    <CuboidCollider
+                    <CylinderCollider
                         key={x}
-                        args={[POST, HEIGHT / 2, POST]}
+                        args={[HEIGHT / 2 + POST, POST]}
                         position={[x, HEIGHT / 2, 0]}
                     />
                 ))}
-                <CuboidCollider
-                    args={[HALF_WIDTH + POST, POST, POST]}
+                <CylinderCollider
+                    args={[HALF_WIDTH, POST]}
                     position={[0, HEIGHT, 0]}
+                    rotation={[0, 0, Math.PI / 2]}
                 />
             </RigidBody>
 
@@ -45,8 +48,8 @@ export default function Goal({ z = -52.5 }) {
             </RigidBody>
 
             {/* Xà ngang */}
-            <mesh position={[0, 2.5, 0]} castShadow>
-                <boxGeometry args={[7.32, 0.12, 0.12]} />
+            <mesh position={[0, 2.5, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[POST, POST, 7.32 + POST * 2, 12]} />
                 <meshStandardMaterial
                     color="#f7f7f7"
                     metalness={0.25}
@@ -57,7 +60,7 @@ export default function Goal({ z = -52.5 }) {
             {/* Hai cột dọc */}
             {[-3.66, 3.66].map((x) => (
                 <mesh key={x} position={[x, 1.25, 0]} castShadow>
-                    <boxGeometry args={[0.12, 2.5, 0.12]} />
+                    <cylinderGeometry args={[POST, POST, 2.5, 12]} />
                     <meshStandardMaterial
                         color="#f7f7f7"
                         metalness={0.25}

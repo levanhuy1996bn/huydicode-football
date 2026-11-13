@@ -79,7 +79,7 @@ function pressureFactor(nearest) {
 // Phase 29F: tầm sút theo Long shots (50 → ~25m, 75 → ~29m, 99 → 32m; trước
 // đây ai cũng chỉ ≤ 27m và từ 22m trở ra gần như không sút), Composure làm
 // cú sút bị chắn ít mất giá trị hơn (dám sút qua người).
-function evaluateShot(owner, direction, opponents, skills = {}) {
+export function evaluateShot(owner, direction, opponents, skills = {}) {
     const { longSkill = 0.5, composure = 0.5 } = skills
     const maxRange = 24 + Math.min(1, longSkill) * 8
     const goalZ = direction * FIELD.lineZ
@@ -125,6 +125,128 @@ function evaluateShot(owner, direction, opponents, skills = {}) {
     const blockedFactor = 0.3 + Math.min(1.2, composure) * 0.27
 
     return distanceFactor * angleFactor * (blocked ? blockedFactor : 1)
+}
+
+// ---- Phase 30B: dẫn thêm một nhịp vào vị trí sút đẹp ----
+// Trước đây gần vòng cấm AI so "chuyền" với "rê" bằng giá trị rê chung chung
+// (tối đa 0.58, không xét góc sút sẽ có) → hay chuyền ra biên dù chỉ cần dẫn
+// thêm một nhịp là có góc sút đẹp. Giờ AI nhìn trước ~0.8 giây:
+//   1. Thử vài hướng dẫn (thẳng vào khung, ngoặt vào trung lộ / chấm phạt đền,
+//      hướng rê thoáng nhất) → vị trí sẽ tới.
+//   2. Đường dẫn phải trống (không ai đứng chắn trong ~3–5m) và ở vị trí mới
+//      không bị áp sát quá (hậu vệ càng gần, cú sút ở đó càng mất giá trị).
+//   3. Chất lượng cú sút ở vị trí mới tốt hơn rõ rệt so với bây giờ → dẫn tiếp
+//      (giữ kế hoạch ~0.8 giây), chỉ chuyền nếu có đồng đội trống trong vòng
+//      cấm với cơ hội tốt hơn hẳn.
+// Ngưỡng theo chỉ số: Ball control / Agility / Composure cao dám dẫn hơn.
+export const LOOKAHEAD_TIME = 0.8
+const CARRY_SPEED = 5.3 // m/s khi dẫn bóng sát chân
+const LANE_WIDTH = 1.5
+const PLAN_HOLD = 0.8
+
+// Hậu vệ (đang hoạt động, không tính thủ môn) chắn đường dẫn từ A theo hướng d dài `length`.
+function laneBlocked(position, dx, dz, length, opponents) {
+    return opponents.some((opponent) => {
+        if (!opponent.active || opponent.item.role === 'GK') return false
+
+        const relX = opponent.x - position.x
+        const relZ = opponent.z - position.z
+        const along = relX * dx + relZ * dz
+        const lateral = Math.abs(relX * dz - relZ * dx)
+
+        return along > -0.3 && along < length + 1.2 && lateral < LANE_WIDTH
+    })
+}
+
+// Các hướng dẫn thử: vào khung thành, ngoặt vào chấm phạt đền (cầu thủ chạy
+// cánh ngoặt vào trong), hướng rê thoáng nhất hiện tại.
+function lookaheadDirections(position, direction, choice) {
+    const goalZ = direction * FIELD.lineZ
+    const list = []
+    const add = (x, z, kind) => {
+        const length = Math.hypot(x, z)
+
+        if (length > 0.01) list.push({ x: x / length, z: z / length, kind })
+    }
+
+    add(-position.x * 0.6, goalZ - position.z, 'goal')
+    if (Math.abs(position.x) > 7) add(-position.x, direction * (FIELD.lineZ - 11) - position.z, 'cutInside')
+    if (choice) add(choice.x, choice.z, 'open')
+
+    return list
+}
+
+// Kế hoạch dẫn bóng tốt nhất (hoặc null). opponents = danh sách opponentsNear.
+// skills = { longSkill, composure, control } (0..1+).
+export function planCarry(position, direction, opponents, skills = {}, choice = null) {
+    const advance = position.z * direction
+
+    // Chỉ trong 1/3 cuối sân, chưa sát đường biên ngang.
+    if (advance < 20 || advance > FIELD.lineZ - 3) return null
+
+    const owner = { position }
+    const now = evaluateShot(owner, direction, opponents, skills)
+    const nearest = opponents.find((opponent) => opponent.active && opponent.item.role !== 'GK')
+
+    // Đang bị áp sát ngay trước mặt thì không dẫn tiếp được.
+    if (nearest && nearest.distance < 1.6) return null
+
+    const freeAhead = !nearest || nearest.distance > 7
+    const step = CARRY_SPEED * LOOKAHEAD_TIME * (freeAhead ? 1.2 : 1)
+    let best = null
+
+    lookaheadDirections(position, direction, choice).forEach((dir) => {
+        if (laneBlocked(position, dir.x, dir.z, step, opponents)) return
+
+        const target = {
+            x: clamp(position.x + dir.x * step, FIELD.minX + 1, FIELD.maxX - 1),
+            y: 0,
+            z: position.z + dir.z * step,
+        }
+
+        if (target.z * direction > FIELD.lineZ - 1.5) return
+
+        // Áp lực ở vị trí mới: hậu vệ gần nhất tới đó (họ cũng di chuyển ~0.8s).
+        const pressure = opponents.reduce((min, opponent) => {
+            if (!opponent.active || opponent.item.role === 'GK') return min
+
+            return Math.min(min, Math.hypot(opponent.x - target.x, opponent.z - target.z))
+        }, Infinity)
+        const pressureFactor = clamp((pressure - 1.2) / 3.3, 0.35, 1)
+        const shot = evaluateShot({ position: target }, direction, opponents, skills) * pressureFactor
+
+        if (!best || shot > best.shot) best = { dirX: dir.x, dirZ: dir.z, kind: dir.kind, shot, target, pressure }
+    })
+
+    if (!best) return null
+
+    const control = clamp(skills.control ?? 0.5, 0, 1.2)
+    const composure = clamp(skills.composure ?? 0.5, 0, 1.2)
+    const gain = best.shot - now
+    const needGain = 0.1 - control * 0.04 - composure * 0.02
+
+    if (best.shot < 0.3 || gain < needGain) return null
+
+    return { ...best, now, gain }
+}
+
+// Chuyền ra biên / về sau từ trung lộ trước vòng cấm bị trừ điểm, trừ khi
+// người nhận ở trong vòng cấm (cơ hội tốt hơn).
+export function penaliseRetreatPasses(options, position, direction) {
+    const advance = position.z * direction
+
+    if (advance < 24 || Math.abs(position.x) > 13) return options
+
+    return options
+        .map((option) => {
+            if (option.inBox) return option
+
+            const wider = option.targetX != null && Math.abs(option.targetX) > Math.abs(position.x) + 6
+            const backwards = option.progress < -1
+
+            return wider || backwards ? { ...option, value: option.value * (backwards ? 0.7 : 0.78), retreat: true } : option
+        })
+        .sort((a, b) => b.value - a.value)
 }
 
 // Chấm điểm mọi lựa chọn chuyền bóng. Trả về danh sách đã sắp xếp (tốt nhất trước).
@@ -239,6 +361,8 @@ function evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, { all
                 progress,
                 inBox,
                 switchPlay,
+                targetX: candidate.targetPosition.x,
+                open,
                 value: value * visionFactor,
             })
         })
@@ -507,9 +631,14 @@ export function updateCarrierAI(ctx, dt) {
     }
 
     // ---- 2. Chuyền ----
-    const options = evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, {
-        allowKeeper: (close || role === 'DF') && advance < -5,
-    })
+    // Phase 30B: chuyền ra biên / về sau từ trung lộ trước vòng cấm bị trừ điểm.
+    const options = penaliseRetreatPasses(
+        evaluatePasses(ctx, ownerId, ownerItem, owner, direction, tactic, {
+            allowKeeper: (close || role === 'DF') && advance < -5,
+        }),
+        owner.position,
+        direction,
+    )
 
     const minSafety = 0.62 - tactic.risk * 0.14
     const best = options.find((option) => option.safety >= minSafety) || null
@@ -523,6 +652,42 @@ export function updateCarrierAI(ctx, dt) {
         if (!best || decisive > best.value) {
             if (shootWithVariant(ctx, ownerId, ownerItem, owner)) return
         }
+    }
+
+    // ---- Phase 30B: dẫn thêm một nhịp vào vị trí sút đẹp ----
+    if (role !== 'GK' && (role !== 'DF' || advance > 30)) {
+        const skills = {
+            longSkill: skill01(attr(ownerItem, 'longShots')),
+            composure,
+            control: (skill01(attr(ownerItem, 'ballControl')) + skill01(attr(ownerItem, 'agility'))) / 2,
+        }
+        const vision = Math.min(1.2, skill01(attr(ownerItem, 'vision')))
+        const planActive = carry.plan && carry.time < carry.plan.until &&
+            !laneBlocked(owner.position, carry.plan.dirX, carry.plan.dirZ, 3, pressers)
+        const plan = planActive ? carry.plan : planCarry(owner.position, direction, pressers, skills, chooseDribbleDirection(owner, direction, pressers.slice(0, 6), carry))
+
+        if (plan) {
+            // Đồng đội trống trong vòng cấm với cơ hội tốt hơn hẳn → vẫn chuyền
+            // (Vision cao nhận ra sớm hơn).
+            const better = options.find((option) =>
+                option.inBox && option.safety >= minSafety && option.open > 3.5 &&
+                option.value * (0.9 + vision * 0.25) > plan.shot * 1.1,
+            )
+
+            if (better && passTo(ctx, ownerId, better)) {
+                carry.plan = null
+                return
+            }
+
+            if (!planActive) carry.plan = { dirX: plan.dirX, dirZ: plan.dirZ, kind: plan.kind, shot: plan.shot, until: carry.time + PLAN_HOLD }
+            carry.dirX = carry.plan.dirX
+            carry.dirZ = carry.plan.dirZ
+            carry.sprint = (pressers[0]?.distance ?? Infinity) > 6
+            dribble(ctx, ownerItem, owner, carry, carry.sprint ? SPRINT_SCALE : CONTROL_SCALE, dt)
+            return
+        }
+
+        carry.plan = null
     }
 
     // Tạt bóng: ở biên trong 1/3 cuối sân, có đồng đội trong vòng cấm.

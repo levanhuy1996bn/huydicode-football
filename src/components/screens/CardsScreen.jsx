@@ -16,6 +16,8 @@ import { CLUB_XP, clubXpToNext, levelRewards } from '../../services/clubProgress
 import { SQUAD_LIMITS, squadOf } from '../../systems/roster'
 import { PlayerCardView } from '../CardBits'
 import UpgradePanel from '../UpgradePanel'
+import AchievementsPanel from '../AchievementsPanel'
+import { pendingAchievementCount } from '../../services/upgradeAchievements'
 import { maxSquadForm, restoreSquadFitness } from '../../systems/form'
 import { userClubId } from '../../services/career'
 
@@ -139,7 +141,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         else openPack(item)
     }
 
-    const rewardsView = tab !== 'upgrade'
+    const rewardsView = tab !== 'upgrade' && tab !== 'achievements'
+    // Phase 31: thành tích đập thẻ đang chờ nhận.
+    const achievementsPending = pendingAchievementCount(club, squad)
     const epTotal = inventory.filter((item) => item.type === 'ep').reduce((sum, item) => sum + item.amount, 0)
 
     const openAllEp = () => {
@@ -189,6 +193,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                     ['rewards', `REWARDS · ${inventory.length}`, `REWARDS · ${inventory.length}`],
                     ['shop', null, 'SHOP'],
                     ['upgrade', 'UPGRADE CARDS', 'UPGRADE'],
+                    ['achievements', 'ACHIEVEMENTS', '★'],
                     ['info', null, 'EARN'],
                 ].map(([id, label, phoneLabel]) => {
                     // Máy tính: REWARDS sáng khi đang ở rewards / shop / info.
@@ -208,6 +213,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         >
                             {label && <span className="dt-only">{label}</span>}
                             <span className="ph-only">{phoneLabel}</span>
+                            {id === 'achievements' && achievementsPending > 0 && (
+                                <em className="cards-tab__badge">{achievementsPending}</em>
+                            )}
                         </button>
                     )
                 })}
@@ -220,6 +228,17 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                     onRosterChange={onRosterChange}
                     onClubChange={onClubChange}
                     onFindCopy={onOpenTransfers}
+                    onOpenAchievements={() => setTab('achievements')}
+                />
+            )}
+
+            {/* Phase 31: thành tích đập thẻ */}
+            {tab === 'achievements' && (
+                <AchievementsPanel
+                    club={club}
+                    team={team}
+                    onClubChange={onClubChange}
+                    onOpenRewards={() => setTab('rewards')}
                 />
             )}
 
