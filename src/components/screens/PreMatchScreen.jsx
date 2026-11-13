@@ -113,7 +113,7 @@ export function DifficultyPicker({ difficulty, locked, onChange }) {
     )
 }
 
-function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false, onEdit = null, onOpenPlayer = null, children = null }) {
+function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false, onEdit = null, onOpenPlayer = null, children = null, className = '' }) {
     // Phase 26D: OVR hiển thị đã cộng team color (mũi tên xanh, rê chuột xem gốc).
     const teamColor = teamColorOf(players)
     // Sau Phase 27: đá trái vị trí → OVR hiển thị giảm (chỉ số thật không đổi).
@@ -126,7 +126,7 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
     })
 
     return (
-        <div className={`lineup lineup--${align}`}>
+        <div className={`lineup lineup--${align} ${className}`.trim()}>
             <div className="lineup__head" style={{ '--team': color }}>
                 <span>{title}</span>
                 <span className="lineup__head-side">
@@ -334,6 +334,8 @@ export default function PreMatchScreen({
 }) {
     // Phase 29K: bảng thông tin cầu thủ ({ player, side }).
     const [info, setInfo] = useState(null)
+    // Phase 29A4a: trên điện thoại hiện từng phần theo tab.
+    const [phoneTab, setPhoneTab] = useState('team')
 
     if (!fixture || !blueTeam || !opponentTeam) {
         return (
@@ -420,7 +422,22 @@ export default function PreMatchScreen({
                 </div>
             </div>
 
-            <div className="prematch-body">
+            <div className="phone-tabs" role="tablist" aria-label="Pre-match sections">
+                {[['team', 'MY TEAM'], ['setup', 'SETUP'], ['opponent', 'OPPONENT']].map(([id, label]) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === id}
+                        className={phoneTab === id ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(id)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="prematch-body" data-phone-tab={phoneTab}>
                 <Lineup
                     title={userTeam().name}
                     color={blueColor}
@@ -429,16 +446,17 @@ export default function PreMatchScreen({
                     showCondition
                     onEdit={onEditLineup}
                     onOpenPlayer={(player) => setInfo({ player, side: 'blue' })}
+                    className="phone-tab--team"
                 >
                     {/* Phase 29K (điện thoại): dải thẻ Thể lực / Phong độ ngay dưới đội hình */}
                     {squadItems && (
                         <div className="squad-cards-phone">
-                            <SquadCardsBox team={blueTeam} items={squadItems} compact />
+                            <SquadCardsBox team={blueTeam} items={squadItems} compact showWarnings />
                         </div>
                     )}
                 </Lineup>
 
-                <div className="prematch-setup">
+                <div className="prematch-setup phone-tab--setup">
                     <SetupCard
                         summary={summary}
                         formationKey={blueTeam.formationKey}
@@ -469,6 +487,7 @@ export default function PreMatchScreen({
                     align="right"
                     showUpgrade
                     onOpenPlayer={(player) => setInfo({ player, side: 'red' })}
+                    className="phone-tab--opponent"
                 />
             </div>
 

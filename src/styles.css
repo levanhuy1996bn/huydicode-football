@@ -3550,3 +3550,477 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
   .sub-card--pitch { width: 96px; }
   .sub-card__tags i { display: none; }
 }
+
+/* ---- Phase 29A4a: giao diện quản lý trên điện thoại (khung chung, HOME, PLAY) ---- */
+.mobile-tabbar, .mobile-more, .phone-tabs { display: none; }
+
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  /* Header gọn một dòng: logo · mùa giải · EP · ⚙ (menu chuyển xuống dưới) */
+  .app-shell:not(.is-match-screen) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .app-shell:not(.is-match-screen) > .topbar {
+    position: sticky; top: 0; z-index: 40;
+    flex-wrap: nowrap; height: auto; gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 0 8px;
+    background: #0b1812;
+  }
+  .app-shell:not(.is-match-screen) > .topbar nav { display: none; }
+  .topbar .brand { min-width: 0; gap: 0; }
+  .topbar .brand > div:not(.brand-mark) { display: none; }
+  .topbar .brand-mark { width: 34px; height: 34px; font-size: 17px; }
+  .topbar .season-label { margin-left: 4px; margin-right: auto; font-size: 9px; line-height: 1.5; }
+  .topbar .season-label__level { display: none; }
+  .topbar .topbar-tools { gap: 6px; }
+
+  /* Thanh tab dưới đáy */
+  .mobile-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    height: auto; gap: 0; align-items: stretch;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    background: rgba(9, 22, 16, 0.97); border-top: 1px solid #294137;
+    backdrop-filter: blur(6px);
+  }
+  .mobile-tabbar button {
+    position: relative; height: auto; display: grid; justify-items: center; gap: 2px;
+    padding: 6px 2px 4px; border: 0; border-radius: 10px; background: none;
+    color: #8aa497; font: 800 9px Inter, sans-serif; letter-spacing: .8px; cursor: pointer;
+    border-bottom: 0;
+  }
+  .mobile-tabbar button.is-active { color: #c7fa7c; background: rgba(199, 250, 124, 0.08); }
+  .mobile-tabbar__badge {
+    position: absolute; top: 2px; left: 55%; min-width: 16px; padding: 1px 4px; border-radius: 99px;
+    background: #ff4d4d; color: #fff; font: 800 9px Inter, sans-serif; font-style: normal;
+  }
+  .mobile-more { display: block; position: fixed; inset: 0; z-index: 59; background: rgba(3, 10, 7, 0.6); }
+  .mobile-more__sheet {
+    position: absolute; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom));
+    display: grid; gap: 6px; padding: 10px 12px 14px;
+    border-radius: 16px 16px 0 0; background: #0f1d16; border-top: 1px solid #2f4a3c;
+    animation: more-up 0.18s ease-out;
+  }
+  .mobile-more__handle { justify-self: center; width: 40px; height: 4px; border-radius: 4px; background: #3c5c4b; margin-bottom: 4px; }
+  .mobile-more__item {
+    display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid #2b4839; background: #13281e; color: #fff; cursor: pointer;
+  }
+  .mobile-more__item b { font: 800 13px Inter, sans-serif; letter-spacing: 1px; }
+  .mobile-more__item small { color: #86a093; font-size: 11px; }
+  .mobile-more__item.is-active { border-color: #b9ed70; }
+
+  /* Tab con trong một màn (HOME, PLAY) */
+  .phone-tabs {
+    position: sticky; top: calc(50px + env(safe-area-inset-top)); z-index: 30;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px;
+    margin: 12px 0; padding: 4px; border-radius: 10px; background: #0f2219; border: 1px solid #2b4839;
+  }
+  .phone-tabs button {
+    padding: 9px 4px; border: 0; border-radius: 7px; background: none; color: #9fb8a9;
+    font: 800 11px Inter, sans-serif; letter-spacing: 1px; cursor: pointer;
+  }
+  .phone-tabs button.is-active { background: #b9ed70; color: #0b1a12; }
+
+  /* HOME: một nhóm ô mỗi lần; cài đặt nằm ở MORE → SETTINGS */
+  .home-grid { grid-template-columns: 1fr; }
+  .home-grid .phone-tab--settings { display: none; }
+  .home-grid[data-phone-tab="table"] > :is(.phone-tab--season, .phone-tab--squad),
+  .home-grid[data-phone-tab="season"] > :is(.phone-tab--table, .phone-tab--squad),
+  .home-grid[data-phone-tab="squad"] > :is(.phone-tab--table, .phone-tab--season) { display: none; }
+
+  /* PLAY: MY TEAM / SETUP / OPPONENT; nút đá cố định trên thanh tab */
+  .prematch-body { grid-template-columns: 1fr; }
+  .prematch-setup { order: 0; grid-column: auto; }
+  .prematch-body[data-phone-tab="team"] > :is(.phone-tab--setup, .phone-tab--opponent),
+  .prematch-body[data-phone-tab="setup"] > :is(.phone-tab--team, .phone-tab--opponent),
+  .prematch-body[data-phone-tab="opponent"] > :is(.phone-tab--team, .phone-tab--setup) { display: none; }
+  .prematch-screen { padding-bottom: 120px; }
+  .prematch-screen .prematch-actions {
+    position: fixed; left: 8px; right: 8px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 45;
+    display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; width: auto; margin: 0;
+    padding: 8px; border-radius: 12px; background: rgba(11, 24, 18, 0.97); border: 1px solid #2f4a3c;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.45);
+  }
+  .prematch-screen .prematch-actions .btn--large { padding: 12px 8px; font-size: 14px; }
+  .prematch-screen .prematch-length { grid-column: 1 / -1; justify-content: center; }
+  .squad-cards-phone { display: block; }
+  .squad-cards-desktop { display: none; }
+  .squad-cards__warnings--strip { flex-basis: 100%; margin: 4px 0 0; padding-left: 16px; display: grid; gap: 2px; font-size: 11px; }
+
+  /* Hộp thoại toàn màn hình */
+  .club-picker-overlay { padding: 0; }
+  .club-picker, .settings-dialog {
+    width: 100vw; max-height: none; height: 100dvh; border-radius: 0; border: 0;
+    padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .modal-host .match-overlay--top { padding: 0; }
+  .modal-host .sub-board, .modal-host .player-info-modal {
+    width: 100vw; height: 100dvh; max-height: none; border-radius: 0; border: 0;
+    padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .sub-board__footer { position: sticky; bottom: 0; padding: 8px 0 0; background: rgba(8, 18, 14, 0.96); }
+  .sub-tools__filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .sub-tools .chip { white-space: nowrap; }
+  .app-shell:not(.is-match-screen) > footer { display: none; }
+
+  /* Tiêu đề trước trận gọn hơn */
+  .prematch-header { gap: 4px; }
+  .prematch-header h1.prematch-title { font-size: 24px; line-height: 1.1; flex-wrap: wrap; gap: 6px; }
+  .prematch-header h1.prematch-title span { font-size: 14px; margin: 0 2px; }
+  .prematch-title .club-crest { width: 24px; height: 26px; }
+  .prematch-header p { font-size: 11px; margin-top: 4px; }
+  .prematch-screen .prematch-length { gap: 6px; font-size: 9px; }
+  .prematch-screen .prematch-length .segmented button { padding: 3px 9px; font-size: 10px; }
+
+  /* Bảng xếp đội hình gọn trên điện thoại */
+  .sub-board { padding-left: 12px; padding-right: 12px; }
+  .sub-board__header .match-card__eyebrow { font-size: 10px; letter-spacing: 2px; }
+  .sub-board__title { font-size: 20px; }
+  .sub-board__count { font-size: 16px; }
+  .sub-board .team-color__row small { display: none; }
+  .sub-board .team-color__row { padding-block: 2px; }
+  .sub-presets { gap: 6px; }
+  .sub-presets__slot { padding: 3px 6px; }
+  .sub-presets input { flex: 1; min-width: 110px; }
+  /* Thẻ trên sân nhỏ lại để 11 người không che nhau */
+  .sub-pitch { height: clamp(380px, 62vh, 540px); }
+  .sub-card--pitch { width: 76px; padding: 3px 4px 3px 3px; column-gap: 4px; }
+  .sub-card--pitch .sub-card__number { min-width: 20px; padding: 2px 0; font-size: 12px; }
+  .sub-card--pitch .sub-card__name { font-size: 9px; }
+  .sub-card--pitch .sub-card__meta { font-size: 9px; }
+  .sub-card--pitch .sub-card__mini { display: none; }
+}
+/* Điện thoại xoay ngang: màn hình thấp → thanh tab gọn, nút đá không cố định,
+   header không dính trên cùng (để còn chỗ cho nội dung). */
+@media (max-height: 500px) and (pointer: coarse) {
+  .app-shell:not(.is-match-screen) > .topbar { position: static; }
+  .phone-tabs { top: 0; }
+  .mobile-tabbar { grid-template-columns: repeat(5, 1fr); padding-top: 2px; padding-bottom: calc(2px + env(safe-area-inset-bottom)); }
+  .mobile-tabbar button { grid-auto-flow: column; align-items: center; justify-content: center; gap: 6px; padding: 5px 2px; }
+  .mobile-tabbar svg { width: 18px; height: 18px; }
+  .app-shell:not(.is-match-screen) { padding-bottom: calc(50px + env(safe-area-inset-bottom)); }
+  .mobile-more__sheet { bottom: calc(40px + env(safe-area-inset-bottom)); grid-template-columns: 1fr 1fr; max-height: 80vh; overflow-y: auto; }
+  .prematch-screen { padding-bottom: 0; }
+  .prematch-screen .prematch-actions { position: static; box-shadow: none; margin-top: 8px; }
+}
+@keyframes more-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- Phase 29A4b: SQUAD, CARDS, TRANSFERS trên điện thoại ---- */
+.ph-only, .cards-tab--phone, .dev-phone-nav, .upgrade-back, .market-phone-bar { display: none; }
+
+/* Hộp thông tin cầu thủ ở thị trường (mọi màn hình) */
+.market-detail {
+  position: relative; width: min(720px, 100%); max-height: 92%; overflow-y: auto; box-sizing: border-box;
+  padding: 20px 22px; border-radius: 12px; background: #14291e; border: 1px solid #547565; color: #fff;
+}
+.market-detail__money { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 14px 0 0; }
+.market-detail__money div { padding: 8px 10px; border-radius: 8px; background: #1b3428; }
+.market-detail__money dt { font-size: 9px; letter-spacing: 1.2px; color: #9bb5a4; text-transform: uppercase; }
+.market-detail__money dd { margin: 2px 0 0; font-weight: 800; font-size: 13px; }
+.market-detail__money .is-down { color: #ff9b7a; }
+.market-detail__actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 14px; }
+
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  :root { --tabbar-h: calc(60px + env(safe-area-inset-bottom)); }
+  .ph-only { display: inline; }
+  .dt-only { display: none; }
+
+  .phone-tabs__badge {
+    margin-left: 5px; padding: 1px 5px; border-radius: 99px; background: #ff4d4d; color: #fff;
+    font: 800 9px Inter, sans-serif; font-style: normal; vertical-align: 1px;
+  }
+
+  /* Tiêu đề màn gọn (SQUAD) */
+  .development-screen .prematch-header h1 { font-size: 24px; line-height: 1.1; margin: 4px 0 0; }
+  .development-screen .dev-intro { display: none; }
+
+  /* SQUAD: TEAM / PLAYERS / TRAINING */
+  .development-screen { gap: 0; }
+  .development-screen .squad-top { margin-bottom: 0; }
+  .development-screen .dev-body { grid-template-columns: 1fr; }
+  .development-screen[data-phone-tab="team"] :is(.phone-tab--players, .phone-tab--training),
+  .development-screen[data-phone-tab="players"] :is(.phone-tab--team, .phone-tab--training),
+  .development-screen[data-phone-tab="training"] :is(.phone-tab--team, .phone-tab--players) { display: none; }
+  .development-screen .dev-list { max-height: none; overflow: visible; }
+  .development-screen .dev-row { padding-top: 9px; padding-bottom: 9px; }
+  .dev-phone-nav {
+    display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px;
+    margin: -4px 0 10px; padding-bottom: 10px; border-bottom: 1px solid #24402f;
+  }
+  .dev-phone-nav .link-btn { justify-self: start; }
+  .dev-phone-nav span { font-size: 11px; color: #8fb3a0; }
+  .dev-phone-nav .btn { min-width: 38px; font-size: 16px; padding: 4px 10px; }
+  .dev-detail__head { gap: 10px; }
+  .dev-detail__head h2 { font-size: 20px; }
+  .dev-detail__points { flex-wrap: wrap; gap: 8px; }
+  .dev-pending {
+    position: sticky; bottom: calc(var(--tabbar-h) + 6px); z-index: 20;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
+  }
+  .dev-groups { grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* CARDS: hero gọn + tab REWARDS / SHOP / UPGRADE / EARN */
+  .cards-hero { padding: 14px; }
+  .cards-hero > .home-hero__eyebrow { display: none; }
+  .cards-hero__row { grid-template-columns: auto minmax(0, 1fr); gap: 10px 14px; margin-top: 0; }
+  .cards-level { transform: scale(0.72); transform-origin: left center; margin-right: -24px; }
+  .cards-xp__label { font-size: 11px; text-align: left; }
+  .cards-hero__stats { gap: 14px; }
+  .cards-hero__stats b { font-size: 14px; }
+  .cards-screen { gap: 10px; }
+  .cards-screen .cards-tabs {
+    order: 0; width: auto; height: auto;
+    position: sticky; top: calc(50px + env(safe-area-inset-top)); z-index: 30;
+    display: grid; grid-template-columns: 1.4fr 1fr 1.2fr 1fr; gap: 4px;
+    padding: 4px; border-radius: 10px; background: #0f2219; border: 1px solid #2b4839;
+  }
+  .cards-screen .cards-tab {
+    display: block; height: auto; padding: 9px 2px; border: 0; border-radius: 7px; background: none;
+    color: #9fb8a9; font: 800 10px Inter, sans-serif; letter-spacing: .8px; white-space: nowrap;
+  }
+  .cards-screen .cards-tab.active { background: none; color: #9fb8a9; }
+  .cards-screen .cards-tab.is-phone-active { background: #b9ed70; color: #0b1a12; }
+  .cards-layout[data-phone-tab="rewards"] > :is(.phone-tab--shop, .phone-tab--info),
+  .cards-layout[data-phone-tab="shop"] > :is(.phone-tab--rewards, .phone-tab--info),
+  .cards-layout[data-phone-tab="info"] > :is(.phone-tab--rewards, .phone-tab--shop) { display: none; }
+  .cards-layout .home-card__head { flex-wrap: wrap; gap: 6px; }
+  .inventory-item { gap: 10px; }
+  .cards-shop__row { gap: 10px; }
+  .cards-shop__row .btn { white-space: nowrap; flex-shrink: 0; }
+
+  /* UPGRADE: bước 1 chọn thẻ → bước 2 nâng cấp */
+  .upgrade-panel { grid-template-columns: 1fr; }
+  .upgrade-panel[data-step="list"] .upgrade-panel__center,
+  .upgrade-panel[data-step="detail"] .upgrade-panel__list { display: none; }
+  .upgrade-back { display: inline-block; margin-bottom: 12px; font-size: 11px; }
+  .upgrade-main { grid-template-columns: 1fr; justify-items: center; }
+  .upgrade-main__info { width: 100%; }
+  .upgrade-list { max-height: none; }
+
+  /* TRANSFERS: màn hình đầy đủ phía trên thanh tab */
+  .modal-host--screen { bottom: var(--tabbar-h); }
+  .mobile-more { z-index: 210; }
+  .club-panel-overlay { padding: 0 !important; background: #0b1812 !important; }
+  .club-panel {
+    width: 100% !important; height: 100% !important; max-height: none !important;
+    border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  }
+  .club-panel__head { padding: calc(8px + env(safe-area-inset-top)) 12px 8px !important; }
+  .club-panel__title { font-size: 16px !important; margin-top: 1px !important; }
+  .club-panel__head > div:first-child > div:not(.club-panel__title) { display: none; }
+  .club-panel__tabs {
+    display: grid !important; grid-template-columns: 1.1fr 1fr 1.2fr 1.2fr; gap: 4px !important;
+    padding: 6px 8px !important; overflow: visible !important;
+  }
+  .club-panel__tabs button { padding: 8px 2px !important; font-size: 10px !important; letter-spacing: .5px; }
+  .club-panel__content { padding: 10px !important; }
+  .club-panel__foot { padding: 6px 10px !important; }
+
+  .market-phone-bar {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .market-phone-bar span { font-size: 11px; color: #9bb5a4; }
+  .market-filters { grid-template-columns: 1fr 1fr !important; margin-bottom: 8px !important; }
+  .market-filters > input { grid-column: 1 / -1; font-size: 16px !important; }
+  .market-filter-box .market-world-filters { grid-template-columns: 1fr 1fr; margin-bottom: 10px; }
+  .market-filter-box .market-world-filters select:first-child { grid-column: 1 / -1; }
+  .market-filter-box:not(.is-open) .market-filters > select,
+  .market-filter-box:not(.is-open) .market-world-filters { display: none !important; }
+  .market-filter-box select { font-size: 16px !important; padding: 6px 8px !important; }
+
+  /* Thẻ cầu thủ dạng danh sách gọn */
+  .market-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .market-card {
+    display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; column-gap: 10px;
+    padding: 9px 10px !important;
+  }
+  .market-card > :first-child { grid-column: 1 / -1; }
+  .market-card > :nth-child(2):not(.market-card__money) { grid-column: 1 / -1; margin-top: 6px !important; }
+  .market-card__money { flex-direction: column; justify-content: flex-start !important; gap: 1px; margin-top: 8px !important; }
+  .market-card__money span { font-size: 9px; color: #9bb5a4; letter-spacing: .5px; text-transform: uppercase; }
+  .market-card__btn { grid-column: 3; width: auto !important; margin-top: 8px !important; padding: 8px 12px !important; align-self: end; }
+
+  .contract-row { grid-template-columns: minmax(0, 1fr) 104px 58px !important; padding: 8px !important; }
+  .contract-row input, .contract-row select { font-size: 16px !important; padding: 5px 8px !important; }
+
+  /* Thông tin cầu thủ ở thị trường: toàn màn hình, nút ký cố định dưới */
+  .market-detail-overlay { padding: 0 !important; align-items: stretch !important; }
+  .market-detail {
+    width: 100%; max-height: none; height: 100%; border-radius: 0; border: 0;
+    padding: 14px 14px 0; display: flex; flex-direction: column;
+  }
+  .market-detail .player-info { grid-template-columns: 1fr; justify-items: center; }
+  .market-detail .player-info__body { width: 100%; }
+  .market-detail__money { grid-template-columns: 1fr 1fr; }
+  .market-detail__actions {
+    position: sticky; bottom: 0; margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: #14291e; border-top: 1px solid #2f4a3c;
+  }
+
+  /* Hộp xác nhận bán gọn trong màn hình */
+  .sell-confirm { width: calc(100% - 24px); max-height: calc(100% - 24px); overflow-y: auto; }
+}
+
+/* Điện thoại xoay ngang */
+@media (max-height: 500px) and (pointer: coarse) {
+  :root { --tabbar-h: calc(40px + env(safe-area-inset-bottom)); }
+  .cards-screen .cards-tabs, .phone-tabs { top: 0; }
+  .market-grid { grid-template-columns: 1fr 1fr !important; }
+  .market-detail .player-info { grid-template-columns: auto 1fr; justify-items: stretch; }
+  .upgrade-main { grid-template-columns: auto 1fr; justify-items: stretch; }
+  .club-panel__head { padding-top: 4px !important; padding-bottom: 4px !important; }
+  .club-panel__tabs { padding: 4px 8px !important; }
+  .club-panel__tabs button { padding: 6px 2px !important; }
+  .development-screen .prematch-header .home-hero__eyebrow,
+  .development-screen .prematch-header > .link-btn { display: none; }
+  .development-screen .prematch-header h1 { font-size: 20px; }
+  .cards-hero { padding: 8px 14px; }
+  .cards-hero__row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .cards-hero__stats { grid-column: auto; }
+  .cards-level { transform: scale(0.55); margin: -20px -40px -20px 0; }
+}
+
+/* ---- Phase 29A4c: LEAGUE + cúp, WORLD CUP, TROPHIES, sau trận, mô phỏng trên điện thoại ---- */
+.cup-part-tabs, .trophy-detail__close { display: none; }
+
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  /* Tỉ số: tên CLB dài không còn đẩy trang rộng hơn màn hình */
+  .scoreline, .sim-score { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: start; }
+  .scoreline__team, .sim-team { min-width: 0; }
+  .scoreline__name {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    font-size: 14px !important; letter-spacing: .5px !important; line-height: 1.1; overflow-wrap: break-word;
+  }
+  .scoreline__team--away .scoreline__name { align-items: flex-start; }
+  .scoreline--large .scoreline__score { font-size: 54px; white-space: nowrap; }
+  .scoreline__score i { margin: 0 4px; }
+  .goal-list { font-size: 10px; line-height: 1.5; }
+  .sim-team { flex-direction: column; align-items: center; gap: 4px; font-size: 13px; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+  .sim-team--away { flex-direction: column-reverse; }
+  .sim-score b { font-size: 40px; white-space: nowrap; align-self: center; }
+  .sim-card { padding: 14px 12px; }
+  .sim-feed { font-size: 12px; }
+  .sim-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .sim-actions .btn--large { padding: 12px 6px; font-size: 13px; min-width: 0; }
+
+  /* Sau trận: nút gọn, tab STATS / PLAYERS / EVENTS / REWARDS */
+  .postmatch-screen { gap: 0; }
+  .postmatch-screen .home-hero { padding: 16px 12px; }
+  .postmatch-screen .home-hero__actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 14px; }
+  .postmatch-screen .home-hero__actions .btn { min-width: 0; padding: 10px 4px; font-size: 11px; letter-spacing: .6px; }
+  .postmatch-screen .home-hero__actions .btn--primary { grid-column: 1 / -1; padding: 13px 8px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .postmatch-screen .result-badge { margin-top: 8px; }
+  .postmatch-screen .postmatch-grid { gap: 12px; }
+  .postmatch-screen > .postmatch-grid + .postmatch-grid, .postmatch-screen > .phone-tab--rewards > * , .postmatch-screen > .home-card { margin-top: 12px; }
+  .postmatch-screen[data-phone-tab="stats"] :is(.phone-tab--players, .phone-tab--events, .phone-tab--rewards),
+  .postmatch-screen[data-phone-tab="players"] :is(.phone-tab--stats, .phone-tab--events, .phone-tab--rewards),
+  .postmatch-screen[data-phone-tab="events"] :is(.phone-tab--stats, .phone-tab--players, .phone-tab--rewards),
+  .postmatch-screen[data-phone-tab="rewards"] :is(.phone-tab--stats, .phone-tab--players, .phone-tab--events) { display: none; }
+  .ratings-table .rt-opt { display: none; }
+  .ratings-table { font-size: 12px; }
+  .postmatch-screen .home-card__head { flex-wrap: wrap; gap: 4px 8px; }
+
+  /* LEAGUE: màn hình đầy đủ phía trên thanh tab */
+  .league-overlay { bottom: var(--tabbar-h) !important; padding: 0 !important; z-index: 200 !important; backdrop-filter: none; }
+  .league-overlay .league-modal { width: 100% !important; height: 100% !important; max-height: none !important; border: 0; border-radius: 0; }
+  .league-overlay .league-header { height: 52px !important; padding: calc(4px + env(safe-area-inset-top)) 12px 4px !important; }
+  .league-overlay .league-header h2 { font-size: 15px; margin: 1px 0 0; }
+  .league-overlay .league-header p { display: none; }
+  .league-overlay .league-tabs {
+    top: 52px !important; height: 42px !important; min-height: 42px !important; max-height: 42px !important;
+    display: grid !important; grid-template-columns: 1.1fr 1fr 1.3fr .7fr .7fr; gap: 4px; padding: 0 8px !important;
+  }
+  .league-overlay .league-tab { padding: 8px 2px; font-size: 10px; letter-spacing: .5px; }
+  .league-overlay .league-content { top: 94px !important; padding: 10px !important; }
+  .league-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 8px 10px; }
+  .league-summary strong { font-size: 14px; }
+  .league-summary .league-primary-button { grid-column: 1 / -1; margin: 2px 0 0; width: 100%; }
+  .league-difficulty { display: none; }
+  .league-picker select { font-size: 16px; }
+  .league-table .col-wdl { display: none; }
+  .league-table th, .league-table td { padding: 8px 5px; }
+  .league-table .league-team-name { min-width: 0; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  .league-team-cell { display: flex; min-width: 0; }
+  .league-player-table .stat-col:not(.is-sorted) { display: none; }
+  .league-player-table .league-team-name { max-width: 170px; }
+  .league-fixture-toolbar { flex-wrap: wrap; }
+  .league-stat-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .league-stat-chips .league-chip { flex-shrink: 0; }
+  .league-fixture.league-fixture--user { grid-template-columns: 50px 22px minmax(0, 1fr) 44px 40px; gap: 6px; padding: 6px 8px; }
+  .league-fixture-team { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .league-fixture-list--compact .league-fixture { grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr); gap: 6px; padding: 7px 8px; }
+  .league-fixture-list--compact .league-fixture-team { white-space: normal; font-size: 11px; }
+
+  /* Cúp C1 / C2 / World Cup: MY MATCHES / GROUPS / KNOCKOUT */
+  .cup-part-tabs {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px;
+    margin: 10px 0 2px; padding: 4px; border-radius: 9px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+  }
+  .cup-part-tabs button {
+    padding: 8px 2px; border: 0; border-radius: 6px; background: none; color: #9aa9ba;
+    font: 800 10px Inter, sans-serif; letter-spacing: .8px; cursor: pointer;
+  }
+  .cup-part-tabs button.is-active { background: #247ce0; color: #fff; }
+  .wc-screen .cup-part-tabs button.is-active { background: #b9ed70; color: #0b1a12; }
+  .cup-panel[data-part="matches"] :is(.cup-part--groups, .cup-part--ko),
+  .cup-panel[data-part="groups"] :is(.cup-part--matches, .cup-part--ko),
+  .cup-panel[data-part="ko"] :is(.cup-part--matches, .cup-part--groups) { display: none; }
+  .cup-panel__head { flex-wrap: wrap; gap: 8px; }
+  .cup-groups { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cup-group { padding: 6px 7px; min-width: 0; }
+  .cup-group table { font-size: 11px; }
+  .cup-group td { padding: 3px 2px; }
+  .cup-bracket, .cup-bracket--wc { grid-template-columns: 1fr; gap: 12px; }
+
+  /* Chọn đội tuyển: danh sách không bị ép mất, nút xác nhận dính dưới */
+  .nation-picker__body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px; align-content: start; }
+  .nation-picker__list { max-height: 36vh; min-height: 150px; }
+  .nation-picker__squad .btn--primary { position: sticky; bottom: 0; box-shadow: 0 -8px 16px rgba(15, 29, 22, 0.9); }
+
+  /* WORLD CUP: TOURNAMENT / PRIZES */
+  .wc-screen { gap: 0; }
+  .wc-screen .wc-intro { display: none; }
+  .wc-screen .prematch-header h1.prematch-title { font-size: 26px; }
+  .wc-top { grid-template-columns: 1fr; margin-bottom: 12px; }
+  .wc-screen[data-phone-tab="play"] .phone-tab--info,
+  .wc-screen[data-phone-tab="info"] .phone-tab--play { display: none; }
+  .wc-hero { padding: 16px 12px; }
+  .wc-hero__match { gap: 10px; }
+  .wc-hero__match b { font-size: 15px; }
+  .wc-history .career-table td { white-space: normal; }
+
+  /* TROPHIES: SHELF / CAREER, chi tiết cúp là một bảng riêng */
+  .trophy-screen { gap: 0; }
+  .trophy-screen .trophy-intro { display: none; }
+  .trophy-screen .prematch-header h1.prematch-title { font-size: 26px; }
+  .trophy-screen[data-phone-tab="shelf"] .phone-tab--career,
+  .trophy-screen[data-phone-tab="career"] .phone-tab--shelf { display: none; }
+  .trophy-screen .trophy-stats { margin-bottom: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .trophy-screen .trophy-stat { padding: 8px 6px; min-width: 0; }
+  .trophy-screen .trophy-stat b { font-size: 18px; }
+  .trophy-screen .trophy-stat span { font-size: 8px; letter-spacing: .5px; }
+  .trophy-layout { grid-template-columns: 1fr; }
+  .trophy-detail { display: none; }
+  .trophy-detail.is-open {
+    display: grid; position: fixed; inset: 0 0 var(--tabbar-h); z-index: 50; margin: 0; border-radius: 0; border: 0;
+    align-content: start; overflow-y: auto;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 20px; background: #0f1d16;
+  }
+  .trophy-detail__close { display: block; justify-self: start; margin-bottom: 6px; font-size: 11px; }
+  .career-table { font-size: 11px; }
+  .career-table th:nth-child(6), .career-table td:nth-child(6) { display: none; }
+  .trophy-screen .career-table td { white-space: normal; padding: 7px 5px; }
+}
+
+@media (max-height: 500px) and (pointer: coarse) {
+  .league-overlay .league-header { height: 40px !important; padding-top: 2px !important; padding-bottom: 2px !important; }
+  .league-overlay .league-eyebrow { display: none; }
+  .league-overlay .league-tabs { top: 40px !important; height: 36px !important; min-height: 36px !important; max-height: 36px !important; }
+  .league-overlay .league-tab { padding: 6px 2px; }
+  .league-overlay .league-content { top: 76px !important; }
+  .league-table .col-wdl { display: table-cell; }
+  .league-player-table .stat-col:not(.is-sorted) { display: table-cell; }
+  .cup-groups { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cup-bracket, .cup-bracket--wc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scoreline--large .scoreline__score { font-size: 44px; }
+  .wc-top { grid-template-columns: 1fr; }
+  .career-table th:nth-child(6), .career-table td:nth-child(6) { display: table-cell; }
+}

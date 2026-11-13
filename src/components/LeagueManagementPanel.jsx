@@ -25,13 +25,14 @@ const ZONE_LABELS = {
 
 // Phase 22: bỏ OVERVIEW, bảng xếp hạng là tab đầu; thêm thống kê cầu thủ toàn
 // giải; FIXTURES chỉ còn các trận của đội mình, hiện hết một lượt.
+// Phase 29A4c: `phone` = nhãn ngắn trên điện thoại.
 const TABS = [
-    { id: 'table', label: 'LEAGUE TABLE' },
-    { id: 'players', label: 'PLAYER STATS' },
-    { id: 'fixtures', label: 'FIXTURES' }, // + tên CLB người chơi (Phase 26B)
+    { id: 'table', label: 'LEAGUE TABLE', phone: 'TABLE' },
+    { id: 'players', label: 'PLAYER STATS', phone: 'STATS' },
+    { id: 'fixtures', label: 'FIXTURES', phone: 'FIXTURES' }, // + tên CLB người chơi (Phase 26B)
     // Phase 27: hai cúp
-    { id: 'c1', label: 'CHAMPIONS CUP' },
-    { id: 'c2', label: 'CHALLENGE CUP' },
+    { id: 'c1', label: 'CHAMPIONS CUP', phone: 'C1' },
+    { id: 'c2', label: 'CHALLENGE CUP', phone: 'C2' },
     // Phase 29H: World Cup chuyển sang tab riêng trên header.
 ]
 
@@ -195,7 +196,8 @@ export default function LeagueManagementPanel({
                             }
                             onClick={() => setActiveTab(tab.id)}
                         >
-                            {tab.id === 'fixtures' ? `${userTeam().shortName} FIXTURES` : tab.label}
+                            <span className="dt-only">{tab.id === 'fixtures' ? `${userTeam().shortName} FIXTURES` : tab.label}</span>
+                            <span className="ph-only">{tab.phone}</span>
                         </button>
                     ))}
                 </nav>
@@ -295,9 +297,9 @@ export default function LeagueManagementPanel({
                                         <th>#</th>
                                         <th>CLUB</th>
                                         <th>P</th>
-                                        <th>W</th>
-                                        <th>D</th>
-                                        <th>L</th>
+                                        <th className="col-wdl">W</th>
+                                        <th className="col-wdl">D</th>
+                                        <th className="col-wdl">L</th>
                                         <th>GD</th>
                                         <th>PTS</th>
                                     </tr>
@@ -324,9 +326,9 @@ export default function LeagueManagementPanel({
                                                 </span>
                                             </td>
                                             <td>{team.played}</td>
-                                            <td>{team.won}</td>
-                                            <td>{team.drawn}</td>
-                                            <td>{team.lost}</td>
+                                            <td className="col-wdl">{team.won}</td>
+                                            <td className="col-wdl">{team.drawn}</td>
+                                            <td className="col-wdl">{team.lost}</td>
                                             <td>
                                                 {team.goalDifference > 0
                                                     ? `+${team.goalDifference}`
@@ -435,7 +437,7 @@ export default function LeagueManagementPanel({
                                                     key={column.id}
                                                     title={column.title}
                                                     aria-sort={sortKey === column.id ? 'descending' : 'none'}
-                                                    className={sortKey === column.id ? 'is-sorted' : ''}
+                                                    className={`stat-col${sortKey === column.id ? ' is-sorted' : ''}`}
                                                 >
                                                     <button type="button" onClick={() => setSortKey(column.id)}>
                                                         {column.short}
@@ -454,12 +456,12 @@ export default function LeagueManagementPanel({
                                                     <small className="league-player-pos">{row.position}</small>
                                                 </td>
                                                 <td>{clubShort(row.clubId)}</td>
-                                                <td className={sortKey === 'goals' ? 'league-points' : ''}>{row.goals}</td>
-                                                <td className={sortKey === 'assists' ? 'league-points' : ''}>{row.assists}</td>
-                                                <td className={sortKey === 'cleanSheets' ? 'league-points' : ''}>{row.position === 'GK' ? row.cleanSheets : '–'}</td>
-                                                <td className={sortKey === 'passAccuracy' ? 'league-points' : ''}>{row.passAccuracy != null ? `${row.passAccuracy}%` : '–'}</td>
-                                                <td className={sortKey === 'averageRating' ? 'league-points' : ''}>{row.averageRating != null ? row.averageRating.toFixed(2) : '–'}</td>
-                                                <td className={sortKey === 'apps' ? 'league-points' : ''}>{row.apps}</td>
+                                                <td className={sortKey === 'goals' ? 'stat-col is-sorted league-points' : 'stat-col'}>{row.goals}</td>
+                                                <td className={sortKey === 'assists' ? 'stat-col is-sorted league-points' : 'stat-col'}>{row.assists}</td>
+                                                <td className={sortKey === 'cleanSheets' ? 'stat-col is-sorted league-points' : 'stat-col'}>{row.position === 'GK' ? row.cleanSheets : '–'}</td>
+                                                <td className={sortKey === 'passAccuracy' ? 'stat-col is-sorted league-points' : 'stat-col'}>{row.passAccuracy != null ? `${row.passAccuracy}%` : '–'}</td>
+                                                <td className={sortKey === 'averageRating' ? 'stat-col is-sorted league-points' : 'stat-col'}>{row.averageRating != null ? row.averageRating.toFixed(2) : '–'}</td>
+                                                <td className={sortKey === 'apps' ? 'stat-col is-sorted league-points' : 'stat-col'}>{row.apps}</td>
                                             </tr>
                                         ))}
                                         </tbody>
@@ -521,7 +523,10 @@ export default function LeagueManagementPanel({
                                                     PLAY
                                                 </button>
                                             ) : (
-                                                <span className="league-fixture-status">UPCOMING</span>
+                                                <span className="league-fixture-status">
+                                                    <span className="dt-only">UPCOMING</span>
+                                                    <span className="ph-only">·</span>
+                                                </span>
                                             )}
                                         </div>
                                     )
