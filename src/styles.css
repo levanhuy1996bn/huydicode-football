@@ -3294,3 +3294,105 @@ html.in-match body:has(.match-compact) { overflow: hidden; }
   0%, 20% { transform: rotate(0deg); }
   60%, 100% { transform: rotate(-90deg); }
 }
+
+/* ---- Phase 29A2: điều khiển cảm ứng ---- */
+.touch-controls { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.touch-joy-zone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 42%;
+  height: 72%;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-joy {
+  position: absolute;
+  width: 116px;
+  height: 116px;
+  margin: -58px 0 0 -58px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(7, 19, 15, 0.35);
+  pointer-events: none;
+}
+.touch-joy i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  border-radius: 50%;
+  background: rgba(199, 250, 124, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+/* Gợi ý vị trí khi chưa chạm */
+.touch-joy--hint { left: calc(28px + env(safe-area-inset-left)); top: auto; bottom: calc(22px + env(safe-area-inset-bottom)); margin: 0; opacity: 0.4; }
+.touch-buttons {
+  position: absolute;
+  right: calc(14px + env(safe-area-inset-right));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  width: 230px;
+  height: 200px;
+  pointer-events: none;
+}
+.touch-btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(7, 19, 15, 0.55);
+  color: #fff;
+  font: 800 10px Inter, sans-serif;
+  letter-spacing: 0.5px;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.touch-btn.is-pressed { background: rgba(199, 250, 124, 0.55); color: #0d1f16; transform: scale(0.94); }
+.touch-btn--big { right: 0; bottom: 0; width: 92px; height: 92px; font-size: 13px; border-color: #ffd166; background: rgba(120, 70, 0, 0.5); }
+.touch-btn--big.is-defend { border-color: #ff8a7a; background: rgba(120, 30, 20, 0.5); }
+.touch-btn--pass { right: 104px; bottom: 6px; width: 70px; height: 70px; }
+.touch-btn--through { right: 24px; bottom: 104px; width: 70px; height: 70px; }
+.touch-btn--sprint { right: 112px; bottom: 96px; width: 58px; height: 58px; font-size: 9px; border-color: #7cc4ff; }
+@media (max-height: 440px) {
+  .touch-buttons { transform: scale(0.86); transform-origin: bottom right; }
+  .touch-joy-zone { height: 76%; }
+}
+/* Trên điện thoại: mini map, thanh lực không chồng lên nút. */
+html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
+
+/* Menu ☰ gom các nút trong trận */
+.hud-menu-btn {
+  position: absolute;
+  top: calc(6px + env(safe-area-inset-top));
+  right: calc(8px + env(safe-area-inset-right));
+  z-index: 12;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #547565;
+  border-radius: 8px;
+  background: rgba(8, 18, 14, 0.9);
+  color: #fff;
+  font-size: 18px;
+}
+.hud-menu-btn.is-open { background: #c7fa7c; color: #0d1f16; }
+.app-shell.match-compact .hud-controls.is-menu { display: none !important; }
+.app-shell.match-compact .hud-controls.is-menu.is-open {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  top: calc(52px + env(safe-area-inset-top)) !important;
+  transform: none;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(8, 18, 14, 0.94);
+  max-height: calc(100% - 70px);
+  overflow: auto;
+  z-index: 12 !important;
+}
+.app-shell.match-compact .hud-controls.is-menu.is-open button { min-height: 36px; text-align: left; }

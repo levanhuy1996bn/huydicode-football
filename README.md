@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1 done 2026-11-13. **Next:** the mobile phases 29A2 → 29A3 → 29A5 → 29A4 (29A split on 2026-11-13) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1 and 29A2 done 2026-11-13 — matches can be played on a phone. **Next:** the mobile phases 29A3 → 29A5 → 29A4 (29A split on 2026-11-13) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -290,6 +290,7 @@ ultimate-football-manager-3d/
     │   ├── duels.js          # shielding, shoulder duels, poked tackles
     │   ├── attributes.js     # detailed attributes derived from the 6 main stats (+ height / weight, 26C)
     │   ├── physique.js       # height / weight: generation, attribute effects, aerial / keeper reach, body scale (Phase 26C)
+    │   ├── touchInput.js     # analog joystick direction shared with control.js (Phase 29A2)
     │   ├── form.js           # player form −2…+2, after-match changes, Fitness / Form cards (Phase 29I)
     │   ├── stamina.js        # in-match stamina, fatigue effects, condition between matches
     │   ├── progression.js    # XP, levels, attribute points by position, potential, OVR
@@ -340,6 +341,7 @@ ultimate-football-manager-3d/
         ├── Trophy3D.jsx          # 3D turning trophy with SVG fallback; TrophyCanvas.jsx = WebGL part (Phase 29B)
         ├── FpsMeter.jsx          # FPS counter (Phase 29B)
         ├── PlayerPortrait.jsx    # SVG player portrait drawn in code, on large cards (Phase 29J)
+        ├── TouchControls.jsx     # touch joystick + PASS / THROUGH / SHOOT / SPRINT buttons (Phase 29A2)
         ├── SettingsRows.jsx      # settings rows shared by HOME and the ⚙ dialog (Phase 29G)
         ├── SettingsDialog.jsx    # ⚙ SETTINGS dialog opened from the header (Phase 29G)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
@@ -405,8 +407,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 29I | Player form (5 levels, affects play), Fitness / Form cards for the whole squad, Upgrade Boost cards (+3–5 %, up to 5 per attempt) | ✅ Done (2026-11-13) |
 | 29J | Player portraits drawn in code on the cards | ✅ Done (2026-11-13) |
 | 29A1 | Mobile foundation: touch detection, no zoom / scroll in a match, full-screen match layout, rotate prompt, full-screen button, iPhone Safari fixes, smaller HUD | ✅ Done (2026-11-13) |
-| 29A2 | Basic touch controls: joystick + PASS / THROUGH / SHOOT / SPRINT buttons, ☰ menu | 🔜 Next |
-| 29A3 | Advanced touch controls: swipe variants, vibration, button size / opacity | 🔜 Planned |
+| 29A2 | Basic touch controls: joystick + PASS / THROUGH / SHOOT / SPRINT buttons, ☰ menu | ✅ Done (2026-11-13) |
+| 29A3 | Advanced touch controls: swipe variants, vibration, button size / opacity | 🔜 Next |
 | 29A5 | Phone performance: automatic LOW graphics, lower resolution when FPS drops, install as an app | 🔜 Planned |
 | 29A4 | Mobile UI for the management screens (bottom tab bar, step-by-step screens) | 🔜 Planned |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
@@ -1347,6 +1349,26 @@ Split on 2026-11-12 into **29A** (mobile), **29B** (graphics, sound, performance
   - Touch buttons write into the same `keys.current` input the engine already reads, so the engine needs almost no change.
 - **Testing:** emulated iPhone / Android in the browser (screen sizes, touch, swipes); the real feel has to be checked on a phone — open the game with `npm run dev -- --host` on the Mac and the Mac's IP address on a phone in the same Wi-Fi, or publish it (see *Publish online*).
 
+### Phase 29A2 — Basic touch controls ✅ (2026-11-13)
+
+Code: `src/components/TouchControls.jsx`, `src/systems/touchInput.js` (both new), `inputDirection` in `control.js`, ☰ menu in `GameScene.jsx`, CSS at the end of `styles.css`. Shown on touch devices while the match is being played (also in a penalty shoot-out); hidden when paused, at half time and full time.
+
+- **Floating joystick** on the left ~40 % of the screen (below the top HUD): it appears where the thumb touches (a faint hint shows its usual place), drag to run. Movement is **analog 360°** (`touchInput` → `inputDirection`), and the joystick also sends the arrow keys (8 directions) for everything that reads arrows (aiming penalties, keeper dive, the receiver nudge…). Holding a direction re-sends the key every second so auto play does not think you left.
+- **Four round buttons** bottom right, hold to charge exactly like the keys (the power bar appears):
+
+  | Button | With the ball | Defending |
+  | --- | --- | --- |
+  | Big (yellow / red) | **SHOOT** (D) | **TACKLE** (Space) |
+  | PASS | Short pass (S) | **SWITCH** player (S) |
+  | THROUGH | Through ball (W) | **PRESS** — call a teammate to press (W, hold) |
+  | SPRINT | Sprint (E, hold) | Sprint (E, hold) |
+
+  Labels change automatically with possession (checked 6–7 times a second). Lofted passes / crosses, chips, finesse shots and slide tackles come with the swipe gestures of 29A3; until then throw-ins and corners use PASS (short).
+- The buttons send the same keyboard events as a real keyboard (`KeyboardEvent` on `window`), so the engine is unchanged and touching any button takes control back from auto play. Joystick and buttons work at the same time (multi-touch, pointer capture); a short vibration on Android when a button is pressed.
+- **☰ menu** (top right on phones): LEAGUE, PAUSE, STATS, SUBS, CONTROLS, QUIT (and ⛶ full screen where supported) in one list instead of a row of small buttons; it closes after a choice.
+- Desktop / laptop without touch: nothing changes.
+- **Tested** in emulated iPhone 13 and Pixel 7 (landscape): the PASS button makes a real pass (receiver's first touch), the joystick shows under the finger and sends the right arrows, the ☰ menu opens and PAUSE works; desktop regression tests unchanged.
+
 ### Phase 29A1 — Mobile foundation ✅ (2026-11-13)
 
 Code: `src/utils/device.js` (new), `installAudioUnlock` in `src/utils/sound.js`, `main.jsx`, compact match layout in `GameScene.jsx` + `styles.css`.
@@ -1563,7 +1585,7 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 | Hình ảnh cầu thủ trong thẻ (vẽ bằng code, chỉ thẻ lớn) | Phase 29J ✅ |
 | Cầu thủ trong trận 3D có màu da, màu tóc, kiểu tóc, râu giống thẻ | Sau 29J ✅ |
 | Nền tảng mobile: chặn phóng to / cuộn trong trận, trận toàn màn hình, nhắc xoay ngang, sửa lỗi iPhone | Phase 29A1 ✅ |
-| Điều khiển cảm ứng cơ bản: cần điều khiển + 4 nút | Phase 29A2 |
+| Điều khiển cảm ứng cơ bản: cần điều khiển + 4 nút | Phase 29A2 ✅ |
 | Điều khiển cảm ứng nâng cao: vuốt trên nút, rung, tuỳ chỉnh nút | Phase 29A3 |
 | Hiệu năng điện thoại: tự chọn đồ hoạ LOW, cài như ứng dụng | Phase 29A5 |
 | Giao diện quản lý trên mobile (thanh tab dưới, màn hình theo từng bước) | Phase 29A4 |

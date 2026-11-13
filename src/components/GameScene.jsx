@@ -6,6 +6,7 @@ import { crowdStart, crowdStop, prepareCrowdSounds, roar, setCrowdVolume, whistl
 import { applyFormAfterMatch, maxSquadForm, restoreSquadFitness } from '../systems/form'
 import FpsMeter from './FpsMeter'
 import SettingsDialog from './SettingsDialog'
+import TouchControls from './TouchControls'
 import { fullscreenSupported, isFullscreen, isTouchDevice, setInMatch, toggleFullscreen } from '../utils/device'
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
@@ -335,6 +336,9 @@ export default function GameScene() {
     const compactLayout = useCompactLayout()
     const portraitTouch = usePortraitTouch()
     const [fullscreen, setFullscreen] = useState(isFullscreen)
+    // Phase 29A2: điều khiển cảm ứng + menu ☰ gom các nút trong trận.
+    const [touchUI] = useState(isTouchDevice)
+    const [hudMenuOpen, setHudMenuOpen] = useState(false)
     const autoPilotRef = useRef(false)
     autoPilotRef.current = autoPilot
     const commandAutoPilot = useCallback((on) => {
@@ -1126,6 +1130,13 @@ export default function GameScene() {
             setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
         }
     }
+
+    // Phase 29A2: id cầu thủ đội mình trong trận (nhãn nút cảm ứng theo đội có bóng).
+    const blueIdSet = useMemo(() => {
+        const blue = matchRoster.find((team) => team.id === 'blue')
+
+        return new Set([...(blue?.players || []), ...(blue?.substitutes || [])].map((player) => player.id))
+    }, [matchRoster])
 
     // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
     useEffect(() => {
@@ -2610,9 +2621,28 @@ export default function GameScene() {
 
             {/* Trong trận không mở quản lý CLB (giống FO4) — dùng ở sảnh. */}
 
+            {/* Phase 29A2: trên điện thoại các nút trong trận gom vào menu ☰. */}
+            {touchUI && compactLayout && (
+                <button
+                    type="button"
+                    className={`hud-menu-btn${hudMenuOpen ? ' is-open' : ''}`}
+                    onClick={(event) => {
+                        event.currentTarget.blur()
+                        setHudMenuOpen((open) => !open)
+                    }}
+                    aria-label="Match menu"
+                    aria-expanded={hudMenuOpen}
+                >
+                    {hudMenuOpen ? '✕' : '☰'}
+                </button>
+            )}
+
             {/* MATCH CONTROLS */}
             <div
-                className="hud-controls"
+                className={`hud-controls${touchUI && compactLayout ? ' is-menu' : ''}${hudMenuOpen ? ' is-open' : ''}`}
+                onClickCapture={() => {
+                    if (hudMenuOpen) setTimeout(() => setHudMenuOpen(false), 0)
+                }}
                 style={{
                     position: 'absolute',
                     top: 78,
@@ -2808,6 +2838,11 @@ export default function GameScene() {
             )}
 
             {/* Bản đồ mini kiểu FO4 — MatchWorld vẽ mỗi frame */}
+            {/* Phase 29A2: cần điều khiển + 4 nút trên điện thoại. */}
+            {touchUI && screen === 'match' && (matchStatus === 'playing' || matchStatus === 'shootout') && (
+                <TouchControls statsRef={statsRef} blueIds={blueIdSet} />
+            )}
+
             <canvas
                 ref={radarRef}
                 className="radar"
