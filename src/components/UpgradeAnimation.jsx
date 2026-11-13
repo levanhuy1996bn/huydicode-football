@@ -3,6 +3,7 @@ import { PlayerCardView, StatNum, UpgradeBadge } from './CardBits'
 import { upgradeTier } from '../services/upgrade'
 import { isMuted, playFailure, playHeartbeat, playSuccess, setMuted } from '../utils/sound'
 import { userClubId } from '../services/career'
+import { ovrTier, ovrTierIndex, ovrTierLabel } from '../utils/ovrTier'
 
 // Phase 25: hoạt cảnh đập thẻ kiểu FIFA Online. Kết quả đã được quyết định
 // lúc bấm nút; hoạt cảnh chỉ tạo kịch tính:
@@ -251,6 +252,13 @@ export default function UpgradeAnimation({ before, after, result, materials = []
                 <b>→</b>
                 <CountOverall from={before.overall} to={after.overall} active={revealed} />
             </div>
+
+            {/* Phase 32: thẻ lên mức màu OVR mới (trắng → xanh lá → vàng → …). */}
+            {revealed && result.success && ovrTierIndex(after.overall) > ovrTierIndex(before.overall) && (
+                <div className={`ovr-tier-banner ovr-tier--${ovrTier(after.overall)}`}>
+                    NEW TIER · {ovrTierLabel(after.overall)}
+                </div>
+            )}
 
             <div className="upgrade-anim__stats">
                 {STAT_KEYS.map(([key, label]) => (
