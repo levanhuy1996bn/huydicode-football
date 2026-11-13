@@ -793,15 +793,15 @@ New: `systems/progression.js`, `screens/DevelopmentScreen.jsx` (**SQUAD** tab).
   - Example: a striker's keys are finishing, shot power, acceleration, sprint speed, strength and balance. A centre-back's are standing/sliding tackle, marking, interceptions, strength and aggression. Goalkeepers' are diving, handling, reflexes and positioning.
   - **RECOMMENDED FOR POSITION** spends all points automatically, lowest key attributes first.
 - **Potential and OVR:**
-  - Each player has a potential: current OVR + 3–12, up to +4 more for young bought players, max 95.
-  - OVR is recalculated with position weights: about +0.13 per key point, +0.06 per secondary point, almost nothing for unrelated attributes. It can't go above potential, and every attribute is capped at 99.
+  - Each player has a potential: current OVR + 3–12, up to +4 more for young bought players, max 95. *(Since the quick update after Phase 33 the potential no longer limits training and is not shown.)*
+  - OVR is recalculated with position weights: about +0.13 per key point, +0.06 per secondary point, almost nothing for unrelated attributes. ~~It can't go above potential, and every attribute is capped at 99.~~ (99 cap removed in Phase 25, potential cap removed after Phase 33.)
   - The new OVR feeds transfer value.
 - **Data:** new fields on each player: `level`, `xp`, `unspentPoints`, `potential`.
   - Old saves get defaults: level 1, 0 XP.
   - On the first upgrade the player's derived attributes are snapshotted into `attributes` / `attributesBase` (plus `baseOverall`), and the six main stats are kept in sync as group averages for the other panels.
 - **Interface:**
   - The post-match screen has a "PLAYER DEVELOPMENT · XP EARNED" card: XP per player, level, XP bar and **LEVEL UP! +3 pts**.
-  - The SQUAD screen shows every player's level, OVR and unspent points (the `/potential` after the OVR was removed after Phase 32; the potential is in the player detail). The player detail has XP, all attribute groups with their cost and a "+" button.
+  - The SQUAD screen shows every player's level, OVR and unspent points (the `/potential` after the OVR was removed after Phase 32; the potential cap itself was removed after Phase 33). The player detail has XP, all attribute groups with their cost and a "+" button.
   - The Home screen shows how many points are waiting. The match profile shows the level.
 - **Simulator check:** 38 matches × 90 XP takes a striker (OVR 85, potential 89) to level 13 and OVR 88.
 - Left for later (optional in the plan): AI clubs levelling up during the season.
@@ -1079,7 +1079,7 @@ Plan (agreed on 2026-11-12):
 - **Transfer market: buy the same player as many times as you like** (as long as you have EP and squad space); cards you already own show "Owned ×N". The matchday rule (no two cards of the same player in the 20) still applies.
 - **Card value grows with the + level** (sale value ×): +1 ×1 · +2 ×1.2 · +3 ×1.4 · +4 ×1.8 · +5 ×2.5 · +6 ×3.2 · +7 ×4.5 · +8 ×7 · +9 ×11 · +10 ×20.
 - **Player level max 100** (was 30). XP needed per level = 170 + level (a regular starter ≈ level 19 after one season, level 100 after ≈ 6 seasons). Attribute points: 3 per level up to level 30, then 1 per level.
-- **Training is still limited by potential** (the OVR from training points cannot pass the potential); the + bonus is on top and not limited.
+- ~~**Training is still limited by potential**~~ — removed after Phase 33: training has no OVR limit; the + bonus is on top.
 - **No 99 cap on stats any more.** Above 99 a stat keeps improving with diminishing returns (each point is worth less and less, effective value up to ≈ 128), in every formula: shot / pass accuracy, shot power, speed, acceleration, ball control, tackles, keeper reflexes and reach. Physical limits stay sensible (top speed ≈ 10.5 m/s, shots ≈ 40 m/s, keeper reaction ≥ 0.08 s). Checked with the accuracy test at 99 / 110 / 120 / 130.
 - **Stat number colours** (card, player profile, SQUAD screen, market, upgrade screen):
 
@@ -1760,9 +1760,16 @@ Code: `groupInventory()` / `inventoryKey()` in `src/services/cards.js`, the UNOP
 - **Buttons:** OPEN / USE takes one card (the oldest); an EP row with more than one card also has **ALL ×N** (opens them together, the row shows the total, e.g. `15,000,000 EP in total`). OPEN ALL EP CARDS at the top still opens every EP card. Boost and Protection rows keep USE → (UPGRADE CARDS, where they are counted as before). The REWARDS / UNOPENED counters and the CARDS tab badge still count cards, not rows.
 - **Tested** on desktop and emulated iPhone 13 with 17 seeded items → 10 rows in the order above; ALL ×3 on the 5M row added 15,000,000 EP; USE on Fitness ×3 left ×2; no errors.
 
+#### Quick update after Phase 33 — no potential cap on training (2026-11-13)
+
+- Bug report: "Reached potential (89)" / "Nothing more can be upgraded (potential reached)" when spending points in SQUAD. The user wants no limit: training points always raise the attributes and the OVR.
+- `upgradeAttribute()` in `src/systems/progression.js` no longer checks the potential; the only limit is the points a player has (3 per level up to level 30, then 1 per level, 157 at level 100). RECOMMENDED FOR POSITION spends every point.
+- The potential is no longer shown (SQUAD player detail `OVR`, player info `LV n`); the intro text says training has no OVR limit. The `potential` field stays in saves but is unused.
+- Tested: a striker at OVR 89 with potential 89 and 40 points → every point accepted, RECOMMENDED took him to OVR 92 (finishing 98).
+
 #### Quick update after Phase 32 — no potential in the SQUAD list (2026-11-13)
 
-- The SQUAD player list no longer shows `/potential` after the OVR (e.g. `77/89`): the number before the slash includes card upgrades while the training cap does not, so `89/89` looked like the end even when a +5 card could still train. The potential is still shown in the player detail (`OVR · POTENTIAL`) and training still stops there. Code: `DevelopmentScreen.jsx` (row), `.dev-row` grid in `styles.css`.
+- The SQUAD player list no longer shows `/potential` after the OVR (e.g. `77/89`): the number before the slash includes card upgrades while the training cap does not, so `89/89` looked like the end even when a +5 card could still train. (After Phase 33 the potential was removed completely, see below.) Code: `DevelopmentScreen.jsx` (row), `.dev-row` grid in `styles.css`.
 
 ### Phase 31 — Card-upgrade achievements ✅ (2026-11-13)
 

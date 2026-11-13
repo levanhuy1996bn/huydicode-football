@@ -153,7 +153,7 @@ export default function PlayerInfoPanel({
                         <dt>Form</dt>
                         <dd><FormArrow player={player} /> {form.label} ({form.bonus > 0 ? '+' : ''}{form.bonus})</dd>
                     </div>
-                    {!readOnly && <div><dt>Level</dt><dd>LV {progress.level} · potential {progress.potential}</dd></div>}
+                    {!readOnly && <div><dt>Level</dt><dd>LV {progress.level}</dd></div>}
                     <div><dt>Value</dt><dd>{formatMoney(getPlayerValue(player))}</dd></div>
                 </dl>
 
