@@ -155,17 +155,53 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
         if (first && (teamPressCalled || first.distance < closeDownRadius)) {
             // Áp sát kiểu "jockey" (sửa lỗi playtest: đối thủ áp sát quá
             // nhanh): chạy nhanh tới điểm chắn phía khung thành của người cầm
-            // bóng, còn cách ~6m thì chậm lại, đứng chắn cách ~1.2m và chờ thời
-            // cơ tắc bóng (updateAISteal), thay vì lao thẳng vào chân.
+            // bóng, còn cách ~6m thì chậm lại và chờ thời cơ.
+            // Phase 35: đứng chắn cách 2–3m (trước đây 1.2m → hai người cứ dính
+            // vào nhau, người cầm bóng không có chỗ chuyền / sút): 2.2–3m, xa
+            // hơn khi chiến thuật ít áp sát, gần hơn khi Marking tốt; gọi áp
+            // sát (W) / vây ráp thì 2m. Chỉ thỉnh thoảng mới "lao vào" bóng (~0.6s) để
+            // tắc: khi người cầm bóng chạm bóng dài (bóng xa chân), hoặc ngẫu
+            // nhiên theo Aggression — còn lại giữ khoảng cách, không va người.
             const eager = teamPressCalled || counterPressing
             const close = first.distance < 6
-            const spot = goalSide(close ? 1.2 : 1.6)
+            const standoff = eager
+                ? 2
+                : clamp(3 - tactic.press * 0.5 - skill01(attr(first.item, 'marking')) * 0.3, 2.2, 3)
+            const stepKey = `stepIn_${teamId}`
+            const stepInId = state.aiStepIn?.[teamId]
+            let stepping = stepInId === first.item.id && state.timers[stepKey] > 0
 
-            pressTargets.set(first.item.id, {
-                x: spot.x,
-                z: spot.z,
-                speed: close ? (eager ? 0.78 : 0.62) : eager ? 1.15 : 1.05,
-            })
+            const restKey = `stepRest_${teamId}`
+
+            if (!stepping && close && first.distance < standoff + 0.6 && carrierObject && !(state.timers[restKey] > 0)) {
+                const exposure = distance2D(carrierObject.position, ballPoint)
+                const appetite = clamp(attr(first.item, 'aggression') / 75, 0.6, 1.4)
+                // Lần / giây: bóng xa chân (chạm dài) → gần như chắc chắn lao vào;
+                // còn lại ~1 lần mỗi 5–8 giây (gọi áp sát / vây ráp: ~3 giây).
+                const rate = (exposure > 0.85 ? 1.5 : 0) + (eager ? 0.32 : 0.15) * appetite
+
+                if (Math.random() < rate * dt) {
+                    state.aiStepIn = { ...(state.aiStepIn || {}), [teamId]: first.item.id }
+                    state.timers[stepKey] = 0.6
+                    // Sau mỗi lần lao vào: nghỉ ~2 giây, lùi về khoảng cách chắn.
+                    state.timers[restKey] = 2.6
+                    stepping = true
+                }
+            }
+
+            if (stepping) {
+                pressTargets.set(first.item.id, { x: ballPoint.x, z: ballPoint.z, speed: 1.12 })
+            } else {
+                const spot = goalSide(close ? standoff : standoff + 0.6)
+
+                pressTargets.set(first.item.id, {
+                    x: spot.x,
+                    z: spot.z,
+                    speed: close ? (eager ? 0.72 : 0.55) : eager ? 1.15 : 1.05,
+                    // Đứng đúng điểm chắn (lùi ra sau khi lao vào cũng về tận nơi).
+                    exact: true,
+                })
+            }
         }
 
         const second = pressers[1]
@@ -506,7 +542,8 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
         )
 
         // Gần tới vị trí thì chậm lại và quay mặt về phía bóng (đỡ giật).
-        if (gap < 0.6) {
+        // Phase 35: người áp sát chính đứng đúng điểm chắn (sai số 0.15m).
+        if (gap < (pressTargets.get(item.id)?.exact ? 0.15 : 0.6)) {
             object.rotation.y = Math.atan2(
                 ballPoint.x - object.position.x,
                 ballPoint.z - object.position.z,

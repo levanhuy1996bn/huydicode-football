@@ -16,7 +16,8 @@ export const WC_LEVEL_UPGRADE = [1, 2, 3, 3, 4, 5, 6, 6, 7, 8]
 // XP cần để lên cấp tiếp theo (chỉ số 0 = từ cấp 1 lên 2).
 export const WC_LEVEL_XP = [100, 150, 250, 350, 500, 700, 900, 1200, 1500]
 
-export const WC_XP = { win: 30, draw: 20, loss: 10, knockout: 1.5, champion: 100 }
+// Phase 34: groupExit = XP an ủi khi bị loại ở vòng bảng (cộng vào trận cuối).
+export const WC_XP = { win: 30, draw: 20, loss: 10, knockout: 1.5, champion: 100, groupExit: 30 }
 
 // Tổng XP → cấp, XP trong cấp hiện tại, XP cần cho cấp sau, cấp thẻ đội tuyển.
 export function wcLevelOf(totalXp = 0) {
@@ -71,10 +72,12 @@ export function worldCupMatchXp(wcAfter, fixtureId, difficultyId) {
     }
 
     const champion = fixture.round === 'final' && won
+    // Phase 34: trận cuối khi bị loại ở vòng bảng có thêm XP an ủi.
+    const groupExit = wcAfter.status === 'done' && wcAfter.finalStanding === 'group' && !wcAfter.skipped
     const reward = difficultyOf(difficultyId).reward
-    const base = WC_XP[result] * (knockout ? WC_XP.knockout : 1) + (champion ? WC_XP.champion : 0)
+    const base = WC_XP[result] * (knockout ? WC_XP.knockout : 1) + (champion ? WC_XP.champion : 0) + (groupExit ? WC_XP.groupExit : 0)
 
-    return { xp: Math.round(base * reward), result, knockout, champion, reward }
+    return { xp: Math.round(base * reward), result, knockout, champion, groupExit, reward }
 }
 
 // Cộng XP vào bản lưu thế giới. Trả về { world, before, after, levelsGained }.
@@ -129,7 +132,7 @@ export function applyWorldCupMatch(world, wcAfter, fixtureId, { difficultyId, fo
             const added = addWorldCupXp(next, match.xp)
 
             next = added.world
-            Object.assign(report, { xp: match.xp, result: match.result, champion: match.champion, before: added.before, after: added.after, levelsGained: added.levelsGained })
+            Object.assign(report, { xp: match.xp, result: match.result, champion: match.champion, groupExit: match.groupExit, before: added.before, after: added.after, levelsGained: added.levelsGained })
         }
 
         if (wcAfter?.status === 'done' && wcAfter.finalStanding === 'champion' && !wcAfter.skipped) {

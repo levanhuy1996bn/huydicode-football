@@ -48,6 +48,9 @@ function WorldCupLevelCard({ report }) {
             {unlocked && (
                 <div className="club-reward__levelup">NEW DIFFICULTY UNLOCKED · {unlocked.label.toUpperCase()}</div>
             )}
+            {report.groupExit && (
+                <small className="wc-level-report__next">Out in the group stage · includes the consolation XP (and a 2M EP card in REWARDS)</small>
+            )}
         </div>
     )
 }
@@ -175,6 +178,8 @@ function ratingClass(rating) {
 }
 
 export default function PostMatchScreen({
+    // Phase 34: đang đá World Cup → nút WORLD CUP thay cho LEAGUE TABLE / mùa mới.
+    worldCup = false,
     summary,
     opponentName,
     opponentClubId = null,
@@ -247,6 +252,10 @@ export default function PostMatchScreen({
                         <button type="button" className="btn btn--primary btn--large" onClick={onNext}>
                             NEXT MATCH · {nextOpponentName}
                         </button>
+                    ) : worldCup ? (
+                        <button type="button" className="btn btn--primary btn--large" onClick={onOpenLeague}>
+                            BACK TO WORLD CUP
+                        </button>
                     ) : (
                         <button type="button" className="btn btn--primary btn--large" onClick={onNewSeason}>
                             START NEW SEASON
@@ -257,7 +266,9 @@ export default function PostMatchScreen({
                             SIMULATE NEXT {simsLeft}/5
                         </button>
                     )}
-                    <button type="button" className="btn" onClick={onOpenLeague}>LEAGUE TABLE</button>
+                    {!(worldCup && !nextFixture) && (
+                        <button type="button" className="btn" onClick={onOpenLeague}>{worldCup ? 'WORLD CUP' : 'LEAGUE TABLE'}</button>
+                    )}
                     <button type="button" className="btn btn--ghost" onClick={onHome}>HOME</button>
                 </div>
             </div>

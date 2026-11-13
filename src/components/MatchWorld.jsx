@@ -528,6 +528,9 @@ export default function MatchWorld({
     // ctx là object ổn định, được cập nhật giá trị mới nhất mỗi lần render.
     const ctx = ctxRef.current
 
+    // Kiểm thử tự động (chỉ bản build VITE_E2E=1): đọc vị trí / trạng thái trận.
+    if (import.meta.env.VITE_E2E && typeof window !== 'undefined') window.__ufmCtx = ctx
+
     Object.assign(ctx, {
         state,
         ballRef,

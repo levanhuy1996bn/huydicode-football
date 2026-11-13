@@ -33,6 +33,7 @@ const GROUPS = [
         rows: [
             ['D (hold)', 'Contain the ball carrier'],
             ['D + E (hold)', 'Aggressive press'],
+            ['E + arrows / X (hold)', 'Charge the ball carrier and shoulder him (arrows only nudge) · Shift still just sprints'],
             ['W (hold)', 'Call a teammate to press'],
             ['Space', 'Standing tackle'],
             ['A / Ctrl', 'Sliding tackle'],

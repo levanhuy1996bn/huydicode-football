@@ -52,6 +52,35 @@ function keeperCatch(ctx, keeper, keeperItem) {
 }
 
 // Dự đoán và lập kế hoạch cho cú đá hiện tại.
+// Phase 34: luật chuyền về — đồng đội CHỦ ĐỘNG đá bóng bằng chân về (chuyền,
+// chọc khe, tạt, sút, ném biên) mà chưa ai của đối phương chạm vào → thủ môn
+// không được bắt bằng tay (chỉ đỡ / đá bằng chân, không có phạt gián tiếp).
+// Cú đá của đối phương chạm chân cầu thủ mình bật về thì VẪN được bắt.
+// Cú đá chủ động bằng chân (không tính bóng chạm người bật ra: 'block').
+const BACK_PASS_ACTIONS = new Set(['pass', 'through', 'lob', 'shoot'])
+
+export function isBackPass(state, teamId) {
+    const kick = state.lastKick
+
+    return Boolean(
+        kick &&
+        kick.kickId === state.kickId &&
+        kick.teamId === teamId &&
+        BACK_PASS_ACTIONS.has(kick.action) &&
+        state.lastTouchTeam === teamId,
+    )
+}
+
+// Bóng hiện tại là "bóng của đội nhà" (không phải cú đá của đối phương):
+// đồng đội đá, hoặc đồng đội chạm cuối mà không rõ cú đá.
+function ownTeamBall(state, teamId) {
+    const kick = state.lastKick?.kickId === state.kickId ? state.lastKick : null
+
+    if (kick?.action === 'block') return false
+
+    return kick ? kick.teamId === teamId && state.lastTouchTeam === teamId : state.lastTouchTeam === teamId
+}
+
 function planSave(ctx, teamId, keeper, keeperItem) {
     const { state } = ctx
     const ball = ctx.ballRef.current
@@ -60,7 +89,8 @@ function planSave(ctx, teamId, keeper, keeperItem) {
     const goalSign = ownGoalSign(state, teamId)
 
     // Chỉ cứu bóng do đối phương đá (không bắt bóng đồng đội chuyền về).
-    if (state.lastTouchTeam === teamId) return null
+    // Phase 34: cú sút của đối phương chạm chân hậu vệ nhà đổi hướng vẫn cứu.
+    if (ownTeamBall(state, teamId)) return null
 
     // Bóng phải đang bay về phía khung thành nhà.
     if (velocity.z * goalSign < 4) return null
@@ -333,6 +363,10 @@ function resolveSave(ctx, teamId, keeper, keeperItem, plan, saveLabel) {
     const goalSign = ownGoalSign(state, teamId)
 
     plan.resolved = true
+
+    // Phase 34: giữa đường bóng chạm đồng đội và thành đường chuyền về chủ động
+    // (đồng đội đá tiếp) → không cứu bằng tay, để thủ môn đỡ bằng chân.
+    if (isBackPass(state, teamId)) return
 
     // Bóng đổi hướng giữa đường (chạm người khác) và ra khỏi tầm với.
     const reachNow = distance2D(position, keeper.position)

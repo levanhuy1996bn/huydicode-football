@@ -163,6 +163,7 @@ export function updateControlledPlayer(ctx, dt) {
     state.dribble.speed = 0
     state.dribble.sprinting = false
     state.containingId = null
+    state.pressingId = null
     state.userSteering = false
     state.receiveNudge = null
 
@@ -293,6 +294,10 @@ export function updateControlledPlayer(ctx, dt) {
         return
     }
 
+    // Phase 35: lao vào lấy bóng + tì người (X / nút PRESS, hoặc E + mũi tên
+    // khi đối thủ có bóng).
+    if (!hasBall && updatePress(ctx, controlled, direction, dt)) return
+
     if (!direction) {
         updateContain(ctx, controlled, sprinting, dt)
         return
@@ -404,6 +409,72 @@ export function receiveAssist(ctx, controlled, direction) {
     if (airborne && gap < 2.5) result.speedCap = Math.max(1.2, gap * 2.6)
 
     return result
+}
+
+// ---- Phase 35: lao vào lấy bóng, tì người ----
+// Khi đối thủ có bóng:
+//   X (nút PRESS vàng trên điện thoại)  : giữ → tự lao vào người cầm bóng;
+//   E + mũi tên                           : như trên (mũi tên chỉ chỉnh hướng
+//                                           một chút, không còn là chạy thẳng).
+// Chạy nước rút tới điểm đón đầu (bóng + đà của người cầm bóng ~0.35s), sát
+// người thì ép vai (không đi xuyên): người áp sát "đứng vững" và được thắng
+// tranh chấp tì đè (duels.js → pressingId), rồi bấm tắc (Space / chạm nút to)
+// khi bóng lộ ra.
+const PRESS_NUDGE = 1.6
+const PRESS_LEAD = 0.35
+const PRESS_CONTACT = 1.0
+
+function updatePress(ctx, controlled, direction, dt) {
+    const { state, objects, keys } = ctx
+    const pressed = keys.current
+    const wantsPress = Boolean(pressed.KeyX || (pressed.KeyE && direction))
+
+    if (!wantsPress) return false
+
+    const ownerId = state.possession
+    const ownerItem = ownerId ? getPlayer(ctx, ownerId) : null
+    const carrier = ownerId ? objects[ownerId] : null
+    const ball = ctx.ballRef.current
+
+    if (!ownerItem || ownerItem.teamId === 'blue' || !carrier || !ball || state.restart) return false
+
+    state.pressingId = ctx.selectedId
+    state.containingId = ctx.selectedId
+
+    const ballPosition = ball.translation()
+    const velocity = state.velocities?.[ownerId] || { x: 0, z: 0 }
+    let targetX = ballPosition.x + velocity.x * PRESS_LEAD
+    let targetZ = ballPosition.z + velocity.z * PRESS_LEAD
+
+    if (direction) {
+        targetX += direction.x * PRESS_NUDGE
+        targetZ += direction.z * PRESS_NUDGE
+    }
+
+    const toCarrier = distance2D(controlled.position, carrier.position)
+    const dx = targetX - controlled.position.x
+    const dz = targetZ - controlled.position.z
+    const distance = Math.hypot(dx, dz)
+    const speed = topSpeedOf(ctx, getPlayer(ctx, ctx.selectedId)) * (toCarrier < 2.2 ? 0.8 : 1)
+
+    if (distance > 0.05) {
+        // Sát người: chỉ ép vào tới mức chạm vai, không đi xuyên qua.
+        const room = toCarrier > PRESS_CONTACT ? distance : Math.min(distance, 0.15)
+        const step = Math.min(room, speed * dt)
+
+        controlled.position.x += (dx / distance) * step
+        controlled.position.z += (dz / distance) * step
+        clampPlayer(controlled)
+    }
+
+    controlled.rotation.y = Math.atan2(
+        ballPosition.x - controlled.position.x,
+        ballPosition.z - controlled.position.z,
+    )
+
+    state.dribble.sprinting = true
+
+    return true
 }
 
 // ---- Áp sát / kèm người (giữ D khi đối thủ có bóng, không bấm mũi tên) ----

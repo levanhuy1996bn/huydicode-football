@@ -145,6 +145,7 @@ import {
 } from '../systems/roster'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
+import { registerDevBudget } from '../utils/devTools'
 import { applyPreset } from '../services/lineupHelper'
 import MobileTabBar from './MobileTabBar'
 
@@ -260,6 +261,9 @@ export default function GameScene() {
     useEffect(() => {
         saveClub(club)
     }, [club])
+
+    // Phase 34: bảng DEV (⚙ Settings → mã) ghi ngân sách EP.
+    useEffect(() => registerDevBudget((value) => setClub((current) => ({ ...current, budget: value }))), [])
     const chargeHudRef = useRef(null)
 
     const [selectedId, setSelectedId] = useState(() => {
@@ -926,6 +930,57 @@ export default function GameScene() {
             const fixture = findFixture(activeFixtureId)
             const isWc = fixture?.competition === 'wc'
             const isCup = Boolean(fixture?.competition) && !isWc
+
+            // Phase 34: trận World Cup cũng có XP cho cầu thủ CLB (đội tuyển chỉ
+            // là đội tạm, không được lưu). Thẻ CLB trùng cầu thủ (playerId) với
+            // người vừa đá cho đội tuyển nhận đúng XP trận của người đó; các cầu
+            // thủ CLB khác nhận XP tập luyện. Màn tổng kết hiện XP của đội CLB.
+            if (isWc && fixture && !fixture.played && !forfeit && clubRosterRef.current) {
+                const nationalByPlayerId = new Map(allBlue.map((player) => [player.playerId || player.id, player.id]))
+                const lineById = new Map((summary.ratings || []).map((line) => [line.id, line]))
+                const clubTeam = clubRosterRef.current.find((team) => team.id === 'blue')
+                const clubLines = []
+                const clubFractions = {}
+
+                squadOf(clubTeam).forEach((card) => {
+                    const nationalId = nationalByPlayerId.get(card.playerId || card.id)
+
+                    if (!nationalId || !fractions[nationalId]) return
+
+                    clubFractions[card.id] = fractions[nationalId]
+                    if (lineById.get(nationalId)) clubLines.push({ ...lineById.get(nationalId), id: card.id })
+                })
+
+                const clubProgress = applyMatchProgression(squadOf(clubTeam), clubLines, clubFractions, {
+                    goalsFor: blueScore,
+                    goalsAgainst: redScore,
+                    motmId: null,
+                    forfeit: false,
+                })
+                const clubById = new Map(clubProgress.players.map((player) => [player.id, player]))
+                const swap = (player) => clubById.get(player.id) || player
+
+                clubRosterRef.current = clubRosterRef.current.map((team) =>
+                    team.id !== 'blue'
+                        ? team
+                        : {
+                            ...team,
+                            players: (team.players || []).map(swap),
+                            substitutes: (team.substitutes || []).map(swap),
+                            reserves: (team.reserves || []).map(swap),
+                        },
+                )
+
+                // Đang ở chế độ World Cup thì effect lưu đội hình bỏ qua → lưu luôn ở đây.
+                try {
+                    localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(clubRosterRef.current))
+                } catch {
+                    // không lưu được: vẫn dùng trong phiên
+                }
+
+                progressionReportRef.current = clubProgress.reports
+                formChangesRef.current = []
+            }
 
             if (!forfeit && fixture && !fixture.played && !isCup && !isWc) {
                 const entries = userMatchEntries({
@@ -2527,7 +2582,8 @@ export default function GameScene() {
                     nextOpponentName={nextOpponent?.name || 'OPPONENT'}
                     onHome={goHome}
                     onNext={() => openPrematch(nextFixture)}
-                    onOpenLeague={() => setIsLeagueOpen(true)}
+                    worldCup={Boolean(wcSession)}
+                    onOpenLeague={wcSession ? openWorldCupScreen : () => setIsLeagueOpen(true)}
                     onNewSeason={createNewSeason}
                     onOpenDevelopment={openDevelopment}
                     onOpenCards={openCards}
@@ -2980,7 +3036,8 @@ export default function GameScene() {
                     nextOpponentName={nextOpponent?.name || 'OPPONENT'}
                     onNextMatch={() => openPrematch(nextFixture)}
                     onSummary={openSummary}
-                    onOpenLeague={openLeague}
+                    worldCup={Boolean(wcSession)}
+                    onOpenLeague={wcSession ? openWorldCupScreen : openLeague}
                     onNewSeason={createNewSeason}
                     onSimulateNext={canSimulateNext ? simulateNext : null}
                     simsLeft={simsLeft}
