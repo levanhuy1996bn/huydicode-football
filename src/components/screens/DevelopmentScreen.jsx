@@ -120,7 +120,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
         const next = autoUpgrade(selected)
 
         if (next === selected) {
-            setFeedback(progress.unspentPoints ? 'Nothing more can be upgraded (potential reached)' : 'No points to spend')
+            setFeedback('No points to spend')
             return
         }
 
@@ -193,7 +193,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
                         Players earn XP from every match (minutes, rating, goals, assists, tackles,
                         saves, clean sheets). Max level {MAX_LEVEL}: {POINTS_PER_LEVEL} points per level up to level 30,
                         then 1 point per level. Key attributes for the position cost 1 point, secondary 2, others 3.
-                        Training can't take Overall above the player's potential (card upgrades +N add on top). {totalUnspent > 0 && <b>{totalUnspent} points waiting.</b>}
+                        Training has no OVR limit — every point counts (card upgrades +N add on top). {totalUnspent > 0 && <b>{totalUnspent} points waiting.</b>}
                     </p>
                 </div>
             </div>
@@ -282,7 +282,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
                         <div className="dev-detail__ovr">
                             <b className={statClass(selected.overall)}>{selected.overall}</b>
                             <UpgradeBadge level={selected.upgrade} />
-                            <small>OVR · POTENTIAL {progress.potential}</small>
+                            <small>OVR</small>
                         </div>
                     </div>
 
