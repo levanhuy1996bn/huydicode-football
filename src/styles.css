@@ -3425,3 +3425,10 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
 .touch-btn__arrow--right { right: 4px; top: 50%; transform: translateY(-50%); }
 .touch-btn__arrow.is-active { color: #fff; opacity: 1; text-shadow: 0 0 6px var(--rim); font-size: 12px; }
 .touch-btn.is-swiped { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25), 0 0 16px var(--rim); }
+
+/* ---- Phase 29A5: cài như ứng dụng, đồng hồ FPS có độ phân giải ---- */
+.setting-row--install { align-items: center; }
+.setting-row--install .btn { justify-self: start; }
+.setting-note { color: #cfe3d7; font-size: 12px; line-height: 1.4; }
+.setting-note b { color: #fff; }
+.fps-meter small { opacity: 0.75; font-weight: 600; margin-left: 4px; }

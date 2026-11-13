@@ -28,7 +28,10 @@ export function fullscreenSupported() {
 
     const root = document.documentElement
 
-    return Boolean(root.requestFullscreen || root.webkitRequestFullscreen) && !/iPhone|iPod/.test(navigator.userAgent || '')
+    // Phase 29A5: ứng dụng đã cài chạy toàn màn hình sẵn → không cần nút ⛶.
+    const installedFullscreen = Boolean(window.matchMedia?.('(display-mode: fullscreen)').matches)
+
+    return Boolean(root.requestFullscreen || root.webkitRequestFullscreen) && !/iPhone|iPod/.test(navigator.userAgent || '') && !installedFullscreen
 }
 
 export const isFullscreen = () =>

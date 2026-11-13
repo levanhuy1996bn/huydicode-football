@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2 and 29A3 done 2026-11-13 — matches can be played on a phone with swipe skills. **Next:** the mobile phases 29A5 → 29A4 (29A split on 2026-11-13) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Next:** the last mobile phase 29A4 (29A split on 2026-11-13) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -29,7 +29,7 @@ npm run preview
 - **Netlify:** drag the `dist/` folder onto app.netlify.com/drop, or connect the repo with build command `npm run build` and publish directory `dist`.
 - **Vercel:** import the repo; framework preset *Vite* (build `npm run build`, output `dist`).
 - **GitHub Pages:** build, then publish the contents of `dist/` to the `gh-pages` branch (e.g. `npx gh-pages -d dist`); the game then runs at `https://<user>.github.io/<repo>/`.
-- **Install as an app:** the site has a web app manifest and icons (`public/manifest.webmanifest`, `public/icon*.png`), so Chrome / Edge offer *Install* and phones offer *Add to Home Screen*. There is no offline mode (no service worker).
+- **Install as an app:** the site has a web app manifest and icons (`public/manifest.webmanifest`, `public/icon*.png`), so Chrome / Edge offer *Install* and phones offer *Add to Home Screen* (⚙ Settings → *Install app* shows a button or the steps). Since Phase 29A5 a service worker (`public/sw.js`, production build only) caches the game: it opens faster and works **offline** after the first visit. The site must be served over HTTPS (all hosts above do) — on `http://` with a LAN IP the service worker and *Install* are not available.
 - **Loading:** the first screen loads ~1.3 MB of JavaScript (~380 KB gzipped); the 3D match engine with Rapier physics (~2.4 MB) is a separate file fetched in the background 1.5 s after start, and the 3D trophy viewer is loaded only when needed.
 
 ## Current features
@@ -308,7 +308,9 @@ ultimate-football-manager-3d/
     │   ├── sound.js          # Web Audio: upgrade sounds, SOUND ON / OFF (Phase 25)
     │   ├── matchSound.js     # Web Audio: whistle, kicks, crowd, ooh, roar (Phase 29B, crowd reworked 29F)
     │   ├── crowdSynth.js     # crowd voices synthesised in code: murmur, "ooh", goal roar + applause (Phase 29F)
-    │   └── device.js         # touch / iOS detection, full screen, zoom blocking in a match (Phase 29A1)
+    │   ├── device.js         # touch / iOS detection, full screen, zoom blocking in a match (Phase 29A1)
+    │   ├── performance.js    # AUTO graphics, resolution levels, slow-device memory (Phase 29A5)
+    │   └── install.js        # install as an app (button / iPhone steps), service worker registration (Phase 29A5)
     └── components/
         ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen, WorldCupScreen (29H)
         ├── GameScene.jsx
@@ -336,7 +338,7 @@ ultimate-football-manager-3d/
         ├── NewTrophyPopup.jsx    # "NEW TROPHY" pop-up (Phase 28B)
         ├── NationPicker.jsx      # choose your national team for the World Cup (Phase 29E)
         ├── WorldCupPanel.jsx     # World Cup groups, bracket, your matches (Phase 29E, on the WORLD CUP screen since 29H)
-        ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B)
+        ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B); adaptive resolution (29A5)
         ├── Stadium.jsx           # stands with crowd, boards, floodlights (Phase 29B)
         ├── Trophy3D.jsx          # 3D turning trophy with SVG fallback; TrophyCanvas.jsx = WebGL part (Phase 29B)
         ├── FpsMeter.jsx          # FPS counter (Phase 29B)
@@ -409,8 +411,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 29A1 | Mobile foundation: touch detection, no zoom / scroll in a match, full-screen match layout, rotate prompt, full-screen button, iPhone Safari fixes, smaller HUD | ✅ Done (2026-11-13) |
 | 29A2 | Basic touch controls: joystick + PASS / THROUGH / SHOOT / SPRINT buttons, ☰ menu | ✅ Done (2026-11-13) |
 | 29A3 | Advanced touch controls: swipe variants, vibration, button size / opacity / joystick settings | ✅ Done (2026-11-13) |
-| 29A5 | Phone performance: automatic LOW graphics, lower resolution when FPS drops, install as an app | 🔜 Next |
-| 29A4 | Mobile UI for the management screens (bottom tab bar, step-by-step screens) | 🔜 Planned |
+| 29A5 | Phone performance: AUTO graphics, adaptive resolution, LOW mid-match when needed, pause when leaving the app, install as an app + offline | ✅ Done (2026-11-13) |
+| 29A4 | Mobile UI for the management screens (bottom tab bar, step-by-step screens) | 🔜 Next |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
@@ -1349,6 +1351,25 @@ Split on 2026-11-12 into **29A** (mobile), **29B** (graphics, sound, performance
   - Touch buttons write into the same `keys.current` input the engine already reads, so the engine needs almost no change.
 - **Testing:** emulated iPhone / Android in the browser (screen sizes, touch, swipes); the real feel has to be checked on a phone — open the game with `npm run dev -- --host` on the Mac and the Mac's IP address on a phone in the same Wi-Fi, or publish it (see *Publish online*).
 
+### Phase 29A5 — Phone performance ✅ (2026-11-13)
+
+Code: `src/utils/performance.js`, `src/utils/install.js`, `public/sw.js` (new), `MatchCanvas.jsx` (adaptive resolution), `GameScene.jsx`, `SettingsRows.jsx`, `FpsMeter.jsx`, `device.js`, `main.jsx`, `public/manifest.webmanifest`, CSS at the end of `styles.css`.
+
+- **Graphics AUTO** (new default; the button shows what it picked, e.g. `AUTO · LOW`): **LOW** on phones (touch screen with the short side ≤ 600 px), on devices with ≤ 4 GB RAM (Chrome reports it) and on touch tablets with ≤ 4 CPU cores; **HIGH** otherwise. Saves from before 29A5 that had the old default HIGH switch to AUTO once; LOW stays LOW. HIGH and LOW still force the quality.
+- **Adaptive resolution** in every match (`AdaptiveResolution` in `MatchCanvas.jsx`): the frame rate is measured every 2 s (the first 3 s are skipped while the stadium builds).
+  - Below **45 FPS** → one step lower resolution (HIGH: 1.75 → 1.5 → 1.25 → 1 → 0.85 × pixel ratio, LOW: 1 → 0.85 → 0.75 → 0.65; never above the screen's own ratio).
+  - If the lower step was **not faster** (the phone caps at 30 FPS in battery saver, or the slowness is the CPU, not the graphics) the old step comes back and the resolution stays fixed for the rest of the match — no blurry picture for nothing.
+  - Smooth again (**≥ 57 FPS** three times in a row) → one step back up (at most twice per match, so it does not flicker).
+- **Switch to LOW mid-match** (AUTO only): still below **25 FPS** twice in a row at the lowest step (or when lower resolution did not help) → shadows, the soft shadows under the players and the floodlights turn off at once, without restarting the match. The game remembers it, so AUTO starts the next matches on LOW; pressing **AUTO** again in Settings forgets it and guesses again.
+- **FPS counter** now also shows the resolution in use and `LOW*` after an automatic switch (e.g. `52 FPS 1.25×`).
+- **Battery:** while the match is paused the 3D scene is only redrawn when something changes (`frameloop: 'demand'`), so a paused phone does not heat up. **Leaving the app mid-match** (switching app, locking the screen, another tab) pauses the match; press RESUME when you come back.
+- **Install as an app** (⚙ Settings → *Install app*):
+  - Android / Chrome / Edge: **📲 INSTALL** button (the browser's install prompt) when the browser offers it, otherwise the menu steps; `INSTALLED ✓` once installed.
+  - iPhone / iPad: *Safari: Share ⬆ → Add to Home Screen* (Safari has no install button for web pages).
+  - The installed app opens **full screen** (`display: fullscreen` with standalone fallback; the ⛶ button hides there).
+  - **Service worker** (`public/sw.js`, build only, not in `npm run dev`): the page comes from the network first (3 s timeout, then the saved copy), so updates arrive on the next start; hashed files in `assets/` are kept (at most 30, older ones removed); the game then **works offline** — saves were always on the device.
+- **Tested** in emulated Pixel 7 / iPhone 13 landscape and desktop: AUTO picks LOW on phones and HIGH on desktop; the resolution drops a step and comes back when it does not help; in a very slow software renderer AUTO switched to LOW mid-match (2 → 5 FPS) and remembered it; hiding the page paused the clock and RESUME continued it; Install row shows the Android menu steps / the iPhone Share steps; the service worker controls the page and the game reloads with the network **offline**; desktop regression tests unchanged.
+
 ### Phase 29A3 — Advanced touch controls ✅ (2026-11-13)
 
 Code: `src/components/TouchControls.jsx` (swipes, vibration, settings), a `ufm:cancel-charge` event in `MatchWorld.jsx`, four new settings in `GameScene.jsx` / `SettingsRows.jsx`, CSS at the end of `styles.css`.
@@ -1606,7 +1627,7 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 | Nền tảng mobile: chặn phóng to / cuộn trong trận, trận toàn màn hình, nhắc xoay ngang, sửa lỗi iPhone | Phase 29A1 ✅ |
 | Điều khiển cảm ứng cơ bản: cần điều khiển + 4 nút | Phase 29A2 ✅ |
 | Điều khiển cảm ứng nâng cao: vuốt trên nút, rung, tuỳ chỉnh nút | Phase 29A3 ✅ |
-| Hiệu năng điện thoại: tự chọn đồ hoạ LOW, cài như ứng dụng | Phase 29A5 |
+| Hiệu năng điện thoại: tự chọn đồ hoạ LOW, cài như ứng dụng | Phase 29A5 ✅ |
 | Giao diện quản lý trên mobile (thanh tab dưới, màn hình theo từng bước) | Phase 29A4 |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |

@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { isMuted, setMuted } from '../utils/sound'
 import ClubCrest from './ClubCrest'
 import { userClubId, userTeam } from '../services/career'
 import { isTouchDevice } from '../utils/device'
+import { autoGraphics, clearSlowDevice } from '../utils/performance'
+import { installState, onInstallChange, promptInstall } from '../utils/install'
 
 // Phase 29G: các dòng cài đặt dùng chung cho khung SETTINGS ở HOME và bảng
 // ⚙ SETTINGS mở từ header (mọi màn hình). Trận 3 / 6 / 9 phút (10 → 9).
@@ -26,8 +28,37 @@ const LABEL_MODES = [
     ['off', 'OFF'],
 ]
 
+// Phase 29A5: cài game như ứng dụng (Android / Chrome: nút; iPhone: hướng dẫn).
+function InstallRow() {
+    const [state, setState] = useState(installState)
+
+    useEffect(() => onInstallChange(() => setState(installState())), [])
+
+    // Máy tính không có nút cài: không hiện dòng này.
+    if (state === 'manual' && !isTouchDevice()) return null
+
+    return (
+        <div className="setting-row setting-row--install">
+            <span>Install app</span>
+            {state === 'installed' && <b className="setting-note">INSTALLED ✓</b>}
+            {state === 'prompt' && (
+                <button type="button" className="btn btn--small" onClick={() => promptInstall()}>
+                    📲 INSTALL
+                </button>
+            )}
+            {state === 'ios' && (
+                <small className="setting-note">Safari: Share <b>⬆</b> → <b>Add to Home Screen</b></small>
+            )}
+            {state === 'manual' && (
+                <small className="setting-note">Browser menu <b>⋮</b> → <b>Install app</b> / <b>Add to Home screen</b></small>
+            )}
+        </div>
+    )
+}
+
 export default function SettingsRows({ settings, onSettingsChange, onChangeClub = null, lockMatchLength = false }) {
     const [muted, setMutedState] = useState(isMuted)
+    const graphics = settings.graphics || 'auto'
 
     return (
         <>
@@ -80,12 +111,17 @@ export default function SettingsRows({ settings, onSettingsChange, onChangeClub 
             <div className="setting-row">
                 <span>Graphics</span>
                 <div className="segmented">
-                    {[['high', 'HIGH'], ['low', 'LOW']].map(([value, label]) => (
+                    {/* Phase 29A5: AUTO = HIGH / LOW theo máy (nhãn ghi kết quả). */}
+                    {[['auto', `AUTO · ${autoGraphics().toUpperCase()}`], ['high', 'HIGH'], ['low', 'LOW']].map(([value, label]) => (
                         <button
                             key={value}
                             type="button"
-                            className={(settings.graphics || 'high') === value ? 'is-active' : ''}
-                            onClick={() => onSettingsChange({ graphics: value })}
+                            className={graphics === value ? 'is-active' : ''}
+                            onClick={() => {
+                                // Bấm AUTO: quên lần máy phải tự hạ LOW trước đây, đoán lại.
+                                if (value === 'auto') clearSlowDevice()
+                                onSettingsChange({ graphics: value })
+                            }}
                         >
                             {label}
                         </button>
@@ -156,6 +192,7 @@ export default function SettingsRows({ settings, onSettingsChange, onChangeClub 
                     ))}
                 </div>
             </div>
+            <InstallRow />
             {isTouchDevice() && TOUCH_ROWS.map(([label, key, fallback, options]) => (
                 <div key={key} className="setting-row">
                     <span>{label}</span>
@@ -175,7 +212,8 @@ export default function SettingsRows({ settings, onSettingsChange, onChangeClub 
             ))}
             <p className="home-card__empty">
                 Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
-                smoothing for weaker laptops and phones. Auto play: the AI plays for you when no key is
+                smoothing for weaker laptops and phones; AUTO picks LOW on phones and weaker devices,
+                lowers the resolution when the frame rate drops and switches to LOW mid-match if needed. Auto play: the AI plays for you when no key is
                 pressed for that long (press any key to take control back).
                 {isTouchDevice() && ' Touch: swipe on a button for its variant — PASS ↑ lob / cross, THROUGH ↑ lobbed through ball, SHOOT ↑ chip, ← → finesse, ↓ trivela, SPRINT ↓ shield.'}
             </p>

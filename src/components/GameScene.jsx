@@ -142,6 +142,7 @@ import {
     squadOf,
 } from '../systems/roster'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
+import { resolveGraphics } from '../utils/performance'
 
 
 // Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
@@ -153,12 +154,14 @@ const MatchCanvas = lazy(loadMatchCanvas)
 
 const SETTINGS_KEY = 'ultimate-football-settings-v1'
 // Phase 29B: graphics 'high' | 'low', showFps (đồng hồ FPS trong trận).
+// Phase 29A5: graphics thêm 'auto' (mặc định): điện thoại / máy yếu → LOW.
 // Phase 29F: crowdVolume 'off' | 'low' | 'medium', autoPlayDelay (giây không
 // bấm phím trước khi máy đá thay: 5 / 10 / 20).
 const DEFAULT_SETTINGS = {
     matchDuration: MATCH_DURATION,
     labelMode: 'smart',
-    graphics: 'high',
+    graphics: 'auto',
+    graphicsAuto: true,
     showFps: false,
     crowdVolume: 'medium',
     autoPlayDelay: 10,
@@ -176,6 +179,13 @@ function loadSettings() {
 
         // Phase 29G: trận 3 / 6 / 9 phút — bản lưu 10 phút thành 9.
         if (merged.matchDuration === 600) merged.matchDuration = 540
+
+        // Phase 29A5: bản lưu cũ chưa có AUTO ('high' là mặc định cũ) → AUTO
+        // một lần; ai đã chọn LOW thì giữ LOW.
+        if (saved && !saved.graphicsAuto) {
+            if (merged.graphics === 'high') merged.graphics = 'auto'
+            merged.graphicsAuto = true
+        }
 
         return merged
     } catch {
@@ -289,6 +299,10 @@ export default function GameScene() {
     const labelMode = settings.labelMode
     const matchDurationRef = useRef(matchDuration)
     matchDurationRef.current = matchDuration
+
+    // Phase 29A5: chất lượng đồ hoạ thật (AUTO → HIGH / LOW); tính lại khi đổi
+    // cài đặt hoặc đổi màn hình (máy đã tự hạ LOW ở trận trước).
+    const graphicsQuality = useMemo(() => resolveGraphics(settings.graphics), [settings.graphics, screen])
 
     const updateSettings = useCallback((patch) => {
         setSettings((current) => {
@@ -422,7 +436,6 @@ export default function GameScene() {
 
     const activeFixture = useMemo(
         () => findFixture(activeFixtureId),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [league, activeFixtureId, worldCup],
     )
 
@@ -450,7 +463,6 @@ export default function GameScene() {
     // Đội hình 3D của đối thủ theo đúng đội trong vòng đấu.
     const matchRoster = useMemo(
         () => applyKits(buildMatchRoster(roster, opponentTeam, { ...matchOptions, formSeed: activeFixture?.id }), matchKits, opponentTeam?.id || 'red'),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [roster, opponentTeam, activeFixture?.id, kitChoice, league.difficulty, league.season],
     )
 
@@ -809,7 +821,6 @@ export default function GameScene() {
         )
 
         setActionMessage('FULL TIME - RESULT SAVED')
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         matchStatus,
         activeFixtureId,
@@ -1031,7 +1042,6 @@ export default function GameScene() {
             cupInfo: cupInfoRef.current,
         })
         // Chỉ chụp một lần khi vừa hết trận.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchStatus, forfeit])
 
     // Thông báo bàn thắng.
@@ -1163,6 +1173,22 @@ export default function GameScene() {
             setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
         }
     }, [portraitTouch, matchStatus, screen])
+
+    // Phase 29A5: rời ứng dụng giữa trận (chuyển app, khoá màn hình, chuyển tab):
+    // tạm dừng, quay lại thì bấm RESUME để đá tiếp.
+    const matchStatusRef = useRef(matchStatus)
+    matchStatusRef.current = matchStatus
+
+    useEffect(() => {
+        if (screen !== 'match') return undefined
+
+        const onVisibility = () => {
+            if (document.hidden && matchStatusRef.current === 'playing') setMatchStatus('paused')
+        }
+
+        document.addEventListener('visibilitychange', onVisibility)
+        return () => document.removeEventListener('visibilitychange', onVisibility)
+    }, [screen])
 
     useEffect(() => {
         const update = () => setFullscreen(isFullscreen())
@@ -1796,7 +1822,6 @@ export default function GameScene() {
             findFixture(prematchFixtureId) ||
             nextFixture ||
             null,
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [league, prematchFixtureId, nextFixture, worldCup],
     )
 
@@ -2029,7 +2054,6 @@ export default function GameScene() {
             prematchOpponent
                 ? applyKits(buildMatchRoster(roster, prematchOpponent, { ...matchOptions, formSeed: prematchFixture?.id }), prematchKits, prematchOpponent.id)
                 : roster,
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [roster, prematchOpponent, prematchFixture?.id, kitChoice, league.difficulty, league.season],
     )
 
@@ -2338,7 +2362,7 @@ export default function GameScene() {
             )}
 
             {screen === 'trophies' && (
-                <TrophyRoomScreen world={world} league={league} onBack={goHome} quality={settings.graphics} />
+                <TrophyRoomScreen world={world} league={league} onBack={goHome} quality={graphicsQuality} />
             )}
 
             {newTrophies.length > 0 && screen !== 'match' && screen !== 'simulation' && (
@@ -2346,7 +2370,7 @@ export default function GameScene() {
                     key={newTrophies[0].id}
                     trophy={newTrophies[0]}
                     remaining={newTrophies.length - 1}
-                    quality={settings.graphics}
+                    quality={graphicsQuality}
                     onClose={() => setNewTrophies((queue) => queue.slice(1))}
                     onOpenRoom={() => {
                         setNewTrophies([])
@@ -2401,7 +2425,9 @@ export default function GameScene() {
         <div className="game-canvas">
             <Suspense fallback={<div className="match-loading">LOADING STADIUM…</div>}>
                         <MatchCanvas
-                            graphics={settings.graphics}
+                            graphics={graphicsQuality}
+                            autoGraphics={(settings.graphics || 'auto') === 'auto'}
+                            paused={matchStatus === 'paused'}
                             chargeHudRef={chargeHudRef}
                             radarRef={radarRef}
                             statsRef={statsRef}
