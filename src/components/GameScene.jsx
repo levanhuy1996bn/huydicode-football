@@ -6,6 +6,7 @@ import { crowdStart, crowdStop, prepareCrowdSounds, roar, setCrowdVolume, whistl
 import { applyFormAfterMatch, maxSquadForm, restoreSquadFitness } from '../systems/form'
 import FpsMeter from './FpsMeter'
 import SettingsDialog from './SettingsDialog'
+import { fullscreenSupported, isFullscreen, isTouchDevice, setInMatch, toggleFullscreen } from '../utils/device'
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
@@ -184,6 +185,49 @@ function saveSettings(settings) {
     }
 }
 
+// Phase 29A1: trận đấu dạng toàn màn hình trên điện thoại / màn hình nhỏ
+// (ẩn header + bảng bên phải, HUD thu nhỏ) và nhắc xoay ngang.
+const COMPACT_QUERY = '(max-width: 900px), (max-height: 600px)'
+
+function useCompactLayout() {
+    // Máy cảm ứng màn hình vừa / nhỏ (điện thoại, tablet) hoặc cửa sổ nhỏ.
+    // Laptop cảm ứng màn hình lớn vẫn dùng bố cục thường.
+    const read = () =>
+        typeof window !== 'undefined' && (
+            (isTouchDevice() && Math.min(window.innerWidth, window.innerHeight) <= 820) ||
+            Boolean(window.matchMedia?.(COMPACT_QUERY).matches)
+        )
+    const [compact, setCompact] = useState(read)
+
+    useEffect(() => {
+        const update = () => setCompact(read())
+
+        window.addEventListener('resize', update)
+        return () => window.removeEventListener('resize', update)
+    }, [])
+
+    return compact
+}
+
+function usePortraitTouch() {
+    const read = () =>
+        typeof window !== 'undefined' && isTouchDevice() && window.innerHeight > window.innerWidth
+    const [portrait, setPortrait] = useState(read)
+
+    useEffect(() => {
+        const update = () => setPortrait(read())
+
+        window.addEventListener('resize', update)
+        window.addEventListener('orientationchange', update)
+        return () => {
+            window.removeEventListener('resize', update)
+            window.removeEventListener('orientationchange', update)
+        }
+    }, [])
+
+    return portrait
+}
+
 export default function GameScene() {
     const [roster, setRoster] = useState(loadSavedRoster)
     // Phase 23: CLB (ngân sách EP, hợp đồng, cấp độ, XP, kho thẻ) do GameScene
@@ -287,6 +331,10 @@ export default function GameScene() {
     const [halftimeCountdown, setHalftimeCountdown] = useState(null)
     // Phase 29G: bảng cài đặt mở từ nút ⚙ trên header.
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    // Phase 29A1: bố cục trận trên điện thoại, xoay dọc, toàn màn hình.
+    const compactLayout = useCompactLayout()
+    const portraitTouch = usePortraitTouch()
+    const [fullscreen, setFullscreen] = useState(isFullscreen)
     const autoPilotRef = useRef(false)
     autoPilotRef.current = autoPilot
     const commandAutoPilot = useCallback((on) => {
@@ -1078,6 +1126,38 @@ export default function GameScene() {
             setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
         }
     }
+
+    // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
+    useEffect(() => {
+        setInMatch(screen === 'match')
+        return () => setInMatch(false)
+    }, [screen])
+
+    // Xoay dọc giữa trận trên điện thoại: tạm dừng, xoay ngang lại thì đá tiếp.
+    const portraitPausedRef = useRef(false)
+
+    useEffect(() => {
+        if (screen !== 'match') return
+
+        if (portraitTouch && matchStatus === 'playing') {
+            portraitPausedRef.current = true
+            setMatchStatus('paused')
+        } else if (!portraitTouch && portraitPausedRef.current) {
+            portraitPausedRef.current = false
+            setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
+        }
+    }, [portraitTouch, matchStatus, screen])
+
+    useEffect(() => {
+        const update = () => setFullscreen(isFullscreen())
+
+        document.addEventListener('fullscreenchange', update)
+        document.addEventListener('webkitfullscreenchange', update)
+        return () => {
+            document.removeEventListener('fullscreenchange', update)
+            document.removeEventListener('webkitfullscreenchange', update)
+        }
+    }, [])
 
     const togglePause = () => {
         if (matchStatus === 'playing') {
@@ -2127,7 +2207,7 @@ export default function GameScene() {
     const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
 
     return (
-        <main className="app-shell">
+        <main className={`app-shell${screen === 'match' && compactLayout ? ' match-compact' : ''}`}>
             <TopBar
                 screen={screen}
                 inMatch={inMatch}
@@ -2346,6 +2426,7 @@ export default function GameScene() {
 
             {/* SCOREBOARD */}
             <div
+                className="hud-scoreboard"
                 style={{
                     position: 'absolute',
                     top: 16,
@@ -2458,6 +2539,7 @@ export default function GameScene() {
 
             {/* TACTIC SELECTOR */}
             <div
+                className="hud-tactic"
                 style={{
                     position: 'absolute',
                     top: 16,
@@ -2530,6 +2612,7 @@ export default function GameScene() {
 
             {/* MATCH CONTROLS */}
             <div
+                className="hud-controls"
                 style={{
                     position: 'absolute',
                     top: 78,
@@ -2539,6 +2622,22 @@ export default function GameScene() {
                     gap: 8,
                 }}
             >
+                {/* Phase 29A1: toàn màn hình (không có trên iPhone Safari). */}
+                {fullscreenSupported() && (compactLayout || fullscreen) && (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.currentTarget.blur()
+                            toggleFullscreen().then(setFullscreen)
+                        }}
+                        style={matchButtonStyle}
+                        title={fullscreen ? 'Exit full screen' : 'Full screen'}
+                        aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+                    >
+                        {fullscreen ? '⤡' : '⛶'}
+                    </button>
+                )}
+
                 <button
                     onClick={openLeague}
                     style={matchButtonStyle}
@@ -2832,6 +2931,15 @@ export default function GameScene() {
                         benchLimit={SQUAD_LIMITS.bench}
                         onClose={closeSubstitutions}
                     />
+                </div>
+            )}
+
+            {/* Phase 29A1: nhắc xoay ngang khi đang ở màn trận trên điện thoại. */}
+            {screen === 'match' && portraitTouch && (
+                <div className="rotate-prompt" role="alert">
+                    <div className="rotate-prompt__phone" aria-hidden="true" />
+                    <b>TURN YOUR PHONE SIDEWAYS</b>
+                    <span>The match is paused · it plays in landscape</span>
                 </div>
             )}
 

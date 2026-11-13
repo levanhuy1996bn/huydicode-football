@@ -3193,3 +3193,104 @@ b.is-off-position::after {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
 }
 .player-card__portrait svg { display: block; }
+
+/* ---- Phase 29A1: nền tảng mobile ---- */
+/* Gõ đúp không phóng to (vẫn cuộn / bấm bình thường). */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+html.is-touch { -webkit-tap-highlight-color: transparent; }
+/* Trong trận: không cuộn / kéo nảy trang. */
+html.in-match, html.in-match body { overscroll-behavior: none; }
+html.in-match .game-canvas, html.in-match .game-canvas canvas { touch-action: none; }
+
+/* Trận đấu toàn màn hình trên điện thoại / màn hình nhỏ: ẩn header, bảng
+   bên phải, chân trang; sân chiếm cả màn hình (chiều cao thật của trình duyệt,
+   tránh tai thỏ bằng safe-area). */
+.app-shell.match-compact > .topbar,
+.app-shell.match-compact > footer,
+.app-shell.match-compact .side-panel { display: none; }
+.app-shell.match-compact .content-grid { display: block; margin: 0; }
+html.in-match body:has(.match-compact) { overflow: hidden; }
+.app-shell.match-compact .pitch-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  width: 100vw;
+  height: 100vh;
+  height: var(--app-height, 100vh);
+  height: 100dvh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+.app-shell.match-compact .hud-scoreboard {
+  top: calc(6px + env(safe-area-inset-top)) !important;
+  transform: translateX(-50%) scale(0.78) !important;
+  transform-origin: top center;
+}
+.app-shell.match-compact .hud-tactic {
+  top: calc(6px + env(safe-area-inset-top)) !important;
+  left: calc(8px + env(safe-area-inset-left)) !important;
+  transform: scale(0.8);
+  transform-origin: top left;
+}
+.app-shell.match-compact .auto-toggle {
+  top: calc(48px + env(safe-area-inset-top)) !important;
+  left: calc(8px + env(safe-area-inset-left)) !important;
+  transform: scale(0.8);
+  transform-origin: top left;
+}
+.app-shell.match-compact .hud-controls {
+  top: calc(72px + env(safe-area-inset-top)) !important;
+  right: calc(8px + env(safe-area-inset-right)) !important;
+  gap: 5px !important;
+  transform: scale(0.8);
+  transform-origin: top right;
+}
+.app-shell.match-compact .action-indicator { top: calc(102px + env(safe-area-inset-top)); font-size: 9px; padding: 6px 10px; }
+.app-shell.match-compact .radar { width: 168px; height: 109px; bottom: calc(8px + env(safe-area-inset-bottom)); }
+.app-shell.match-compact .power-gauge { bottom: calc(126px + env(safe-area-inset-bottom)); width: min(300px, 60%); padding: 5px 9px 7px; }
+.app-shell.match-compact .autopilot-badge { bottom: calc(126px + env(safe-area-inset-bottom)); }
+.app-shell.match-compact .canvas-hint { display: none; }
+.app-shell.match-compact .match-overlay { padding: 8px; }
+.app-shell.match-compact .match-card { max-height: calc(100% - 16px); overflow: auto; }
+/* Màn hình rất thấp (điện thoại xoay ngang ~360–430px). */
+@media (max-height: 440px) {
+  .app-shell.match-compact .hud-scoreboard { transform: translateX(-50%) scale(0.66) !important; }
+  .app-shell.match-compact .hud-controls { top: calc(62px + env(safe-area-inset-top)) !important; transform: scale(0.7); }
+  .app-shell.match-compact .action-indicator { top: calc(86px + env(safe-area-inset-top)); }
+  .app-shell.match-compact .hud-tactic,
+  .app-shell.match-compact .auto-toggle { transform: scale(0.7); }
+  .app-shell.match-compact .auto-toggle { top: calc(40px + env(safe-area-inset-top)) !important; }
+  .app-shell.match-compact .radar { width: 132px; height: 86px; }
+  .app-shell.match-compact .power-gauge,
+  .app-shell.match-compact .autopilot-badge { bottom: calc(100px + env(safe-area-inset-bottom)); }
+}
+
+/* Nhắc xoay ngang */
+.rotate-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(4, 12, 9, 0.96);
+  color: #e6f1e9;
+  text-align: center;
+}
+.rotate-prompt b { color: #c7fa7c; font-size: 16px; letter-spacing: 1.5px; }
+.rotate-prompt span { color: #82998e; font-size: 12px; }
+.rotate-prompt__phone {
+  width: 46px;
+  height: 78px;
+  border: 3px solid #c7fa7c;
+  border-radius: 9px;
+  animation: rotate-phone 1.8s ease-in-out infinite;
+}
+@keyframes rotate-phone {
+  0%, 20% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
