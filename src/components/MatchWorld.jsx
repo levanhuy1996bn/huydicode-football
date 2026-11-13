@@ -847,6 +847,7 @@ export default function MatchWorld({
                         isSelected={selectedId === player.id}
                         onSelect={player.teamId === 'blue' ? onSelect : undefined}
                         onReady={registerPlayer}
+                        quality={quality}
                     />
                 )
             })}

@@ -1478,6 +1478,12 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 - Shown on `PlayerCardView` (size large) between the OVR and the +N badge; memoised per player / club / number.
 - **Size:** about 6.7 KB of code (2.6 KB gzipped); nothing is added to saves (the portrait is recomputed from the id).
 
+#### Quick update after Phase 29J — players on the pitch look like their cards (2026-11-13)
+
+- The 3D players used one skin colour, one dark-brown hair colour and one hair shape for all 22. Now `Player.jsx` takes skin, hair colour, hair style, beard and headband from the card portrait (`portraitTraits`, by `playerId`), so a blond player with a quiff on his card is blond with a quiff on the pitch.
+- Simplified 3D hair (seen from the high camera): short / quiff (cap + raised front), buzz (thin cap), curly (small balls), long (down to the neck), afro (big round volume), shaved (none); full beard and goatee as a patch on the chin; headband in the kit trim colour.
+- **LOW graphics:** colours change too, but every player keeps the basic hair cap and no beard (fewest shapes). HIGH adds at most 2–8 small shapes per player; no FPS change seen in the test; a few KB of code, saves unchanged.
+
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
@@ -1531,6 +1537,7 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 | World Cup thành tab riêng, 2 lần / ngày, lưu tiến độ, thưởng theo vòng cao nhất | Phase 29H ✅ |
 | Phong độ cầu thủ; thẻ thể lực / thẻ phong độ cho cả đội; thẻ tăng tỉ lệ đập +3–5% (tối đa 5 thẻ) | Phase 29I ✅ |
 | Hình ảnh cầu thủ trong thẻ (vẽ bằng code, chỉ thẻ lớn) | Phase 29J ✅ |
+| Cầu thủ trong trận 3D có màu da, màu tóc, kiểu tóc, râu giống thẻ | Sau 29J ✅ |
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản | Phase 29A |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
