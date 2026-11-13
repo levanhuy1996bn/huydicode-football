@@ -209,3 +209,48 @@ export function spendItemsById(club, ids = []) {
 
     return { ...club, inventory: (club?.inventory || []).filter((item) => !remove.has(item.id)) }
 }
+
+// ---- Phase 33: kho đồ gộp theo loại ----
+// Vật phẩm giống nhau gộp thành một dòng ×N, không tách theo nguồn (cấp CLB,
+// danh hiệu, mua…). Chỉ tách khi khác giá trị: thẻ EP theo mệnh giá (5M, 10M,
+// 20M…), Upgrade Boost theo % (+3 / +4 / +5), gói cầu thủ theo loại gói.
+// Thứ tự cố định: gói (Premium trước), EP (lớn trước), Thể lực, Phong độ,
+// Upgrade Boost (lớn trước), Upgrade Protection.
+const GROUP_ORDER = { pack: 0, ep: 1, fitness: 2, form: 3, boost: 4, protection: 5 }
+
+export function inventoryKey(item) {
+    if (item.type === 'ep') return `ep-${item.amount || 0}`
+    if (item.type === 'boost') return `boost-${item.percent || 3}`
+    if (item.type === 'pack') return `pack-${item.pack || 'standard'}`
+    return item.type
+}
+
+// → [{ key, type, item (đại diện = cũ nhất), items (cũ → mới), count, total, sources }]
+export function groupInventory(inventory = []) {
+    const groups = new Map()
+
+    inventory.forEach((item) => {
+        const key = inventoryKey(item)
+
+        if (!groups.has(key)) groups.set(key, { key, type: item.type, item, items: [], sources: [] })
+
+        const group = groups.get(key)
+
+        group.items.push(item)
+        if (item.source && !group.sources.includes(item.source)) group.sources.push(item.source)
+    })
+
+    const value = (group) =>
+        group.type === 'ep' ? group.item.amount || 0
+            : group.type === 'boost' ? group.item.percent || 0
+                : group.type === 'pack' ? (group.item.pack === 'premium' ? 1 : 0)
+                    : 0
+
+    return [...groups.values()]
+        .map((group) => ({
+            ...group,
+            count: group.items.length,
+            total: group.type === 'ep' ? group.items.reduce((sum, item) => sum + (item.amount || 0), 0) : 0,
+        }))
+        .sort((a, b) => (GROUP_ORDER[a.type] ?? 9) - (GROUP_ORDER[b.type] ?? 9) || value(b) - value(a))
+}

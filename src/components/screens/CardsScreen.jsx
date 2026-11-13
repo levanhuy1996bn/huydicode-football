@@ -10,6 +10,7 @@ import {
     formCard,
     drawFromPack,
     freeShirtNumber,
+    groupInventory,
     playerIdOf,
 } from '../../services/cards'
 import { CLUB_XP, clubXpToNext, levelRewards } from '../../services/clubProgress'
@@ -146,6 +147,19 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
     const achievementsPending = pendingAchievementCount(club, squad)
     const epTotal = inventory.filter((item) => item.type === 'ep').reduce((sum, item) => sum + item.amount, 0)
 
+    // Phase 33: mở hết thẻ EP cùng mệnh giá trong một dòng ×N.
+    const openEpGroup = (group) => {
+        const ids = new Set(group.items.map((item) => item.id))
+
+        onClubChange((current) => ({
+            ...current,
+            inventory: (current.inventory || []).filter((entry) => !ids.has(entry.id)),
+            budget: (current.budget || 0) + group.total,
+        }))
+        setReveal({ type: 'ep', amount: group.total, budget: (club.budget || 0) + group.total, source: `${group.count} × ${formatMoney(group.item.amount)} cards` })
+        setNotice(null)
+    }
+
     const openAllEp = () => {
         if (!epTotal) return
 
@@ -272,7 +286,10 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         </p>
                     ) : (
                         <div className="cards-inventory">
-                            {[...inventory].reverse().map((item) => {
+                            {/* Phase 33: vật phẩm giống nhau gộp thành một dòng ×N (EP theo mệnh giá,
+                                Boost theo %), không tách theo nguồn; dùng / mở lấy thẻ cũ nhất. */}
+                            {groupInventory(inventory).map((group) => {
+                                const { item, count } = group
                                 const blocked = item.type === 'pack' && squadFull
                                 // Thẻ dùng ở UPGRADE CARDS (bảo vệ, tăng tỉ lệ).
                                 const protection = item.type === 'protection' || item.type === 'boost'
@@ -280,35 +297,46 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
 
                                 return (
                                     <div
-                                        key={item.id}
+                                        key={group.key}
                                         className={`inventory-item inventory-item--${item.type === 'pack' ? item.pack : item.type}`}
+                                        title={group.sources.length ? `From: ${group.sources.join(' · ')}` : undefined}
                                     >
                                         <div className="inventory-item__icon" aria-hidden="true">
                                             {ITEM_ICON[item.type] || (item.pack === 'premium' ? '★' : '♦')}
                                         </div>
                                         <div className="inventory-item__body">
-                                            <strong>{itemTitle(item)}</strong>
+                                            <strong>
+                                                {itemTitle(item)}
+                                                {count > 1 && <em className="inventory-item__count">×{count}</em>}
+                                            </strong>
                                             <small>
                                                 {item.type === 'pack'
                                                     ? PACK_TYPES[item.pack]?.description
                                                     : ITEM_TEXT[item.type]}
-                                                {item.source ? ` · ${item.source}` : ''}
+                                                {item.type === 'ep' && count > 1 ? ` · ${formatMoney(group.total)} in total` : ''}
                                             </small>
                                         </div>
-                                        {protection ? (
-                                            <button type="button" className="btn btn--small" onClick={() => setTab('upgrade')}>
-                                                USE →
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className={`btn btn--small${blocked ? '' : ' btn--primary'}`}
-                                                onClick={() => openItem(item)}
-                                                title={blocked ? 'Squad is full (50/50)' : squadItem ? 'Use on the whole squad' : 'Open'}
-                                            >
-                                                {blocked ? 'SQUAD FULL' : squadItem ? 'USE' : 'OPEN'}
-                                            </button>
-                                        )}
+                                        <div className="inventory-item__actions">
+                                            {protection ? (
+                                                <button type="button" className="btn btn--small" onClick={() => setTab('upgrade')}>
+                                                    USE →
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className={`btn btn--small${blocked ? '' : ' btn--primary'}`}
+                                                    onClick={() => openItem(item)}
+                                                    title={blocked ? 'Squad is full (50/50)' : squadItem ? 'Use one on the whole squad' : 'Open one'}
+                                                >
+                                                    {blocked ? 'SQUAD FULL' : squadItem ? 'USE' : 'OPEN'}
+                                                </button>
+                                            )}
+                                            {item.type === 'ep' && count > 1 && (
+                                                <button type="button" className="btn btn--small" onClick={() => openEpGroup(group)} title={`Open all ${count} (${formatMoney(group.total)})`}>
+                                                    ALL ×{count}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 )
                             })}
