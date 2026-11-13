@@ -10,6 +10,7 @@ import {
     worldCupKey,
 } from '../../services/worldCupService'
 import { formatMoney } from '../../services/clubService'
+import { DIFFICULTIES } from '../../services/difficulty'
 
 // Phase 29H: tab WORLD CUP — bắt đầu giải lúc nào cũng được (2 giải mỗi ngày),
 // đá tiếp giải đang dở, xem bảng / nhánh đấu, lịch sử các kỳ.
@@ -23,6 +24,7 @@ const PRIZE_ROWS = [
 ]
 
 const nationName = (id) => NATION_BY_ID.get(id)?.name || id
+const difficultyLabel = (id) => DIFFICULTIES.find((item) => item.id === id)?.label || id
 
 export default function WorldCupScreen({
     world,
@@ -33,6 +35,12 @@ export default function WorldCupScreen({
     onPlay,
     onSimulateRest,
     onBack,
+    // Phase 30C: cấp World Cup + độ khó của giải
+    progress = null,
+    difficulties = [],
+    startDifficulty = 'easy',
+    onStartDifficultyChange = null,
+    activeDifficulty = null,
 }) {
     const wc = world?.worldCup || null
     // Phase 29A4c: trên điện thoại chia tab TOURNAMENT / PRIZES.
@@ -77,12 +85,38 @@ export default function WorldCupScreen({
                 ))}
             </div>
 
+            {/* Phase 30C: cấp World Cup → cả đội tuyển +N (chỉ trong World Cup) */}
+            {progress && (
+                <div className="home-card wc-level phone-tab--play">
+                    <div className="wc-level__badge">
+                        <span>WC LEVEL</span>
+                        <b>{progress.level}</b>
+                    </div>
+                    <div className="wc-level__body">
+                        <div className="wc-level__title">
+                            Whole squad <em className="wc-level__plus">+{progress.upgrade}</em>
+                            <small>World Cup only · kept when you change nation or club</small>
+                        </div>
+                        <div className="xp-bar xp-bar--large">
+                            <i style={{ width: `${progress.max ? 100 : Math.min(100, (progress.xp / progress.xpForNext) * 100)}%` }} />
+                        </div>
+                        <small className="wc-level__next">
+                            {progress.max
+                                ? 'Max level reached'
+                                : `${progress.xp} / ${progress.xpForNext} XP to level ${progress.level + 1}`}
+                            {progress.nextUpgradeLevel ? ` · level ${progress.nextUpgradeLevel} → +${progress.nextUpgrade}` : ''}
+                        </small>
+                    </div>
+                </div>
+            )}
+
             <div className="wc-top">
                 <div className="home-hero wc-hero phone-tab--play">
                     {active ? (
                         <>
                             <div className="home-hero__eyebrow">
                                 WORLD CUP {active.edition} · IN PROGRESS
+                                {activeDifficulty ? ` · ${activeDifficulty.label.toUpperCase()}` : ''}
                                 {nextFixture ? ` · ${(WC_ROUND_LABELS[nextFixture.round] || '').toUpperCase()}` : ''}
                             </div>
                             {nextFixture ? (
@@ -115,9 +149,33 @@ export default function WorldCupScreen({
                             <div className="home-hero__eyebrow">NEW TOURNAMENT · {startsLeft}/{WC_DAILY_LIMIT} LEFT TODAY</div>
                             <div className="home-hero__title">CHOOSE YOUR NATION</div>
                             <p className="home-hero__text">
-                                The best players of the nation are called up from every club — your own cards (with their +level)
-                                when they are good enough. Your club squad is not touched.
+                                The nation's own best 22 players, every one a +{progress?.upgrade || 1} card (your World Cup level).
+                                Your club squad is not touched.
                             </p>
+                            {difficulties.length > 0 && (
+                                <div className="wc-difficulty" role="radiogroup" aria-label="Tournament difficulty">
+                                    <span>DIFFICULTY</span>
+                                    <div className="wc-difficulty__options">
+                                        {difficulties.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={startDifficulty === item.id}
+                                                disabled={item.locked}
+                                                className={`wc-difficulty__btn${startDifficulty === item.id ? ' is-active' : ''}${item.locked ? ' is-locked' : ''}`}
+                                                onClick={() => onStartDifficultyChange?.(item.id)}
+                                                title={item.locked
+                                                    ? `Win the World Cup on ${item.requires?.label} to unlock`
+                                                    : `Opponents about +${item.upgrade} cards · prizes and XP ×${item.reward}`}
+                                            >
+                                                {item.locked ? '🔒 ' : ''}{item.label}
+                                                <small>{item.locked ? `win on ${item.requires?.label}` : `×${item.reward}`}</small>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div className="home-hero__actions">
                                 <button type="button" className="btn btn--primary btn--large" onClick={onStart} disabled={startsLeft <= 0}>
                                     START WORLD CUP #{(world?.worldCupCount || 0) + 1}
@@ -142,6 +200,10 @@ export default function WorldCupScreen({
                     <p className="home-card__empty">
                         Paid when the tournament ends (× difficulty). Match money and club XP as a C1 match ×1.5. SIMULATE REST: no
                         prize or trophy.
+                    </p>
+                    <p className="home-card__empty wc-xp-rules">
+                        <b>World Cup XP</b> per match: win 30 · draw 20 · loss 10 · knockout ×1.5 · title +100, all × difficulty.
+                        Squad cards by level: 1 → +1, 2 → +2, 3–4 → +3, 5 → +4, 6 → +5, 7–8 → +6, 9 → +7, 10 → +8.
                     </p>
                 </div>
             </div>
@@ -177,6 +239,7 @@ export default function WorldCupScreen({
                                     <td className={entry.finalStanding === 'champion' && !entry.skipped ? 'career-champion' : ''}>
                                         {WC_STANDING_LABELS[entry.finalStanding] || '—'}
                                         {entry.skipped ? ' (simulated)' : entry.finalStanding === 'champion' ? ' 🏆' : ''}
+                                        {entry.difficulty ? <small className="wc-history__diff"> · {difficultyLabel(entry.difficulty)}</small> : null}
                                     </td>
                                     <td>
                                         <span className="trophy-wins__club">

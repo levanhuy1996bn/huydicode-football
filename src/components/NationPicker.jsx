@@ -2,10 +2,14 @@ import { useMemo, useState } from 'react'
 import ClubCrest from './ClubCrest'
 import { NATIONS } from '../data/nations'
 import { nationOfPlayer, nationStrength, nationalSquad } from '../services/nationalTeams'
+import { upgradeBonus } from '../services/upgrade'
 
 // Phase 29E: chọn đội tuyển quốc gia dẫn dắt ở World Cup (32 đội). Gợi ý: nước
 // có nhiều người nhất trong đội hình chính của người chơi.
-export default function NationPicker({ edition, suggestedId, userCards = [], onConfirm, onCancel }) {
+// Phase 30C: đội tuyển chỉ gồm cầu thủ quốc gia (không gọi thẻ CLB của người
+// chơi), cả đội +upgrade theo cấp World Cup; hiện độ khó của giải.
+export default function NationPicker({ edition, suggestedId, userCards = [], upgrade = 1, level = 1, difficulty = null, onConfirm, onCancel }) {
+    const bonus = upgradeBonus(upgrade) - upgradeBonus(1)
     const [selectedId, setSelectedId] = useState(suggestedId || 'nat-eng')
     const rows = useMemo(() => {
         const mine = new Map()
@@ -20,7 +24,7 @@ export default function NationPicker({ edition, suggestedId, userCards = [], onC
             .sort((a, b) => b.strength - a.strength)
     }, [userCards])
     const selected = rows.find((row) => row.nation.id === selectedId) || rows[0]
-    const squad = useMemo(() => nationalSquad(selected.nation.id, { userCards }), [selected.nation.id, userCards])
+    const squad = useMemo(() => nationalSquad(selected.nation.id), [selected.nation.id])
 
     return (
         <div className="club-picker-overlay" role="dialog" aria-modal="true" aria-label="Choose your nation">
@@ -48,7 +52,7 @@ export default function NationPicker({ edition, suggestedId, userCards = [], onC
                                     {nation.id === suggestedId && <small>SUGGESTED</small>}
                                 </span>
                                 {mine > 0 && <span className="nation-row__mine" title="Your cards of this nationality">{mine} yours</span>}
-                                <b>{strength}</b>
+                                <b>{strength + bonus}</b>
                             </button>
                         ))}
                     </div>
@@ -58,22 +62,23 @@ export default function NationPicker({ edition, suggestedId, userCards = [], onC
                             <ClubCrest clubId={selected.nation.id} size={34} />
                             <div>
                                 <b>{selected.nation.name}</b>
-                                <small>Starting XI average {selected.strength} · squad of {squad.length}</small>
+                                <small>Starting XI average {selected.strength + bonus} · squad of {squad.length} · all +{upgrade}</small>
                             </div>
                         </div>
                         <ol className="nation-squad">
                             {squad.slice(0, 11).map((player) => (
-                                <li key={player.playerId} className={player.ownCard ? 'is-own' : ''}>
+                                <li key={player.playerId}>
                                     <span>{player.slotPosition}</span>
                                     <b>{player.name}</b>
-                                    <small>{player.ownCard ? 'YOUR CARD' : player.club || ''}</small>
-                                    <em>{player.overall}</em>
+                                    <small>{player.club || ''}</small>
+                                    <em>{(player.overall || 0) + bonus}</em>
                                 </li>
                             ))}
                         </ol>
                         <p className="nation-picker__note">
-                            The best players of the nation are called up from every club; your own cards (with their + level) are picked
-                            when they are good enough. 8 groups of 4, then round of 16, quarter-finals, semi-finals, final — single matches,
+                            The nation&apos;s own best players, called up from every club — every one a <b>+{upgrade}</b> card
+                            (World Cup level {level}){difficulty ? <> · difficulty <b>{difficulty.label}</b></> : null}. Your club cards are not
+                            used. 8 groups of 4, then round of 16, quarter-finals, semi-finals, final — single matches,
                             a level knockout match goes to penalties.
                         </p>
                         <button type="button" className="btn btn--primary btn--large btn--block" onClick={() => onConfirm(selected.nation.id)}>

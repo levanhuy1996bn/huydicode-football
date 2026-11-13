@@ -8,6 +8,50 @@ import { formatMoney } from '../../services/clubService'
 import { PACK_TYPES } from '../../services/cards'
 import { FormArrow } from '../CardBits'
 
+// Phase 30C: XP / cấp World Cup sau trận World Cup.
+function WorldCupLevelCard({ report }) {
+    if (!report) return null
+
+    const { before, after, xp, levelsGained, unlocked, difficulty } = report
+
+    return (
+        <div className={`home-card wc-level-report${levelsGained > 0 ? ' is-levelup' : ''}`}>
+            <div className="home-card__head">
+                <span>WORLD CUP LEVEL</span>
+                {difficulty && <small>{difficulty.label} · XP ×{difficulty.reward}</small>}
+            </div>
+            <div className="wc-level-report__row">
+                <div>
+                    <span>WC XP</span>
+                    <b>+{xp}</b>
+                </div>
+                <div>
+                    <span>LEVEL</span>
+                    <b>{before.level}{after.level !== before.level ? ` → ${after.level}` : ''}</b>
+                </div>
+                <div>
+                    <span>SQUAD CARDS</span>
+                    <b>+{before.upgrade}{after.upgrade !== before.upgrade ? ` → +${after.upgrade}` : ''}</b>
+                </div>
+            </div>
+            <div className="xp-bar xp-bar--large">
+                <i style={{ width: `${after.max ? 100 : Math.min(100, (after.xp / after.xpForNext) * 100)}%` }} />
+            </div>
+            <small className="wc-level-report__next">
+                {after.max ? 'Max World Cup level' : `${after.xp} / ${after.xpForNext} XP to level ${after.level + 1}`}
+            </small>
+            {levelsGained > 0 && (
+                <div className="club-reward__levelup">
+                    WORLD CUP LEVEL {after.level}!{after.upgrade !== before.upgrade ? ` Your national squad is now +${after.upgrade}.` : ''}
+                </div>
+            )}
+            {unlocked && (
+                <div className="club-reward__levelup">NEW DIFFICULTY UNLOCKED · {unlocked.label.toUpperCase()}</div>
+            )}
+        </div>
+    )
+}
+
 // Phase 23: XP CLB, tiền thưởng, lên cấp và phần thưởng của trận vừa đá.
 function ClubRewardCard({ report, onOpenCards }) {
     if (!report) return null
@@ -223,7 +267,7 @@ export default function PostMatchScreen({
                     ['stats', 'STATS'],
                     ['players', 'PLAYERS'],
                     ...(summary.forfeit ? [] : [['events', 'EVENTS']]),
-                    ...(summary.clubReport ? [['rewards', 'REWARDS']] : []),
+                    ...(summary.clubReport || summary.wcReport ? [['rewards', 'REWARDS']] : []),
                 ].map(([key, label]) => (
                     <button
                         key={key}
@@ -323,6 +367,7 @@ export default function PostMatchScreen({
             )}
 
             <div className="phone-tab--rewards">
+                <WorldCupLevelCard report={summary.wcReport} />
                 <ClubRewardCard report={summary.clubReport} onOpenCards={onOpenCards} />
             </div>
 

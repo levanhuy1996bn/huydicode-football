@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A — all done ✅ (2026-11-13).** Latest: 30A (post / crossbar "ping" and stats, TEAM panel during the match, no LEAGUE button in the match). Next: **30C** (World Cup levels), then **30B** (smarter AI carrier). Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13) — all planned phases are done; next ideas are in the backlog — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A, 30C — all done ✅ (2026-11-13).** Latest: 30C (World Cup levels 1–10 → national squad +1 … +8, World Cup difficulty unlocked by titles). Next: **30B** (smarter AI carrier). Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13) — all planned phases are done; next ideas are in the backlog — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -417,8 +417,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 29A4b | Mobile UI, part 2: SQUAD, CARDS, TRANSFERS as tabbed screens | ✅ Done (2026-11-13) |
 | 29A4c | Mobile UI, part 3: LEAGUE + cups, WORLD CUP, TROPHIES, post-match, quick simulation | ✅ Done (2026-11-13) |
 | 30A | In the match: goalposts and crossbar (round, "ping", stats), TEAM panel during the match (formation, tactic, subs, positions), no LEAGUE button in the match | ✅ Done (2026-11-13) |
-| 30C | World Cup levels: WC XP and level 1–10 → whole national squad +1 … +8 (World Cup only), difficulty chosen per tournament and unlocked by winning the one below | 🔜 Next |
-| 30B | Smarter AI with the ball: carry one more touch into a better shooting position instead of passing wide | Planned |
+| 30C | World Cup levels: WC XP and level 1–10 → whole national squad +1 … +8 (World Cup only), difficulty chosen per tournament and unlocked by winning the one below | ✅ Done (2026-11-13) |
+| 30B | Smarter AI with the ball: carry one more touch into a better shooting position instead of passing wide | 🔜 Next |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
@@ -902,7 +902,7 @@ Hold a modifier, then press or charge the action key. The modifier also counts i
 
 ### Later phases (not started)
 
-Everything up to and including Phase 29K and 29A1–29A5 (with 29A4a–c) and 30A are done (see the status table). Next: **30C**, then **30B** (see "Phases 30A–30C — plan"). Roadmap originally agreed on 2026-11-12:
+Everything up to and including Phase 29K and 29A1–29A5 (with 29A4a–c), 30A and 30C are done (see the status table). Next: **30B** (see "Phases 30A–30C — plan"). Roadmap originally agreed on 2026-11-12:
 
 ### Phase 22 — Match feel, screens and squad rules, season player stats ✅ (2026-11-12)
 
@@ -1720,6 +1720,37 @@ Phone only (≤ 760 px, or a landscape phone); the desktop layout is unchanged. 
 
 - SHELF = the trophy shelves; tap a trophy and its details (3D trophy, wins) open as a full page with **← ALL TROPHIES**. CAREER = the totals in four small columns and the season-by-season table (difficulty column hidden on a portrait phone).
 
+### Phase 30C — World Cup levels and difficulty ✅ (2026-11-13)
+
+New file: `src/services/worldCupLevel.js`. Saved in the world save: `wcXp` (total World Cup XP) and `wcUnlocked` (highest unlocked difficulty); each World Cup stores its `difficulty`.
+
+**1. National squad**
+
+- The squad is always the nation's own best 22 players (the user's club cards are no longer called up, so club upgrades don't count in the World Cup), and **every player is a +N card** where N comes from the World Cup level (stats raised with the normal card-upgrade table, so the card-level team color counts too).
+- The level belongs to the manager: changing nation or club keeps it. If the level rises during a tournament, the squad is rebuilt with the new +N before the next match.
+- The nation picker shows the squad and nation strengths with your +N, and the chosen difficulty.
+
+**2. World Cup XP and levels**
+
+- After every World Cup match you play: win 30, draw 20, loss 10 (a knockout lost on penalties counts as a draw, won on penalties as a win), knockout matches ×1.5, title +100, all × the tournament difficulty (Easy ×0.8 … Legendary ×2). SIMULATE REST and abandoned matches give no XP.
+
+  | WC level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 (max) |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Squad cards | +1 | +2 | +3 | +3 | +4 | +5 | +6 | +6 | +7 | +8 |
+  | XP to next level | 100 | 150 | 250 | 350 | 500 | 700 | 900 | 1,200 | 1,500 | — |
+
+  (5,650 XP in total; a perfect title run on Easy gives 296 XP, on Normal 370.)
+- **WORLD CUP screen:** WC LEVEL badge, "Whole squad +N", XP bar ("50 / 500 XP to level 6 · level 6 → +5"); the PRIZE card explains the XP and the level table; past tournaments show their difficulty.
+- **After a World Cup match** (REWARDS tab on phones): WORLD CUP LEVEL card — XP gained, level before → after, squad cards before → after, level-up and unlock messages.
+
+**3. Difficulty per tournament**
+
+- Chosen on the start card (Easy / Normal / Hard / Very hard / Legendary). At first only Easy is open; **winning the World Cup on a level unlocks the next** (🔒 "win on Hard" on locked levels). The default is the highest unlocked level.
+- Difficulty sets the opponents' card level (Easy ≈ +1 … Legendary ≈ +9, ±1 per player) and how fast the AI decides, and multiplies prize money, match money / club XP and World Cup XP. The PLAY screen shows the World Cup difficulty (read-only) for World Cup matches; the season difficulty is unchanged for club matches.
+- A tournament already in progress from before 30C keeps using the season difficulty.
+
+**Tests:** level thresholds and the card table; a full title run on Easy (7 matches, 296 XP, Normal unlocked); forfeit → no XP; group draw on Normal = 20 XP; national squad all +5 with higher OVR and no club cards; WORLD CUP screen, nation picker and PLAY screen on desktop and phone; one World Cup match played in the browser (XP saved: +24 for a win on Easy).
+
 ### Phase 30A — Goalposts, TEAM panel in the match ✅ (2026-11-13)
 
 New file: `src/systems/woodwork.js`.
@@ -1751,7 +1782,7 @@ Playtest requests on 2026-11-13. Order: **30A → 30C → 30B** (the AI change n
 - **TEAM panel during the match** (from PAUSE / ☰ / the match buttons): formation, tactic, substitutions, swap positions between starters (saved lineups stay pre-match only). Applied as soon as play resumes; moving players between positions does not use a substitution.
 - **No LEAGUE button during the match.**
 
-**30C — World Cup levels** (medium)
+**30C — World Cup levels** (medium) — ✅ done, see "Phase 30C" below
 
 - **The national squad is always the nation's own best 22 players** (the user's club cards are no longer called up, so club upgrades don't matter in the World Cup). Nothing new is stored except the World Cup level and XP.
 - **World Cup XP** after every World Cup match: win 30, draw 20, loss 10; knockout matches ×1.5; title +100; × the tournament difficulty. SIMULATE REST gives no XP. Still 2 new tournaments per day.
@@ -1840,7 +1871,7 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 | Mobile: SQUAD, CARDS, TRANSFERS chia tab | Phase 29A4b ✅ |
 | Mobile: LEAGUE + cúp, WORLD CUP, TROPHIES, sau trận, mô phỏng nhanh | Phase 29A4c ✅ |
 | Cột dọc / xà ngang (bóng bật ra, tiếng "ping"); đổi đội hình, chiến thuật, thay người trong trận; bỏ nút LEAGUE trong trận | Phase 30A ✅ |
-| Cấp World Cup 1–10 → cả đội tuyển +1 … +8 (chỉ trong WC); chọn độ khó, vô địch mức dưới mới mở mức trên | Phase 30C |
+| Cấp World Cup 1–10 → cả đội tuyển +1 … +8 (chỉ trong WC); chọn độ khó, vô địch mức dưới mới mở mức trên | Phase 30C ✅ |
 | AI dẫn thêm một nhịp vào vị trí sút đẹp thay vì chuyền ra biên | Phase 30B |
 | Thành tựu đập thẻ (đập nhiều → hoàn thành mục tiêu, thưởng EP) | Backlog (làm sau) |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
@@ -1855,7 +1886,7 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–29K, 29A1–29A5, 30A (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–29K, 29A1–29A5, 30A, 30C (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  
