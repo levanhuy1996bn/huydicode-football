@@ -4237,3 +4237,18 @@ html.gfx-low .player-card.ovr-ring.ovr-tier--prism::before { animation: none; }
   .player-card.ovr-ring.ovr-tier--prism::before,
   .ovr-tier-banner { animation: none; }
 }
+
+/* ==== Phase 33: kho đồ gộp ×N ==== */
+.inventory-item__count {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(185, 237, 112, 0.16);
+  border: 1px solid rgba(185, 237, 112, 0.45);
+  color: #b9ed70;
+  font: 900 13px 'Barlow Condensed', Inter, sans-serif;
+  font-style: normal;
+  vertical-align: 1px;
+}
+.inventory-item__actions { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
