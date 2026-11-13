@@ -17,6 +17,7 @@ import { SQUAD_LIMITS, squadOf } from '../../systems/roster'
 import { PlayerCardView } from '../CardBits'
 import UpgradePanel from '../UpgradePanel'
 import { maxSquadForm, restoreSquadFitness } from '../../systems/form'
+import { userClubId } from '../../services/career'
 
 // Phase 23: tab CARDS — kho phần thưởng (gói cầu thủ, thẻ EP), mở lúc nào
 // cũng được. Cầu thủ mở ra là thẻ +1 và vào đội hình ngoài. Đội đủ 50 người
@@ -320,7 +321,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         {reveal.type === 'pack' ? (
                             <>
                                 <div className="pack-reveal__eyebrow">{PACK_TYPES[reveal.pack]?.label}</div>
-                                <PlayerCardView player={reveal.card} />
+                                <PlayerCardView player={reveal.card} portraitClubId={userClubId()} />
                                 <p className="pack-reveal__note">
                                     Joined the reserves · squad {reveal.squadSize}/{SQUAD_LIMITS.total}
                                 </p>

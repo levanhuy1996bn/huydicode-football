@@ -15,6 +15,7 @@ import {
 } from '../services/upgrade'
 import { squadGroupOf, squadOf } from '../systems/roster'
 import { shortPlayerName } from '../utils/names'
+import { userClubId } from '../services/career'
 
 // Phase 25: màn đập thẻ (tab UPGRADE trong CARDS).
 //  - Thẻ chính: bất kỳ thẻ nào (đá chính / dự bị / đội hình ngoài).
@@ -262,7 +263,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
                 ) : (
                     <>
                         <div className="upgrade-main">
-                            <PlayerCardView player={main} />
+                            <PlayerCardView player={main} portraitClubId={userClubId()} />
                             <div className="upgrade-main__info">
                                 <div className="upgrade-main__levels">
                                     <UpgradeBadge level={main.upgrade} size="large" />

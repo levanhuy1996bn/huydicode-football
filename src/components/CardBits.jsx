@@ -2,6 +2,7 @@ import { physiqueOf } from '../systems/physique'
 import { statTier, upgradeTier } from '../services/upgrade'
 import { RARITY_LABELS } from '../services/cards'
 import { FORM_LEVELS, formOf } from '../systems/form'
+import PlayerPortrait from './PlayerPortrait'
 
 // Phase 25: những mảnh giao diện dùng chung cho thẻ cầu thủ.
 
@@ -49,7 +50,8 @@ export function FormArrow({ player = null, value = null, className = '' }) {
 }
 
 // Thẻ cầu thủ (màu thẻ theo độ hiếm OVR; ô +N theo cấp thẻ; số chỉ số theo mốc).
-export function PlayerCardView({ player, size = 'large', hideBadge = false }) {
+// Phase 29J: chân dung vẽ bằng code (portraitClubId = màu áo; mặc định CLB của thẻ).
+export function PlayerCardView({ player, size = 'large', hideBadge = false, portraitClubId = null }) {
     if (!player) return null
 
     const rarity = player.rarity || 'bronze'
@@ -62,6 +64,11 @@ export function PlayerCardView({ player, size = 'large', hideBadge = false }) {
                     <span>{player.position}</span>
                     <FormArrow player={player} className="player-card__form" />
                 </div>
+                {size === 'large' && (
+                    <div className="player-card__portrait">
+                        <PlayerPortrait player={player} size={104} clubId={portraitClubId} />
+                    </div>
+                )}
                 {!hideBadge && <UpgradeBadge level={player.upgrade} size="large" />}
             </div>
             <div className="player-card__name">{player.name}</div>
