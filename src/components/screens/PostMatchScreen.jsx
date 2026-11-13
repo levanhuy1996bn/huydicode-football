@@ -309,6 +309,7 @@ export default function PostMatchScreen({
                                 ...(summary.goalEvents || []),
                                 ...(summary.cardEvents || []),
                                 ...(summary.subEvents || []),
+                                ...(summary.woodworkEvents || []),
                             ]}
                         />
                         <TopPerformers ratings={summary.ratings} />

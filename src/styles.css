@@ -4024,3 +4024,27 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
   .wc-top { grid-template-columns: 1fr; }
   .career-table th:nth-child(6), .career-table td:nth-child(6) { display: table-cell; }
 }
+
+/* ---- Phase 30A: cột dọc / xà ngang ---- */
+.timeline__wood { color: #e9eef0; font-size: 12px; }
+.sim-feed__item--woodwork { color: #e9eef0; font-weight: 700; }
+.sub-tactics {
+  display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2fr); gap: 8px 14px; align-items: start;
+  margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.sub-tactics > label, .sub-tactics__formation { display: grid; gap: 4px; min-width: 0; }
+.sub-tactics span { font-size: 9px; letter-spacing: 1.4px; color: #8fa89b; font-weight: 800; }
+.sub-tactics select {
+  padding: 6px 8px; border-radius: 7px; border: 1px solid rgba(255, 255, 255, 0.15); background: #142a1f; color: #e8f1eb; font: inherit; font-size: 12px;
+}
+.sub-tactics small { color: #8fa89b; font-size: 10px; line-height: 1.35; }
+.sub-tactics .formation-picker--compact { display: flex; flex-wrap: wrap; gap: 4px; }
+.sub-tactics .formation-picker--compact .formation-tile { padding: 3px 5px; }
+.sub-tactics .formation-picker--compact .formation-tile svg { width: 34px; height: 44px; }
+.sub-tactics__note { grid-column: 1 / -1; margin: 0; color: #8fa89b; font-size: 10px; }
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  .sub-tactics { grid-template-columns: 1fr; padding: 6px 8px; }
+  .sub-tactics .formation-picker--compact { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .sub-tactics .formation-picker--compact .formation-tile { flex-shrink: 0; }
+  .sub-tactics select { font-size: 16px; }
+}

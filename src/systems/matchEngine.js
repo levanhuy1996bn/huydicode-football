@@ -1,5 +1,6 @@
 import { getPlayer, updateCurl, updateDribble, updateLooseBallPickup, updateShotBlock, updateWindup } from './ball'
 import { checkGoalAndOut, enforceRestartSpacing, restartAtSpot } from './rules'
+import { checkWoodwork } from './woodwork'
 import { updateWallBlock } from './referee'
 import { updateCharge, updateControlledPlayer } from './control'
 import { updateAISteal, updateAiSlides, updateReceiverRun, updateTeamAI } from './teamAI'
@@ -161,6 +162,9 @@ function stepPlay(ctx, dt) {
     }
 
     state.deadBall = false
+
+    // Phase 30A: bóng trúng cột dọc / xà ngang (ping, thống kê).
+    checkWoodwork(ctx, dt)
 
     updateCurl(ctx, dt)
 

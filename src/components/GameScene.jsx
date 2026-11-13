@@ -326,6 +326,8 @@ export default function GameScene() {
     const [sentOffIds, setSentOffIds] = useState([])
     // Phase 21: thay người (dòng thời gian) và bảng thống kê trực tiếp.
     const [subEvents, setSubEvents] = useState([])
+    // Phase 30A: bóng trúng cột dọc / xà ngang ({ teamId, name, minute, woodwork: 'post' | 'crossbar' }).
+    const [woodworkEvents, setWoodworkEvents] = useState([])
     const [isLiveStatsOpen, setIsLiveStatsOpen] = useState(false)
     // Phase 22: bảng hướng dẫn phím (thay nút NAMES).
     const [isControlsOpen, setIsControlsOpen] = useState(false)
@@ -385,6 +387,7 @@ export default function GameScene() {
         setCardEvents([])
         setSentOffIds([])
         setSubEvents([])
+        setWoodworkEvents([])
         setForfeit(null)
         setIsQuitOpen(false)
         setIsSubsOpen(false)
@@ -581,6 +584,18 @@ export default function GameScene() {
         ])
 
         setMatchStatus('goal')
+    }, [])
+
+    const handleWoodwork = useCallback((info) => {
+        const minute = Math.min(
+            90,
+            Math.floor((matchTimeRef.current / matchDurationRef.current) * 90) + 1,
+        )
+
+        setWoodworkEvents((events) => [
+            ...events,
+            { teamId: info.teamId, name: info.name, minute, woodwork: info.part },
+        ])
     }, [])
 
     const handleCard = useCallback((info) => {
@@ -1037,6 +1052,7 @@ export default function GameScene() {
             ...summary,
             cardEvents,
             subEvents,
+            woodworkEvents,
             shots: [...(statsRef.current?.stats?.shots || [])],
             progression: progressionReportRef.current || [],
             formChanges: formChangesRef.current || [],
@@ -2259,6 +2275,7 @@ export default function GameScene() {
             ...summary,
             cardEvents: sim.cardEvents,
             subEvents: [],
+            woodworkEvents: sim.woodworkEvents || [],
             shots: sim.stats.shots,
             progression: reports,
             formChanges: formed.changes,
@@ -2516,6 +2533,7 @@ export default function GameScene() {
                             resetKey={resetKey}
                             onGoal={handleGoal}
                             onCard={handleCard}
+                            onWoodwork={handleWoodwork}
                             shootoutCommand={shootoutCommand}
                             onShootoutUpdate={handleShootoutUpdate}
                             onShootoutEnd={handleShootoutEnd}
@@ -2767,12 +2785,7 @@ export default function GameScene() {
                     </button>
                 )}
 
-                <button
-                    onClick={openLeague}
-                    style={matchButtonStyle}
-                >
-                    LEAGUE
-                </button>
+                {/* Phase 30A: trong trận không có nút LEAGUE (xem ở sảnh). */}
 
                 {matchStatus === 'playing' && (
                     <button
@@ -2810,7 +2823,7 @@ export default function GameScene() {
                         onClick={openSubstitutions}
                         style={matchButtonStyle}
                     >
-                        SUBS {substitutionCount}/{MAX_SUBSTITUTIONS}
+                        TEAM · SUBS {substitutionCount}/{MAX_SUBSTITUTIONS}
                     </button>
                 )}
 
@@ -2868,7 +2881,7 @@ export default function GameScene() {
                         RESUME
                     </button>
                     <button type="button" className="btn" onClick={openSubstitutions}>
-                        SUBSTITUTIONS
+                        TEAM &amp; SUBS
                     </button>
                     <button type="button" className="btn btn--ghost" onClick={restartMatch}>
                         RESTART MATCH
@@ -3071,6 +3084,9 @@ export default function GameScene() {
                         onMoveSquad={moveSquadPlayer}
                         onSetLineup={lineupMode === 'prematch' ? setBlueLineup : null}
                         onApplyPreset={lineupMode === 'prematch' ? applyLineupPreset : null}
+                        tacticKey={tacticKey}
+                        onTacticChange={lineupMode === 'prematch' ? null : (key) => changeTactic({ target: { value: key } })}
+                        onFormationChange={lineupMode === 'prematch' ? null : changeFormation}
                         benchLimit={SQUAD_LIMITS.bench}
                         onClose={closeSubstitutions}
                     />
