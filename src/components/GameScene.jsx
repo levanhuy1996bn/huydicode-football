@@ -32,6 +32,7 @@ import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
 import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
 import NationPicker from './NationPicker'
+import { pendingAchievementCount } from '../services/upgradeAchievements'
 import { applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
 import { nationStrength, nationalTeamForMatch, suggestedNation } from '../services/nationalTeams'
 import {
@@ -437,6 +438,8 @@ export default function GameScene() {
     const wcMatchOptions = { difficulty: wcDifficulty.id, season: league.season }
     const optionsFor = (fixture) => (fixture?.competition === 'wc' ? wcMatchOptions : matchOptions)
     const wcProgress = worldCupProgress(world)
+    // Phase 31: thành tích đập thẻ chờ CLAIM → cộng vào số đỏ trên tab CARDS.
+    const achievementsPending = pendingAchievementCount(club, squadOf((clubRosterRef.current || roster).find((team) => team.id === 'blue')))
     const [wcStartDifficulty, setWcStartDifficulty] = useState(null)
     const changeDifficulty = useCallback((id) => {
         setLeague((current) => (roundsPlayed(current) > 0 ? current : { ...current, difficulty: id }))
@@ -2365,7 +2368,7 @@ export default function GameScene() {
                 season={league.season || 2026}
                 record={blueRow ? { position: positionOf(userClubId()), points: blueRow.points } : null}
                 onNavigate={navigate}
-                cardsCount={(club.inventory || []).length}
+                cardsCount={(club.inventory || []).length + achievementsPending}
                 clubLevel={club.level || 0}
                 budget={club.budget || 0}
                 onOpenSettings={openSettings}
@@ -2375,7 +2378,7 @@ export default function GameScene() {
             <MobileTabBar
                 active={isLeagueOpen ? 'league' : isClubOpen ? 'club' : screen}
                 onNavigate={navigate}
-                cardsCount={(club.inventory || []).length}
+                cardsCount={(club.inventory || []).length + achievementsPending}
                 onOpenSettings={openSettings}
                 hidden={screen === 'match'}
             />

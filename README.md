@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C — all done ✅ (2026-11-13).** Latest: 30B (AI carries one more touch into a good shooting position instead of passing wide). All planned phases are done; next ideas are in the backlog (card-upgrade achievements first). Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13) — all planned phases are done; next ideas are in the backlog — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31 — all done ✅ (2026-11-13).** Latest: 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). All planned phases are done; the backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13) — all planned phases are done; next ideas are in the backlog — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -419,6 +419,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 30A | In the match: goalposts and crossbar (round, "ping", stats), TEAM panel during the match (formation, tactic, subs, positions), no LEAGUE button in the match | ✅ Done (2026-11-13) |
 | 30C | World Cup levels: WC XP and level 1–10 → whole national squad +1 … +8 (World Cup only), difficulty chosen per tournament and unlocked by winning the one below | ✅ Done (2026-11-13) |
 | 30B | Smarter AI with the ball: carry one more touch into a better shooting position instead of passing wide | ✅ Done (2026-11-13) |
+| 31 | Card-upgrade achievements: each level +2 … +10 separately — first time, then every 10 / 20 / 30… successful upgrades; CLAIM → EP cards, Upgrade Boost, Upgrade Protection, Premium packs | ✅ Done (2026-11-13) |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
@@ -902,7 +903,7 @@ Hold a modifier, then press or charge the action key. The modifier also counts i
 
 ### Later phases (not started)
 
-Everything up to and including Phase 29K and 29A1–29A5 (with 29A4a–c) and 30A–30C are done (see the status table). No planned phase left — see the backlog (see "Phases 30A–30C — plan"). Roadmap originally agreed on 2026-11-12:
+Everything up to and including Phase 29K and 29A1–29A5 (with 29A4a–c), 30A–30C and 31 are done (see the status table). No planned phase left — see the backlog (see "Phases 30A–30C — plan"). Roadmap originally agreed on 2026-11-12:
 
 ### Phase 22 — Match feel, screens and squad rules, season player stats ✅ (2026-11-12)
 
@@ -1720,6 +1721,40 @@ Phone only (≤ 760 px, or a landscape phone); the desktop layout is unchanged. 
 
 - SHELF = the trophy shelves; tap a trophy and its details (3D trophy, wins) open as a full page with **← ALL TROPHIES**. CAREER = the totals in four small columns and the season-by-season table (difficulty column hidden on a portrait phone).
 
+### Phase 31 — Card-upgrade achievements ✅ (2026-11-13)
+
+Requested 2026-11-13 (like FIFA Online 3). New files: `src/services/upgradeAchievements.js`, `src/components/AchievementsPanel.jsx`. Saved in the club: `club.upgradeAchievements = { counts: { 2…10 }, best, claimed }`.
+
+**Rules**
+
+- Every level **+2 … +10 is its own achievement**:
+  - **First time** a card reaches that level (cards you already own at a level count — e.g. owning a +7 card makes First +2 … First +7 claimable at once; the highest level reached is remembered even if the card is sold later).
+  - **Every 10 successful upgrades to exactly that level**: ×10, ×20, ×30… with no end; ×50 and ×100 give **double EP**.
+- Only successful upgrades count (+4 → +5 counts once for +5); failures, also with a level drop, don't. Counting starts with this version (earlier upgrades were never recorded).
+- Rewards are claimed with **CLAIM** (one milestone) or **CLAIM ALL**, and go to CARDS → REWARDS like other items.
+
+| Level | Base rate | First time | Every 10 (×10, ×20, ×30…) |
+| --- | --- | --- | --- |
+| +2 | 100% | 500,000 EP | 500,000 EP |
+| +3 | 80% | 1,000,000 EP | 1,000,000 EP |
+| +4 | 65% | 2,000,000 EP | 1,500,000 EP + Upgrade Boost |
+| +5 | 50% | 4,000,000 EP + Upgrade Boost | 4,000,000 EP + Upgrade Boost |
+| +6 | 35% | 7,000,000 EP | 7,000,000 EP + Upgrade Protection |
+| +7 | 25% | 12,000,000 EP + Upgrade Boost | 12,000,000 EP + Upgrade Protection |
+| +8 | 15% | 20,000,000 EP + Upgrade Protection | 20,000,000 EP + Premium pack |
+| +9 | 8% | 35,000,000 EP + Premium pack | 35,000,000 EP + Premium pack + Upgrade Protection |
+| +10 | 5% | 60,000,000 EP + Premium pack + 2 Upgrade Protection | 60,000,000 EP + Premium pack + 2 Upgrade Protection |
+
+- Low levels pay little on purpose: the cheapest market card costs 100,000 EP and +2 always succeeds, so ten +2 upgrades cost ≈ 1.15 million EP net (buy two cards, sell the +2 back at 85 %) against a 500,000 EP reward — buying cards only to farm EP doesn't pay.
+
+**Screens**
+
+- **CARDS → ACHIEVEMENTS** (★ on phones): one row per level — upgrade badge and base rate, ✓ FIRST TIME, number of successes, progress bar to the next ×10 milestone, the next reward, and a CLAIM button per waiting milestone; **CLAIM ALL · n** at the top; after claiming, a link to REWARDS.
+- Right after an upgrade that reaches a milestone: **★ ACHIEVEMENT · First +5 / +5 × 20** with the reward and **CLAIM →** (opens ACHIEVEMENTS).
+- The red badge on CARDS (top menu and phone tab bar) and on the ACHIEVEMENTS tab includes rewards waiting to be claimed.
+
+**Tests:** owned +4 card → First +2 … +4 claimable; first +5 on the first success; ×10 on the 10th success; no repeated "first"; single CLAIM and CLAIM ALL, claiming twice gives nothing; ×50 / ×100 double EP; best level kept after selling; browser (phone + desktop): buy two copies, upgrade to +2 → notice, badge, CLAIM, 500,000 EP card in REWARDS.
+
 ### Phase 30B — AI carries one more touch into a good shooting position ✅ (2026-11-13)
 
 Changed: `src/systems/carrierAI.js` (AI opponents and AUTO PLAY teammates).
@@ -1826,7 +1861,6 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
-- **Card upgrade achievements** (later, requested 2026-11-13): goals for upgrading cards (e.g. upgrade 10 / 50 / 100 times, reach +5 / +8 / +10, upgrade a gold card, N successes in a row) that pay EP rewards when completed; an achievements list with progress bars.
 - **Card seasons and real player data** (was Phase 30; moved to the backlog on 2026-11-12 because it is hard — mostly the data side):
   - **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
   - **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
@@ -1888,7 +1922,7 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 | Cột dọc / xà ngang (bóng bật ra, tiếng "ping"); đổi đội hình, chiến thuật, thay người trong trận; bỏ nút LEAGUE trong trận | Phase 30A ✅ |
 | Cấp World Cup 1–10 → cả đội tuyển +1 … +8 (chỉ trong WC); chọn độ khó, vô địch mức dưới mới mở mức trên | Phase 30C ✅ |
 | AI dẫn thêm một nhịp vào vị trí sút đẹp thay vì chuyền ra biên | Phase 30B ✅ |
-| Thành tựu đập thẻ (đập nhiều → hoàn thành mục tiêu, thưởng EP) | Backlog (làm sau) |
+| Thành tích đập thẻ: mỗi mốc +2 … +10 riêng — lần đầu và mỗi 10 / 20 / 30… lần đập thành công, bấm CLAIM nhận EP / thẻ | Phase 31 ✅ |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
 | AI sút xa, chuyền dài theo chỉ số; thêm chỉ số Composure (quyết đoán) để tiền đạo dứt điểm thay vì chuyền vòng vo | Phase 29F ✅ |
@@ -1901,7 +1935,7 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–29K, 29A1–29A5, 30A–30C (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–29K, 29A1–29A5, 30A–30C, 31 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

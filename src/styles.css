@@ -4089,3 +4089,50 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
   .wc-difficulty__btn { min-width: 0; flex: 1 1 30%; padding: 6px 4px; font-size: 11px; }
   .postmatch-screen .phone-tab--rewards { gap: 12px; }
 }
+
+/* ---- Phase 31: thành tích đập thẻ ---- */
+.cards-tab { position: relative; }
+.cards-tab__badge {
+  margin-left: 6px; padding: 1px 6px; border-radius: 99px; background: #ff4d4d; color: #fff;
+  font: 800 9px Inter, sans-serif; font-style: normal; vertical-align: 1px;
+}
+.ach-panel { display: grid; gap: 12px; }
+.ach-panel .home-card__head { flex-wrap: wrap; gap: 6px; }
+.ach-list { display: grid; gap: 8px; }
+.ach-row {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid #24402f; background: rgba(255, 255, 255, 0.02);
+}
+.ach-row.is-ready { border-color: #e3bd62; background: rgba(227, 189, 98, 0.07); }
+.ach-row__level { display: grid; justify-items: center; gap: 3px; }
+.ach-row__level small { font-size: 10px; color: #8fa89b; }
+.ach-row__body { display: grid; gap: 5px; min-width: 0; }
+.ach-row__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.ach-row__title b { font: 800 16px 'Barlow Condensed', Inter, sans-serif; letter-spacing: .4px; }
+.ach-first { font-size: 10px; font-weight: 800; letter-spacing: 1px; color: #7f998c; }
+.ach-first.is-done { color: #b9ed70; }
+.ach-row__progress { display: grid; grid-template-columns: minmax(80px, 1fr) auto; gap: 10px; align-items: center; }
+.ach-row__progress span { font-size: 11px; color: #9fb8a9; white-space: nowrap; }
+.ach-row__progress b { color: #fff; }
+.ach-row__reward { font-size: 11px; color: #e3bd62; }
+.ach-row__claims { display: grid; gap: 4px; justify-items: end; }
+.ach-note { margin: 0; }
+.upgrade-panel > .ach-toast { grid-column: 1 / -1; }
+.ach-toast {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid #e3bd62; background: rgba(227, 189, 98, 0.12);
+  animation: more-up 0.25s ease-out;
+}
+.ach-toast__star { font-size: 22px; color: #e3bd62; }
+.ach-toast b { display: block; font-size: 12px; letter-spacing: 1px; }
+.ach-toast small { color: #d9c690; font-size: 11px; }
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  .cards-screen .cards-tabs { grid-template-columns: 1.4fr 0.9fr 1.2fr 0.7fr 0.9fr; }
+  .ach-row { grid-template-columns: 48px minmax(0, 1fr); gap: 8px 10px; padding: 8px 10px; }
+  .ach-row__claims { grid-column: 1 / -1; grid-auto-flow: column; justify-content: end; }
+  .ach-row__claims:empty { display: none; }
+  .ach-row__progress { grid-template-columns: 1fr; gap: 4px; }
+  .ach-toast { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ach-toast .btn { grid-column: 2 / -1; justify-self: start; }
+  .ach-toast > .link-btn { grid-column: 3; grid-row: 1; align-self: start; }
+}
