@@ -764,6 +764,18 @@ function throughRunTarget(ctx, item, object, ballPosition, ballVelocity, targetP
     return meetingPoint(ctx, item, object, ballPosition, ballVelocity) || targetPosition
 }
 
+// Phase 29G: người chơi bấm mũi tên lúc đang đón bóng → dịch điểm đón tối
+// đa 2m theo hướng đó (không chạy ra xa bóng).
+const RECEIVE_NUDGE = 2
+
+function nudged(ctx, id, point) {
+    const nudge = ctx.state.receiveNudge
+
+    if (!nudge || id !== ctx.selectedId) return point
+
+    return { x: point.x + nudge.x * RECEIVE_NUDGE, z: point.z + nudge.z * RECEIVE_NUDGE }
+}
+
 // Phase 29F: người được chuyền tới lao ra lấy bóng tự do (đường chuyền
 // dừng sớm / bị chạm lệch). Người chơi đang bấm hướng thì để người chơi tự chạy.
 const LOOSE_RECEIVE_TIME = 1.6
@@ -797,7 +809,7 @@ function updateLooseReceive(ctx, dt) {
     if (item.id === ctx.selectedId && state.userSteering) return
     if (isPlayerLocked(state, item.id)) return
 
-    const target = meetingPoint(ctx, item, object, ballPosition, ballVelocity) || ballPosition
+    const target = nudged(ctx, item.id, meetingPoint(ctx, item, object, ballPosition, ballVelocity) || ballPosition)
 
     moveAIPlayer(
         ctx,
@@ -865,10 +877,13 @@ export function updateReceiverRun(ctx, dt) {
     // để người chơi tự chạy (xem control.js, khóa phím sau khi đổi người).
     if (receiverItem.id === ctx.selectedId && state.userSteering) return
 
-    const runTarget =
+    const runTarget = nudged(
+        ctx,
+        receiverItem.id,
         pendingPass.action === 'through'
             ? throughRunTarget(ctx, receiverItem, receiverObject, ballPosition, ballVelocity, targetPosition)
-            : meetingPoint(ctx, receiverItem, receiverObject, ballPosition, ballVelocity) || targetPosition
+            : meetingPoint(ctx, receiverItem, receiverObject, ballPosition, ballVelocity) || targetPosition,
+    )
 
     moveAIPlayer(
         ctx,

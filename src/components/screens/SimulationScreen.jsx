@@ -10,7 +10,7 @@ const HALFTIME_PAUSE = 1200
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
-export default function SimulationScreen({ label, blue, red, result, onDone }) {
+export default function SimulationScreen({ label, blue, red, result, onDone, onSimulateNext = null, simsLeft = 0 }) {
     const [minute, setMinute] = useState(0)
     const [speed, setSpeed] = useState(1)
     const [finished, setFinished] = useState(false)
@@ -184,9 +184,17 @@ export default function SimulationScreen({ label, blue, red, result, onDone }) {
 
                 <div className="sim-actions">
                     {finished ? (
-                        <button type="button" className="btn btn--primary btn--large" onClick={onDone}>
-                            MATCH SUMMARY
-                        </button>
+                        <>
+                            <button type="button" className="btn btn--primary btn--large" onClick={onDone}>
+                                MATCH SUMMARY
+                            </button>
+                            {/* Phase 29G: mô phỏng luôn trận tiếp theo. */}
+                            {onSimulateNext && (
+                                <button type="button" className="btn btn--large" onClick={onSimulateNext} disabled={simsLeft <= 0}>
+                                    SIMULATE NEXT {simsLeft}/5
+                                </button>
+                            )}
+                        </>
                     ) : (
                         <>
                             <button type="button" className="btn" onClick={() => setSpeed((value) => (value === 1 ? 2 : 1))}>

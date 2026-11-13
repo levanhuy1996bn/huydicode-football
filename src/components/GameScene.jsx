@@ -4,6 +4,7 @@ import NewTrophyPopup from './NewTrophyPopup'
 import { awardTrophies } from '../services/trophyService'
 import { crowdStart, crowdStop, prepareCrowdSounds, roar, setCrowdVolume, whistle } from '../utils/matchSound'
 import FpsMeter from './FpsMeter'
+import SettingsDialog from './SettingsDialog'
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
@@ -159,8 +160,12 @@ const DEFAULT_SETTINGS = {
 function loadSettings() {
     try {
         const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null')
+        const merged = { ...DEFAULT_SETTINGS, ...(saved || {}) }
 
-        return { ...DEFAULT_SETTINGS, ...(saved || {}) }
+        // Phase 29G: trận 3 / 6 / 9 phút — bản lưu 10 phút thành 9.
+        if (merged.matchDuration === 600) merged.matchDuration = 540
+
+        return merged
     } catch {
         return { ...DEFAULT_SETTINGS }
     }
@@ -274,6 +279,8 @@ export default function GameScene() {
     // đếm ngược tự đá hiệp 2 khi máy đang đá thay (giây | null).
     const [autoPilotCommand, setAutoPilotCommand] = useState(null)
     const [halftimeCountdown, setHalftimeCountdown] = useState(null)
+    // Phase 29G: bảng cài đặt mở từ nút ⚙ trên header.
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const autoPilotRef = useRef(false)
     autoPilotRef.current = autoPilot
     const commandAutoPilot = useCallback((on) => {
@@ -1030,6 +1037,21 @@ export default function GameScene() {
         setIsQuitOpen(false)
         setMatchStatus('fulltime')
         setActionMessage(isLeagueMatch ? 'MATCH FORFEITED' : 'MATCH ABANDONED')
+    }
+
+    // Phase 29G: mở cài đặt giữa trận thì tạm dừng, đóng lại thì đá tiếp.
+    const settingsPausedRef = useRef(false)
+    const openSettings = () => {
+        settingsPausedRef.current = screen === 'match' && matchStatus === 'playing'
+        if (settingsPausedRef.current) setMatchStatus('paused')
+        setIsSettingsOpen(true)
+    }
+    const closeSettings = () => {
+        setIsSettingsOpen(false)
+        if (settingsPausedRef.current) {
+            settingsPausedRef.current = false
+            setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
+        }
     }
 
     const togglePause = () => {
@@ -1881,6 +1903,15 @@ export default function GameScene() {
     const [simulation, setSimulation] = useState(null)
     const simsLeft = simulationsLeft(club)
 
+    // Phase 29G: SIMULATE NEXT ở bảng hết trận / tổng kết / màn mô phỏng —
+    // không cần quay về HOME. Không áp dụng cho trận World Cup.
+    const canSimulateNext = Boolean(nextFixture) && !nextFixture.played && nextFixture.competition !== 'wc' && !wcSession
+    const simulateNext = () => {
+        exitWorldCupSession()
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        runQuickSimulation(nextFixture)
+    }
+
     const runQuickSimulation = (fixture) => {
         if (!fixture || fixture.played || simulationsLeft(club) <= 0) return
 
@@ -2013,6 +2044,7 @@ export default function GameScene() {
             simulated: true,
         })
         setSimulation({
+            id: `${fixture.id}-${Date.now()}`,
             label: fixtureLabel(fixture),
             result: sim,
             blue: { clubId: userClubId(), name: userTeam().name, color: blueSide.color },
@@ -2062,7 +2094,23 @@ export default function GameScene() {
                 onNavigate={navigate}
                 cardsCount={(club.inventory || []).length}
                 clubLevel={club.level || 0}
+                budget={club.budget || 0}
+                onOpenSettings={openSettings}
             />
+
+            {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
+            {isSettingsOpen && (
+                <SettingsDialog
+                    settings={settings}
+                    onSettingsChange={updateSettings}
+                    inMatch={inMatch}
+                    onChangeClub={inMatch ? null : () => {
+                        setIsSettingsOpen(false)
+                        openChangeClub()
+                    }}
+                    onClose={closeSettings}
+                />
+            )}
 
             {screen === 'home' && (
                 <HomeScreen
@@ -2116,17 +2164,21 @@ export default function GameScene() {
                     onSimulate={prematchFixture?.competition === 'wc' ? null : () => runQuickSimulation(prematchFixture)}
                     onKickOff={kickOff}
                     onBack={goHome}
+                    matchDuration={settings.matchDuration}
+                    onMatchDurationChange={(value) => updateSettings({ matchDuration: value })}
                 />
             )}
 
             {screen === 'simulation' && simulation && (
                 <SimulationScreen
-                    key={simulation.label + simulation.result.blueScore + simulation.result.redScore + simulation.red.clubId}
+                    key={simulation.id || simulation.label + simulation.result.blueScore + simulation.result.redScore + simulation.red.clubId}
                     label={simulation.label}
                     blue={simulation.blue}
                     red={simulation.red}
                     result={simulation.result}
                     onDone={() => setScreen('postmatch')}
+                    onSimulateNext={canSimulateNext ? simulateNext : null}
+                    simsLeft={simsLeft}
                 />
             )}
 
@@ -2170,6 +2222,8 @@ export default function GameScene() {
                     onNewSeason={createNewSeason}
                     onOpenDevelopment={openDevelopment}
                     onOpenCards={openCards}
+                    onSimulateNext={canSimulateNext ? simulateNext : null}
+                    simsLeft={simsLeft}
                 />
             )}
 
@@ -2582,6 +2636,8 @@ export default function GameScene() {
                     onSummary={openSummary}
                     onOpenLeague={openLeague}
                     onNewSeason={createNewSeason}
+                    onSimulateNext={canSimulateNext ? simulateNext : null}
+                    simsLeft={simsLeft}
                 />
             )}
 

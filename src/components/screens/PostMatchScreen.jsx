@@ -141,6 +141,9 @@ export default function PostMatchScreen({
     onNewSeason,
     onOpenDevelopment,
     onOpenCards,
+    // Phase 29G: mô phỏng ngay trận tiếp theo (null = không được).
+    onSimulateNext = null,
+    simsLeft = 0,
 }) {
     if (!summary) {
         return (
@@ -198,6 +201,11 @@ export default function PostMatchScreen({
                     ) : (
                         <button type="button" className="btn btn--primary btn--large" onClick={onNewSeason}>
                             START NEW SEASON
+                        </button>
+                    )}
+                    {onSimulateNext && (
+                        <button type="button" className="btn btn--large" onClick={onSimulateNext} disabled={simsLeft <= 0}>
+                            SIMULATE NEXT {simsLeft}/5
                         </button>
                     )}
                     <button type="button" className="btn" onClick={onOpenLeague}>LEAGUE TABLE</button>

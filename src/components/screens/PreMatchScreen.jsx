@@ -14,6 +14,7 @@ import { shortPlayerName } from '../../utils/names'
 import { KIT_LABELS, KIT_SLOTS, kitsClash, kitsOf } from '../../data/kits'
 import { DIFFICULTIES } from '../../services/difficulty'
 import { UpgradeBadge } from '../CardBits'
+import { MATCH_LENGTHS } from '../SettingsRows'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
 export function KitIcon({ kit }) {
@@ -305,6 +306,9 @@ export default function PreMatchScreen({
     onSimulate,
     onKickOff,
     onBack,
+    // Phase 29G: chọn nhanh độ dài trận.
+    matchDuration = null,
+    onMatchDurationChange = null,
 }) {
     if (!fixture || !blueTeam || !opponentTeam) {
         return (
@@ -371,6 +375,23 @@ export default function PreMatchScreen({
                     <button type="button" className="btn btn--primary btn--large" onClick={onKickOff}>
                         ▶ KICK OFF
                     </button>
+                    {onMatchDurationChange && (
+                        <div className="prematch-length" title="Match length (real time for 90 minutes)">
+                            <span>LENGTH</span>
+                            <div className="segmented">
+                                {MATCH_LENGTHS.map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        className={matchDuration === value ? 'is-active' : ''}
+                                        onClick={() => onMatchDurationChange(value)}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -3044,3 +3044,74 @@ b.is-off-position::after {
 }
 .halftime-auto b { color: #ffd166; letter-spacing: 0.08em; white-space: nowrap; }
 .halftime-auto strong { color: #ffd166; font-size: 15px; }
+
+/* ---- Phase 29G: EP trên header, nút ⚙, bảng cài đặt ---- */
+.topbar-tools { display: flex; align-items: center; gap: 8px; }
+.ep-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid #3e6a4e;
+  border-radius: 999px;
+  background: #10241b;
+  color: #e6f1e9;
+  font: 700 13px 'Barlow Condensed', sans-serif;
+  letter-spacing: .5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ep-chip:hover:not(:disabled) { border-color: #b9ed70; }
+.ep-chip:disabled { cursor: default; opacity: .85; }
+.ep-chip__label { color: #ffd166; font-size: 10px; letter-spacing: 1px; }
+.ep-chip b { color: #c7fa7c; font-size: 15px; }
+.ep-chip__delta {
+  position: absolute;
+  right: 6px;
+  top: -4px;
+  color: #b9ed70;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+  animation: ep-delta 2.2s ease-out forwards;
+}
+.ep-chip__delta.is-minus { color: #ff8a7a; }
+@keyframes ep-delta {
+  0% { opacity: 0; transform: translateY(6px); }
+  15% { opacity: 1; transform: translateY(-6px); }
+  75% { opacity: 1; transform: translateY(-14px); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+.settings-gear {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #3e6a4e;
+  border-radius: 50%;
+  background: #10241b;
+  color: #c7fa7c;
+  font-size: 17px;
+  cursor: pointer;
+}
+.settings-gear:hover { border-color: #b9ed70; }
+.settings-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 18px 20px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: #0f1d16;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+}
+.settings-dialog__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.settings-dialog__head h2 { margin: 0; font-size: 22px; }
+.settings-dialog__note { margin: 0 0 8px; color: #ffd166; font-size: 11px; }
+.segmented button:disabled { opacity: .35; cursor: not-allowed; }
+.prematch-actions { flex-wrap: wrap; justify-content: flex-end; }
+.prematch-length { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: #799487; font-size: 10px; letter-spacing: 1px; }
+.prematch-length .segmented button { font-size: 11px; padding: 4px 10px; }
+.season-label { white-space: nowrap; }

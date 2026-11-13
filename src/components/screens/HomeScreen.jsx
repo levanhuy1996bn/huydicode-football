@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { isMuted, setMuted } from '../../utils/sound'
+import SettingsRows from '../SettingsRows'
 import { SIM_DAILY_LIMIT } from '../../services/quickSim'
 import { fixtureLabel } from '../../services/cupService'
 import ClubCrest from '../ClubCrest'
@@ -9,18 +8,6 @@ import { isUserClub, userClubId, userTeam } from '../../services/career'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
 // trận tiếp theo, bảng xếp hạng thu gọn, kết quả gần nhất, đội hình,
 // CLB, tiến độ mùa giải và cài đặt.
-
-const MATCH_LENGTHS = [
-    [180, '3 MIN'],
-    [360, '6 MIN'],
-    [600, '10 MIN'],
-]
-
-const LABEL_MODES = [
-    ['smart', 'SMART'],
-    ['all', 'ALL'],
-    ['off', 'OFF'],
-]
 
 function TeamBadge({ clubId, name, strength, position, side }) {
     return (
@@ -69,7 +56,6 @@ export default function HomeScreen({
     onSkipWorldCup,
     onOpenWorldCup,
 }) {
-    const [muted, setMutedState] = useState(isMuted)
     const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
     const topRows = standings.slice(0, 6)
     const blueRow = standings[bluePosition - 1]
@@ -304,132 +290,8 @@ export default function HomeScreen({
                 {/* Cài đặt */}
                 <div className="home-card">
                     <div className="home-card__head"><span>SETTINGS</span></div>
-                    {/* Phase 26B */}
-                    <div className="setting-row setting-row--club">
-                        <span>Club</span>
-                        <div className="setting-club">
-                            <ClubCrest clubId={userClubId()} size={22} />
-                            <b>{userTeam().name}</b>
-                            <button type="button" className="btn btn--small" onClick={onChangeClub}>
-                                CHANGE CLUB
-                            </button>
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Match length</span>
-                        <div className="segmented">
-                            {MATCH_LENGTHS.map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={settings.matchDuration === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ matchDuration: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Player names</span>
-                        <div className="segmented">
-                            {LABEL_MODES.map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={settings.labelMode === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ labelMode: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {/* Phase 29B */}
-                    <div className="setting-row">
-                        <span>Graphics</span>
-                        <div className="segmented">
-                            {[['high', 'HIGH'], ['low', 'LOW']].map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={(settings.graphics || 'high') === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ graphics: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Sound</span>
-                        <div className="segmented">
-                            {[[false, 'ON'], [true, 'OFF']].map(([value, label]) => (
-                                <button
-                                    key={label}
-                                    type="button"
-                                    className={muted === value ? 'is-active' : ''}
-                                    onClick={() => {
-                                        setMuted(value)
-                                        setMutedState(value)
-                                    }}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {/* Phase 29F */}
-                    <div className="setting-row">
-                        <span>Crowd volume</span>
-                        <div className="segmented">
-                            {[['off', 'OFF'], ['low', 'LOW'], ['medium', 'MEDIUM']].map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={(settings.crowdVolume || 'medium') === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ crowdVolume: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Auto play after</span>
-                        <div className="segmented">
-                            {[5, 10, 20].map((value) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={(settings.autoPlayDelay || 10) === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ autoPlayDelay: value })}
-                                >
-                                    {value} S
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>FPS counter</span>
-                        <div className="segmented">
-                            {[[true, 'ON'], [false, 'OFF']].map(([value, label]) => (
-                                <button
-                                    key={label}
-                                    type="button"
-                                    className={Boolean(settings.showFps) === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ showFps: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <p className="home-card__empty">
-                        Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
-                        smoothing for weaker laptops and phones. Auto play: the AI plays for you when no key is
-                        pressed for that long (press any key to take control back).
-                    </p>
+                    {/* Phase 29G: dùng chung với nút ⚙ trên header (SettingsRows). */}
+                    <SettingsRows settings={settings} onSettingsChange={onSettingsChange} onChangeClub={onChangeClub} />
                 </div>
             </div>
         </section>

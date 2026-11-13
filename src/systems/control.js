@@ -158,6 +158,7 @@ export function updateControlledPlayer(ctx, dt) {
     state.dribble.sprinting = false
     state.containingId = null
     state.userSteering = false
+    state.receiveNudge = null
 
     if (!controlled) return
 
@@ -214,6 +215,19 @@ export function updateControlledPlayer(ctx, dt) {
             direction = null
         }
     }
+
+    // Phase 29G: bóng đang được chuyền tới người mình điều khiển (hoặc bóng
+    // chuyền dừng sớm mà người nhận đang ra lấy): người nhận LUÔN tự chạy về
+    // điểm đón bóng; mũi tên chỉ dịch điểm đón tối đa ~2m (teamAI.js →
+    // updateReceiverRun / updateLooseReceive đọc state.receiveNudge). Trước
+    // đây bấm mũi tên là người nhận chạy theo mũi tên, có khi chạy né bóng.
+    const receiving =
+        state.possession !== ctx.selectedId &&
+        (state.pendingPass?.receiverId === ctx.selectedId || state.looseReceive?.id === ctx.selectedId)
+
+    state.receiveNudge = receiving && direction ? { x: direction.x, z: direction.z } : null
+
+    if (receiving) direction = null
 
     state.userSteering = Boolean(direction)
 
