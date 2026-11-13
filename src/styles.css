@@ -3368,7 +3368,6 @@ html.in-match body:has(.match-compact) { overflow: hidden; }
 .touch-btn--big { --rim: #2ee59d; right: 0; bottom: 0; width: 104px; height: 104px; font-size: 11px; }
 .touch-btn--big.is-defend { --rim: #2ee59d; }
 @media (max-height: 440px) {
-  .touch-buttons { transform: scale(0.86); transform-origin: bottom right; }
   .touch-joy-zone { height: 76%; }
 }
 /* Trên điện thoại: mini map, thanh lực không chồng lên nút. */
@@ -3406,3 +3405,23 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
 .app-shell.match-compact .hud-controls.is-menu.is-open button { min-height: 36px; text-align: left; }
 /* Điện thoại: dòng AUTO PLAY ngắn gọn (không che nút). */
 .app-shell.match-compact .autopilot-badge span { display: none; }
+
+/* ---- Phase 29A3: vuốt trên nút, độ trong suốt, cần cố định ---- */
+.touch-buttons { transform-origin: bottom right; opacity: var(--touch-opacity, 0.85); }
+.touch-joy-zone .touch-joy { opacity: calc(var(--touch-opacity, 0.85) + 0.1); }
+.touch-joy--hint.is-fixed { opacity: calc(var(--touch-opacity, 0.85) * 0.7); }
+.touch-btn__arrow {
+  position: absolute;
+  font-style: normal;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--rim, #fff);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.touch-btn__arrow--up { top: 3px; left: 50%; transform: translateX(-50%); }
+.touch-btn__arrow--down { bottom: 3px; left: 50%; transform: translateX(-50%); }
+.touch-btn__arrow--left { left: 4px; top: 50%; transform: translateY(-50%); }
+.touch-btn__arrow--right { right: 4px; top: 50%; transform: translateY(-50%); }
+.touch-btn__arrow.is-active { color: #fff; opacity: 1; text-shadow: 0 0 6px var(--rim); font-size: 12px; }
+.touch-btn.is-swiped { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25), 0 0 16px var(--rim); }

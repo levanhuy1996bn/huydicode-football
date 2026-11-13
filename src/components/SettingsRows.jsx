@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { isMuted, setMuted } from '../utils/sound'
 import ClubCrest from './ClubCrest'
 import { userClubId, userTeam } from '../services/career'
+import { isTouchDevice } from '../utils/device'
 
 // Phase 29G: các dòng cài đặt dùng chung cho khung SETTINGS ở HOME và bảng
 // ⚙ SETTINGS mở từ header (mọi màn hình). Trận 3 / 6 / 9 phút (10 → 9).
@@ -9,6 +10,14 @@ export const MATCH_LENGTHS = [
     [180, '3 MIN'],
     [360, '6 MIN'],
     [540, '9 MIN'],
+]
+
+// Phase 29A3: tuỳ chỉnh nút cảm ứng (chỉ hiện trên máy cảm ứng).
+const TOUCH_ROWS = [
+    ['Touch buttons', 'touchSize', 'medium', [['small', 'SMALL'], ['medium', 'MEDIUM'], ['large', 'LARGE']]],
+    ['Button opacity', 'touchOpacity', 0.85, [[0.5, '50%'], [0.85, '85%'], [1, '100%']]],
+    ['Joystick', 'joystickMode', 'floating', [['floating', 'FLOATING'], ['fixed', 'FIXED']]],
+    ['Vibration', 'vibration', true, [[true, 'ON'], [false, 'OFF']]],
 ]
 
 const LABEL_MODES = [
@@ -147,10 +156,28 @@ export default function SettingsRows({ settings, onSettingsChange, onChangeClub 
                     ))}
                 </div>
             </div>
+            {isTouchDevice() && TOUCH_ROWS.map(([label, key, fallback, options]) => (
+                <div key={key} className="setting-row">
+                    <span>{label}</span>
+                    <div className="segmented">
+                        {options.map(([value, text]) => (
+                            <button
+                                key={String(value)}
+                                type="button"
+                                className={(settings[key] ?? fallback) === value ? 'is-active' : ''}
+                                onClick={() => onSettingsChange({ [key]: value })}
+                            >
+                                {text}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            ))}
             <p className="home-card__empty">
                 Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
                 smoothing for weaker laptops and phones. Auto play: the AI plays for you when no key is
                 pressed for that long (press any key to take control back).
+                {isTouchDevice() && ' Touch: swipe on a button for its variant — PASS ↑ lob / cross, THROUGH ↑ lobbed through ball, SHOOT ↑ chip, ← → finesse, ↓ trivela, SPRINT ↓ shield.'}
             </p>
         </>
     )

@@ -725,11 +725,15 @@ export default function MatchWorld({
         window.addEventListener('keydown', onKeyDown)
         window.addEventListener('keyup', onKeyUp)
         window.addEventListener('blur', onBlur)
+        // Phase 29A3: nút cảm ứng đổi kiểu đá giữa chừng (PASS → vuốt lên = chuyền
+        // bổng): bỏ cú đá đang lấy lực mà không đá.
+        window.addEventListener('ufm:cancel-charge', onBlur)
 
         return () => {
             window.removeEventListener('keydown', onKeyDown)
             window.removeEventListener('keyup', onKeyUp)
             window.removeEventListener('blur', onBlur)
+            window.removeEventListener('ufm:cancel-charge', onBlur)
         }
     }, [ctx])
 

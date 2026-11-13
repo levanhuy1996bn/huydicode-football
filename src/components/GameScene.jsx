@@ -162,6 +162,11 @@ const DEFAULT_SETTINGS = {
     showFps: false,
     crowdVolume: 'medium',
     autoPlayDelay: 10,
+    // Phase 29A3: điều khiển cảm ứng (điện thoại / tablet).
+    touchSize: 'medium',
+    touchOpacity: 0.85,
+    joystickMode: 'floating',
+    vibration: true,
 }
 
 function loadSettings() {
@@ -2840,7 +2845,14 @@ export default function GameScene() {
             {/* Bản đồ mini kiểu FO4 — MatchWorld vẽ mỗi frame */}
             {/* Phase 29A2: cần điều khiển + 4 nút trên điện thoại. */}
             {touchUI && screen === 'match' && (matchStatus === 'playing' || matchStatus === 'shootout') && (
-                <TouchControls statsRef={statsRef} blueIds={blueIdSet} />
+                <TouchControls
+                    statsRef={statsRef}
+                    blueIds={blueIdSet}
+                    size={settings.touchSize}
+                    opacity={settings.touchOpacity}
+                    joystickMode={settings.joystickMode}
+                    vibration={settings.vibration !== false}
+                />
             )}
 
             <canvas

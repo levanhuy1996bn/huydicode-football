@@ -1,23 +1,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { clearTouchVector, setTouchVector } from '../systems/touchInput'
 
-// Phase 29A2: điều khiển cảm ứng kiểu FC Mobile.
+// Phase 29A2 / 29A3: điều khiển cảm ứng kiểu FC Mobile.
 //
-// - Nửa trái màn hình: cần điều khiển "nổi" — hiện ra đúng chỗ ngón cái chạm,
-//   kéo để chạy (analog 360°, xem systems/touchInput.js) và đồng thời gửi phím
-//   mũi tên giả lập (8 hướng) cho những chỗ engine đọc mũi tên.
-// - Bên phải: 4 nút tròn. Mỗi nút gửi phím bàn phím giả lập (keydown khi chạm,
-//   keyup khi nhấc tay) nên engine không phải đổi gì: giữ để lấy lực như phím.
-//     (bố cục FC Mobile — xem BUTTONS bên dưới)
-// - Phím giả lập đi qua window → useKeyboard + MatchWorld nhận như bàn phím
-//   thật (bấm bất kỳ: lấy lại quyền điều khiển khi máy đang đá thay).
+// - Bên trái: cần điều khiển — "nổi" (hiện đúng chỗ ngón cái chạm) hoặc cố
+//   định (Settings). Kéo để chạy (analog 360°, systems/touchInput.js), đồng
+//   thời gửi phím mũi tên giả lập (8 hướng) cho những chỗ engine đọc mũi tên.
+// - Bên phải: 4 nút tròn (bố cục FC Mobile, xem BUTTONS). Mỗi nút gửi phím bàn
+//   phím giả lập (keydown khi chạm, keyup khi nhấc tay) nên engine không phải
+//   đổi gì: giữ để lấy lực như phím.
+// - Phase 29A3: VUỐT trên nút để ra kiểu khác (mũi tên nhỏ trên viền nút):
+//     PASS  ↑  chuyền bổng / tạt (A)
+//     THROUGH ↑ chọc khe bổng (Q + W)
+//     SHOOT ↑  sút lốp (Q + D) · ← / → sút xoáy (Z + D) · ↓ sút má ngoài (C + D)
+//     SPRINT & SKILL ↓ che bóng (C, giữ)
+//   Phím bổ trợ Q / Z / C được giữ tới lúc nhả nút (engine đọc lúc lấy lực và
+//   lúc sút). Riêng PASS: chờ 0,14 giây xem có vuốt lên không rồi mới bắt đầu
+//   lấy lực (S hay A) — chạm nhanh vẫn chuyền ngay khi nhấc tay.
+// - Rung nhẹ (Android): chạm nút, mạnh hơn khi sút.
 
 const JOY_RADIUS = 52
 const DEAD_ZONE = 0.22
+const SWIPE_DISTANCE = 22
+const PASS_DECIDE_MS = 140
+const TAP_TIME = 220
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
 
 const KEY_NAMES = {
-    KeyS: 's', KeyW: 'w', KeyD: 'd', KeyE: 'e', KeyA: 'a', Space: ' ',
+    KeyS: 's', KeyW: 'w', KeyD: 'd', KeyE: 'e', KeyA: 'a', KeyQ: 'q', KeyZ: 'z', KeyC: 'c', Space: ' ',
     ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight',
 }
 
@@ -48,38 +58,68 @@ function arrowsFor(sx, sy) {
     return new Set(map[octant] || [])
 }
 
-// Sau 29A2 (theo ảnh FC Mobile anh gửi): 4 nút xếp như FC Mobile.
-//   có bóng:   CHUYỀN (dưới trái, viền xanh dương) · CHỌC KHE (trên trái, vàng)
-//              · SÚT (trên phải, đỏ) · BỨT TỐC & KỸ NĂNG (to, dưới phải, xanh lá)
-//   không bóng: ĐỔI NGƯỜI · HỖ TRỢ (gọi đồng đội áp sát) · XOẠC BÓNG
-//              · BỨT TỐC & TẮC BÓNG (giữ = chạy nhanh, chạm nhanh = tắc bóng)
+// swipes: hướng vuốt → { replace: phím thay phím chính } | { modifier: phím giữ thêm }.
+// haptic: ms rung khi nhả (đá bóng / tắc).
 const BUTTONS = {
     attack: [
-        { id: 'pass', code: 'KeyS', label: 'PASS', className: 'touch-btn--pass' },
-        { id: 'through', code: 'KeyW', label: 'THROUGH', className: 'touch-btn--through' },
-        { id: 'top', code: 'KeyD', label: 'SHOOT', className: 'touch-btn--top' },
-        { id: 'big', code: 'KeyE', label: 'SPRINT\n& SKILL', className: 'touch-btn--big' },
+        { id: 'pass', code: 'KeyS', label: 'PASS', className: 'touch-btn--pass', decide: true, swipes: { up: { replace: 'KeyA', label: 'LOB' } }, haptic: 12 },
+        { id: 'through', code: 'KeyW', label: 'THROUGH', className: 'touch-btn--through', swipes: { up: { modifier: 'KeyQ', label: 'LOBBED' } }, haptic: 12 },
+        {
+            id: 'top',
+            code: 'KeyD',
+            label: 'SHOOT',
+            className: 'touch-btn--top',
+            swipes: {
+                up: { modifier: 'KeyQ', label: 'CHIP' },
+                left: { modifier: 'KeyZ', label: 'FINESSE' },
+                right: { modifier: 'KeyZ', label: 'FINESSE' },
+                down: { modifier: 'KeyC', label: 'TRIVELA' },
+            },
+            haptic: 30,
+        },
+        { id: 'big', code: 'KeyE', label: 'SPRINT\n& SKILL', className: 'touch-btn--big', swipes: { down: { replace: 'KeyC', label: 'SHIELD' } } },
     ],
     defend: [
         { id: 'pass', code: 'KeyS', label: 'SWITCH', className: 'touch-btn--pass' },
         { id: 'through', code: 'KeyW', label: 'SUPPORT', className: 'touch-btn--through' },
-        { id: 'top', code: 'KeyA', label: 'SLIDE', className: 'touch-btn--top is-defend' },
+        { id: 'top', code: 'KeyA', label: 'SLIDE', className: 'touch-btn--top is-defend', haptic: 20 },
         // Giữ = chạy nhanh (E); chạm nhanh (< 220 ms) = tắc bóng (Space).
-        { id: 'big', code: 'KeyE', tapCode: 'Space', label: 'SPRINT\n& TACKLE', className: 'touch-btn--big is-defend' },
+        { id: 'big', code: 'KeyE', tapCode: 'Space', label: 'SPRINT\n& TACKLE', className: 'touch-btn--big is-defend', haptic: 18 },
     ],
 }
 
-const TAP_TIME = 220
+const ARROW_GLYPH = { up: '▲', down: '▼', left: '◀', right: '▶' }
 
-export default function TouchControls({ statsRef, blueIds }) {
-    const [joy, setJoy] = useState(null) // { x, y } gốc cần điều khiển (px trong vùng)
+function swipeDirection(dx, dy) {
+    if (Math.hypot(dx, dy) < SWIPE_DISTANCE) return null
+
+    return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+}
+
+export const TOUCH_SIZES = { small: 0.85, medium: 1, large: 1.15 }
+
+export default function TouchControls({
+    statsRef,
+    blueIds,
+    size = 'medium',
+    opacity = 0.85,
+    joystickMode = 'floating',
+    vibration = true,
+}) {
+    const [joy, setJoy] = useState(null) // { x, y, left, top } gốc cần điều khiển
     const [knob, setKnob] = useState({ x: 0, y: 0 })
     const [attacking, setAttacking] = useState(true)
-    const [pressed, setPressed] = useState({})
+    const [pressed, setPressed] = useState({}) // id → hướng vuốt ('' = chưa vuốt)
     const joyPointer = useRef(null)
     const heldArrows = useRef(new Set())
-    const buttonCodes = useRef(new Map()) // pointerId → code đang giữ
-    const tapInfo = useRef(new Map()) // pointerId → { tapCode, at }
+    // pointerId → { button, main, modifiers: [], started, timer, x, y, at, swiped }
+    const presses = useRef(new Map())
+    const zoneRef = useRef(null)
+    const fixed = joystickMode === 'fixed'
+
+    const buzz = useCallback((ms) => {
+        if (vibration && ms) navigator.vibrate?.(ms)
+    }, [vibration])
 
     // Có bóng hay đang phòng ngự → nhãn / phím của các nút.
     useEffect(() => {
@@ -123,8 +163,12 @@ export default function TouchControls({ statsRef, blueIds }) {
     const releaseAll = useCallback(() => {
         setArrows(new Set())
         clearTouchVector()
-        buttonCodes.current.forEach((code) => sendKey('keyup', code))
-        buttonCodes.current.clear()
+        presses.current.forEach((press) => {
+            clearTimeout(press.timer)
+            if (press.started) sendKey('keyup', press.main)
+            press.modifiers.forEach((code) => sendKey('keyup', code))
+        })
+        presses.current.clear()
         joyPointer.current = null
         setJoy(null)
         setPressed({})
@@ -132,27 +176,24 @@ export default function TouchControls({ statsRef, blueIds }) {
 
     useEffect(() => releaseAll, [releaseAll])
 
+    // Đổi có bóng ↔ phòng ngự giữa chừng: nhả hết nút đang giữ (tránh phím kẹt).
+    useEffect(() => {
+        presses.current.forEach((press) => {
+            clearTimeout(press.timer)
+            if (press.started) sendKey('keyup', press.main)
+            press.modifiers.forEach((code) => sendKey('keyup', code))
+        })
+        presses.current.clear()
+        setPressed({})
+    }, [attacking])
+
     // ---- Cần điều khiển ----
-    const onJoyDown = (event) => {
-        if (joyPointer.current !== null) return
+    const joyCenter = (rect) =>
+        fixed ? { x: 28 + 58, y: rect.height - 22 - 58 } : null
 
-        event.preventDefault()
-        event.currentTarget.setPointerCapture?.(event.pointerId)
-
-        const rect = event.currentTarget.getBoundingClientRect()
-
-        joyPointer.current = event.pointerId
-        setJoy({ x: event.clientX - rect.left, y: event.clientY - rect.top, left: rect.left, top: rect.top })
-        setKnob({ x: 0, y: 0 })
-    }
-
-    const onJoyMove = (event) => {
-        if (event.pointerId !== joyPointer.current || !joy) return
-
-        event.preventDefault()
-
-        let dx = event.clientX - joy.left - joy.x
-        let dy = event.clientY - joy.top - joy.y
+    const moveKnob = (event, origin) => {
+        let dx = event.clientX - origin.left - origin.x
+        let dy = event.clientY - origin.top - origin.y
         const distance = Math.hypot(dx, dy)
 
         if (distance > JOY_RADIUS) {
@@ -169,6 +210,33 @@ export default function TouchControls({ statsRef, blueIds }) {
         setArrows(arrowsFor(sx, sy))
     }
 
+    const onJoyDown = (event) => {
+        if (joyPointer.current !== null) return
+
+        event.preventDefault()
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+
+        const rect = event.currentTarget.getBoundingClientRect()
+        const center = joyCenter(rect)
+        const origin = center
+            ? { ...center, left: rect.left, top: rect.top }
+            : { x: event.clientX - rect.left, y: event.clientY - rect.top, left: rect.left, top: rect.top }
+
+        joyPointer.current = event.pointerId
+        setJoy(origin)
+        setKnob({ x: 0, y: 0 })
+
+        // Cần cố định: chạm vào đâu cũng tính hướng từ tâm cần ngay.
+        if (center) moveKnob(event, origin)
+    }
+
+    const onJoyMove = (event) => {
+        if (event.pointerId !== joyPointer.current || !joy) return
+
+        event.preventDefault()
+        moveKnob(event, joy)
+    }
+
     const onJoyUp = (event) => {
         if (event.pointerId !== joyPointer.current) return
 
@@ -180,41 +248,124 @@ export default function TouchControls({ statsRef, blueIds }) {
     }
 
     // ---- Nút ----
+    const startMain = (press, code) => {
+        press.main = code
+        press.started = true
+        sendKey('keydown', code)
+    }
+
     const onButtonDown = (button) => (event) => {
         event.preventDefault()
         event.currentTarget.setPointerCapture?.(event.pointerId)
-        buttonCodes.current.set(event.pointerId, button.code)
-        tapInfo.current.set(event.pointerId, { tapCode: button.tapCode || null, at: performance.now() })
-        setPressed((value) => ({ ...value, [button.id]: true }))
-        sendKey('keydown', button.code)
-        navigator.vibrate?.(8)
+
+        const press = {
+            button,
+            main: button.code,
+            modifiers: [],
+            started: false,
+            timer: null,
+            x: event.clientX,
+            y: event.clientY,
+            at: performance.now(),
+            swiped: null,
+        }
+
+        presses.current.set(event.pointerId, press)
+        setPressed((value) => ({ ...value, [button.id]: '' }))
+        buzz(6)
+
+        // PASS: chờ xem có vuốt lên (chuyền bổng) không.
+        if (button.decide) {
+            press.timer = setTimeout(() => {
+                press.timer = null
+                if (!press.started) startMain(press, button.code)
+            }, PASS_DECIDE_MS)
+        } else {
+            startMain(press, button.code)
+        }
+    }
+
+    const onButtonMove = (button) => (event) => {
+        const press = presses.current.get(event.pointerId)
+
+        if (!press || press.swiped || !button.swipes) return
+
+        const direction = swipeDirection(event.clientX - press.x, event.clientY - press.y)
+        const swipe = direction && button.swipes[direction]
+
+        if (!swipe) return
+
+        press.swiped = direction
+        setPressed((value) => ({ ...value, [button.id]: direction }))
+        buzz(8)
+
+        if (swipe.replace) {
+            if (press.timer) {
+                // PASS còn đang chờ: bắt đầu luôn bằng phím thay thế (A).
+                clearTimeout(press.timer)
+                press.timer = null
+                startMain(press, swipe.replace)
+            } else if (press.started && press.main !== swipe.replace) {
+                // PASS đã bắt đầu lấy lực (S): bỏ cú chuyền đó (không đá) rồi
+                // lấy lực chuyền bổng (A). Nút to: thả bứt tốc (E), giữ che bóng (C).
+                if (button.decide) window.dispatchEvent(new Event('ufm:cancel-charge'))
+                sendKey('keyup', press.main)
+                startMain(press, swipe.replace)
+            }
+        } else if (swipe.modifier) {
+            press.modifiers.push(swipe.modifier)
+            sendKey('keydown', swipe.modifier)
+        }
     }
 
     const onButtonUp = (button) => (event) => {
-        const code = buttonCodes.current.get(event.pointerId)
+        const press = presses.current.get(event.pointerId)
 
-        if (!code) return
+        if (!press) return
 
-        buttonCodes.current.delete(event.pointerId)
-        setPressed((value) => ({ ...value, [button.id]: false }))
-        sendKey('keyup', code)
+        presses.current.delete(event.pointerId)
+        setPressed((value) => ({ ...value, [button.id]: undefined }))
+
+        // PASS chạm nhanh (chưa tới lúc quyết định): chuyền ngay.
+        if (press.timer) {
+            clearTimeout(press.timer)
+            press.timer = null
+            startMain(press, button.code)
+        }
+
+        if (press.started) sendKey('keyup', press.main)
+
+        // Phím bổ trợ nhả sau một nhịp (engine đọc lúc nhả phím chính).
+        if (press.modifiers.length) {
+            const modifiers = [...press.modifiers]
+
+            setTimeout(() => modifiers.forEach((code) => sendKey('keyup', code)), 60)
+        }
+
+        const cancelled = event.type !== 'pointerup'
 
         // Chạm nhanh trên nút "BỨT TỐC & TẮC BÓNG" = tắc bóng.
-        const tap = tapInfo.current.get(event.pointerId)
-
-        tapInfo.current.delete(event.pointerId)
-
-        if (tap?.tapCode && event.type === 'pointerup' && performance.now() - tap.at < TAP_TIME) {
-            sendKey('keydown', tap.tapCode)
-            sendKey('keyup', tap.tapCode)
+        if (!cancelled && button.tapCode && !press.swiped && performance.now() - press.at < TAP_TIME) {
+            sendKey('keydown', button.tapCode)
+            sendKey('keyup', button.tapCode)
+            buzz(button.haptic)
+        } else if (!cancelled && button.haptic && !button.tapCode) {
+            buzz(button.haptic)
         }
     }
 
     const buttons = BUTTONS[attacking ? 'attack' : 'defend']
+    // Màn hình rất thấp (điện thoại xoay ngang ≤ 440px): nhỏ thêm một chút.
+    const scale = (TOUCH_SIZES[size] || 1) * (typeof window !== 'undefined' && window.innerHeight <= 440 ? 0.86 : 1)
 
     return (
-        <div className="touch-controls" onContextMenu={(event) => event.preventDefault()}>
+        <div
+            className="touch-controls"
+            style={{ '--touch-opacity': opacity }}
+            onContextMenu={(event) => event.preventDefault()}
+        >
             <div
+                ref={zoneRef}
                 className="touch-joy-zone"
                 onPointerDown={onJoyDown}
                 onPointerMove={onJoyMove}
@@ -226,26 +377,42 @@ export default function TouchControls({ statsRef, blueIds }) {
                         <i style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
                     </div>
                 ) : (
-                    <div className="touch-joy touch-joy--hint" aria-hidden="true">
+                    <div className={`touch-joy touch-joy--hint${fixed ? ' is-fixed' : ''}`} aria-hidden="true">
                         <i />
                     </div>
                 )}
             </div>
 
-            <div className="touch-buttons">
-                {buttons.map((button) => (
-                    <button
-                        key={button.id}
-                        type="button"
-                        className={`touch-btn ${button.className}${pressed[button.id] ? ' is-pressed' : ''}`}
-                        onPointerDown={onButtonDown(button)}
-                        onPointerUp={onButtonUp(button)}
-                        onPointerCancel={onButtonUp(button)}
-                        aria-label={button.label}
-                    >
-                        {button.label.split('\n').map((line) => <span key={line}>{line}</span>)}
-                    </button>
-                ))}
+            <div className="touch-buttons" style={{ transform: `scale(${scale})` }}>
+                {buttons.map((button) => {
+                    const state = pressed[button.id]
+                    const swipe = state && button.swipes?.[state]
+
+                    return (
+                        <button
+                            key={button.id}
+                            type="button"
+                            className={`touch-btn ${button.className}${state !== undefined ? ' is-pressed' : ''}${swipe ? ' is-swiped' : ''}`}
+                            onPointerDown={onButtonDown(button)}
+                            onPointerMove={onButtonMove(button)}
+                            onPointerUp={onButtonUp(button)}
+                            onPointerCancel={onButtonUp(button)}
+                            aria-label={button.label.replace('\n', ' ')}
+                        >
+                            {(swipe ? swipe.label : button.label).split('\n').map((line) => <span key={line}>{line}</span>)}
+                            {/* Mũi tên vuốt trên viền nút */}
+                            {Object.keys(button.swipes || {}).map((direction) => (
+                                <em
+                                    key={direction}
+                                    className={`touch-btn__arrow touch-btn__arrow--${direction}${state === direction ? ' is-active' : ''}`}
+                                    aria-hidden="true"
+                                >
+                                    {ARROW_GLYPH[direction]}
+                                </em>
+                            ))}
+                        </button>
+                    )
+                })}
             </div>
         </div>
     )
