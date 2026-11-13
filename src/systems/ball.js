@@ -22,6 +22,7 @@ import { setPlayerAction } from './playerState'
 import { closePass, openPass, recordPlayer, recordShot, recordTeam, shotXg } from './matchStats'
 import { attr, over99, skill01 } from './attributes'
 import { fatiguePenalty } from './stamina'
+import { topSpeedOf } from './movement'
 import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
@@ -378,6 +379,11 @@ export function listPassCandidates(ctx, playerId, action, aim = null) {
             // Tránh đường chuyền bị đối phương chắn.
             score += blockedLane * (action === 'lob' ? 3 : 9)
 
+            // Phase 36: người chơi ngắm theo hướng → trong số đồng đội cùng
+            // hướng, ưu tiên người có đường bóng thoáng (đối phương không kịp
+            // chạy vào cắt — laneSlack < 0 là sẽ bị cắt), như hỗ trợ chuyền FO4.
+            if (aim && action !== 'lob' && laneSlack < 0) score += Math.min(14, -laneSlack * 5)
+
             // Đồng đội đang ở vị trí việt vị: máy không chuyền cho (người chơi
             // thì vẫn chuyền được — và bị thổi việt vị).
             const offside = isOffsidePosition(ctx, entry.item, teammate, realOffsideLine, ballDepth)
@@ -511,6 +517,20 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
             action !== 'through' ||
             (aimInput && aim.direction.z * attackDirection > 0.2)
 
+        // Phase 36: ném biên luôn ném cho một đồng đội. Hướng bấm không có ai
+        // → chọn người tốt nhất (thường là người đang chạy về nhận ngắn), thay
+        // vì ném vào khoảng trống dọc đường biên (bóng hay lăn ra ngoài).
+        // Ném sệt (S) tới được ~18m, ném xa (A) ~30m: người ở xa hơn cũng coi như
+        // không có (trước đây hay ném cho người cách 30m, bóng rơi giữa đường).
+        const maxThrow = action === 'lob' ? 30 : 18
+
+        if (isThrowIn && (!passTarget || passTarget.outOfAim || passTarget.distance > maxThrow)) {
+            const fallback = listPassCandidates(ctx, playerId, action, null)
+                .find((entry) => entry.item.role !== 'GK' && entry.distance <= maxThrow)
+
+            if (fallback) passTarget = fallback
+        }
+
         if (aim && (!passTarget || passTarget.outOfAim) && !throughIntoSpaceOk) {
             if (!isAI) ctx.onActionMessage('NO RUNNER FOR A THROUGH BALL')
 
@@ -529,18 +549,25 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                 z: clamp(player.position.z + direction.z * distance, FIELD.minZ + 1, FIELD.maxZ - 1),
             }
 
+            // Phase 36: người tới điểm rơi SỚM NHẤT (theo tốc độ chạy, đang chạy
+            // về hướng đó thì nhanh hơn), không chỉ người đứng gần nhất.
+            const reachTime = (entry) => {
+                const velocity = state.velocities[entry.mate.id] || { x: 0, z: 0 }
+                const ahead = {
+                    x: entry.object.position.x + velocity.x * 0.3,
+                    z: entry.object.position.z + velocity.z * 0.3,
+                }
+
+                return distance2D(ahead, spot) / Math.max(4, topSpeedOf(ctx, entry.mate))
+            }
             const nearest = teamPlayers(ctx, item.teamId)
                 .filter((mate) => mate.id !== playerId && mate.role !== 'GK')
                 .map((mate) => ({ mate, object: objects[mate.id] }))
                 .filter((entry) => entry.object)
-                .sort(
-                    (a, b) =>
-                        distance2D(a.object.position, spot) -
-                        distance2D(b.object.position, spot),
-                )[0]
+                .sort((a, b) => reachTime(a) - reachTime(b))[0]
 
             if (nearest) {
-                spaceReceiver = { id: nearest.mate.id, spot }
+                spaceReceiver = { id: nearest.mate.id, spot, distance }
             }
         } else if (!passTarget && item.role !== 'GK' && !options.clearance) {
             if (!isAI) {
@@ -591,8 +618,18 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         // Người chơi giữ phím lâu hơn → bóng đi căng hơn (×0.88 khi chạm nhẹ,
         // ×1.30 khi đầy thanh). Trước đây lực chuyền cho đồng đội chỉ tính theo
         // khoảng cách nên giữ đầy lực vẫn "chuyền lưng chừng".
+        // Phase 36 (hỗ trợ chuyền kiểu FIFA / FO4): có người nhận thì lực chủ
+        // yếu theo khoảng cách tới người đó, giữ phím chỉ chỉnh ±8% (S) /
+        // −8…+16% (W) — trước đây ×0.88…×1.30, giữ lâu là bóng đi quá căng,
+        // người nhận không khống chế được, bóng bật ra / chạy ra biên.
+        // Chuyền vào khoảng trống / tạt bóng bổng vẫn theo lực giữ phím.
         if (isCharged && !options.clearance && !isThrowIn) {
-            const boost = 0.88 + charge * 0.42
+            const assisted = Boolean(passTarget) && (action === 'pass' || action === 'through')
+            const boost = !assisted
+                ? 0.88 + charge * 0.42
+                : action === 'pass'
+                    ? 0.92 + charge * 0.16
+                    : 0.92 + charge * 0.24
 
             power = Math.min(power * boost, action === 'lob' ? 21 : 27)
 
@@ -801,6 +838,8 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
 
     if (isThrowIn) {
         // Ném bằng tay: chậm và ngắn hơn đá, bóng bay bổng từ trên đầu.
+        // (Phase 36 đã thử ném đủ lực tới tận người nhận: bóng bay qua đầu người
+        // đang chạy ra đón → giữ lực cũ, người nhận chạy ra đón bóng.)
         const throwDistance = passTarget?.distance ?? (action === 'lob' ? 18 : 10)
 
         power = action === 'lob'
@@ -1152,6 +1191,9 @@ function releaseKick(ctx, windup) {
     state.possession = null
     state.lastTouchTeam = teamId
     state.lastToucherId = playerId
+    // Phase 36: người vừa ném biên đứng ngoài đường biên → bước ngay vào sân
+    // (teamAI.js), không đứng ngoài chờ rồi phải chạy ra nhặt bóng.
+    state.throwerReturn = isThrowIn ? { id: playerId, teamId, time: 0 } : null
 
     // Thống kê: sút / chuyền (ném biên không tính). Luân lưu (Phase 29D) không tính.
     if (state.shootout) {
@@ -1431,8 +1473,14 @@ export function updateLooseBallPickup(ctx) {
         CONTROL_SPEED - 4 +
         skill01(ballControl - fatiguePenalty(state, best.item.id)) * 8 +
         over99(ballControl) * OVER_99.control
+    // Phase 36: người được chuyền tới (đã chạy đón, mặt hướng về bóng) khống
+    // chế được bóng nhanh hơn 4 m/s; chạm bước một thì hãm bóng nhiều hơn để
+    // bóng còn ở trong tầm (không bật đi xa).
+    const intendedReceiver36 =
+        best.item.teamId === reachTeam &&
+        (state.pendingPass?.receiverId === best.item.id || state.looseReceive?.id === best.item.id)
     const cleanControl =
-        best.item.teamId === reachTeam && ballSpeed <= controlSpeed
+        best.item.teamId === reachTeam && ballSpeed <= controlSpeed + (intendedReceiver36 ? 4 : 0)
 
     if (ballSpeed > 7.5 && !cleanControl) {
         // Chạm bước một: giảm tốc bóng trước khi kiểm soát. Đây cũng là một
@@ -1446,11 +1494,13 @@ export function updateLooseBallPickup(ctx) {
         state.lastTouchTeam = best.item.teamId
         state.lastToucherId = best.item.id
 
+        const cushion = intendedReceiver36 ? 0.3 : 0.48
+
         ball.setLinvel(
             {
-                x: velocity.x * 0.48,
+                x: velocity.x * cushion,
                 y: Math.max(0, velocity.y * 0.25),
-                z: velocity.z * 0.48,
+                z: velocity.z * cushion,
             },
             true,
         )
