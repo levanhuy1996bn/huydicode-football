@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { fixtureLabel } from '../../services/cupService'
 import { userClubId, userTeam } from '../../services/career'
 import { Scoreline } from '../MatchOverlays'
@@ -146,6 +147,9 @@ export default function PostMatchScreen({
     onSimulateNext = null,
     simsLeft = 0,
 }) {
+    // Phase 29A4c: trên điện thoại chia tab STATS / PLAYERS / EVENTS / REWARDS.
+    const [phoneTab, setPhoneTab] = useState('stats')
+
     if (!summary) {
         return (
             <section className="screen">
@@ -167,7 +171,7 @@ export default function PostMatchScreen({
     const motm = summary.manOfTheMatch
 
     return (
-        <section className="screen postmatch-screen">
+        <section className="screen postmatch-screen" data-phone-tab={phoneTab}>
             <div className="home-hero">
                 <div className="home-hero__eyebrow">
                     MATCH SUMMARY{fixture ? ` · ${fixtureLabel(fixture)}` : ''}
@@ -214,8 +218,28 @@ export default function PostMatchScreen({
                 </div>
             </div>
 
+            <div className="phone-tabs" role="tablist" aria-label="Match summary">
+                {[
+                    ['stats', 'STATS'],
+                    ['players', 'PLAYERS'],
+                    ...(summary.forfeit ? [] : [['events', 'EVENTS']]),
+                    ...(summary.clubReport ? [['rewards', 'REWARDS']] : []),
+                ].map(([key, label]) => (
+                    <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === key}
+                        className={phoneTab === key ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(key)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
             <div className="postmatch-grid">
-                <div className="home-card">
+                <div className="home-card phone-tab--stats">
                     <div className="home-card__head">
                         <span>MATCH STATS</span>
                         <span className="stat-legend">{userTeam().shortName} · {opponentName}</span>
@@ -228,7 +252,7 @@ export default function PostMatchScreen({
                     )}
                 </div>
 
-                <div className="home-card">
+                <div className="home-card phone-tab--players">
                     <div className="home-card__head"><span>PLAYER RATINGS · {userTeam().name}</span></div>
 
                     {motm && (
@@ -247,9 +271,9 @@ export default function PostMatchScreen({
                                 <th>POS</th>
                                 <th title="Goals">G</th>
                                 <th title="Assists">A</th>
-                                <th title="Tackles won">T</th>
+                                <th title="Tackles won" className="rt-opt">T</th>
                                 <th title="Shots (expected goals)">SH</th>
-                                <th title="Passes completed / attempted">PASS</th>
+                                <th title="Passes completed / attempted" className="rt-opt">PASS</th>
                                 <th>RATING</th>
                             </tr>
                         </thead>
@@ -261,9 +285,9 @@ export default function PostMatchScreen({
                                     <td>{row.position}</td>
                                     <td>{row.goals || ''}</td>
                                     <td>{row.assists || ''}</td>
-                                    <td>{row.tackles || ''}</td>
+                                    <td className="rt-opt">{row.tackles || ''}</td>
                                     <td title={row.xg ? `xG ${row.xg.toFixed(2)}` : undefined}>{row.shots || ''}</td>
-                                    <td>{row.passes ? `${row.passesCompleted || 0}/${row.passes}` : ''}</td>
+                                    <td className="rt-opt">{row.passes ? `${row.passesCompleted || 0}/${row.passes}` : ''}</td>
                                     <td>
                                         <span className={`rating-chip ${ratingClass(row.rating)}`}>
                                             {row.rating == null ? '–' : row.rating.toFixed(1)}
@@ -278,7 +302,7 @@ export default function PostMatchScreen({
 
             {!summary.forfeit && (
                 <div className="postmatch-grid">
-                    <div className="home-card">
+                    <div className="home-card phone-tab--events">
                         <div className="home-card__head"><span>MATCH TIMELINE</span></div>
                         <MatchTimeline
                             events={[
@@ -290,18 +314,20 @@ export default function PostMatchScreen({
                         <TopPerformers ratings={summary.ratings} />
                     </div>
 
-                    <div className="home-card">
+                    <div className="home-card phone-tab--events">
                         <div className="home-card__head"><span>SHOT MAP</span></div>
                         <ShotMap shots={summary.shots || []} opponentName={opponentName} />
                     </div>
                 </div>
             )}
 
-            <ClubRewardCard report={summary.clubReport} onOpenCards={onOpenCards} />
+            <div className="phone-tab--rewards">
+                <ClubRewardCard report={summary.clubReport} onOpenCards={onOpenCards} />
+            </div>
 
             {/* Phase 29I: phong độ thay đổi sau trận */}
             {summary.formChanges?.length > 0 && (
-                <div className="home-card form-changes">
+                <div className="home-card form-changes phone-tab--players">
                     <div className="home-card__head"><span>FORM CHANGES</span><small>by match rating</small></div>
                     <div className="form-changes__list">
                         {summary.formChanges.map((row) => (
@@ -315,7 +341,7 @@ export default function PostMatchScreen({
             )}
 
             {summary.progression?.length > 0 && (
-                <div className="home-card progression-card">
+                <div className="home-card progression-card phone-tab--players">
                     <div className="home-card__head">
                         <span>PLAYER DEVELOPMENT · XP EARNED</span>
                         <button type="button" className="link-btn" onClick={onOpenDevelopment}>
