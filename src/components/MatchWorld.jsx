@@ -32,6 +32,7 @@ import { createMatchStats } from '../systems/matchStats'
 import { startShootout, stopShootout } from '../systems/shootout'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
 import { noteKeyActivity, noteUserInput, setAutoPilot, stepMatch } from '../systems/matchEngine'
+import { withForm } from '../systems/form'
 import { userTeam } from '../services/career'
 
 // Phase 29D: phạt đền / luân lưu → camera thấp sau lưng người sút, nhìn về
@@ -489,10 +490,11 @@ export default function MatchWorld({
             roster.flatMap((team) => {
                 const bonus = teamColorOf(team.players).bonus
 
+                // Phase 29I: phong độ (±) cộng thêm sau team color.
                 return team.players
                     .filter((player) => !sentOff.includes(player.id))
                     .map((player) => ({
-                        ...withTeamColor(player, bonus),
+                        ...withForm(withTeamColor(player, bonus)),
                         teamId: team.id,
                         role: getRole(player),
                     }))
@@ -845,6 +847,7 @@ export default function MatchWorld({
                         isSelected={selectedId === player.id}
                         onSelect={player.teamId === 'blue' ? onSelect : undefined}
                         onReady={registerPlayer}
+                        quality={quality}
                     />
                 )
             })}

@@ -1,6 +1,8 @@
 import { physiqueOf } from '../systems/physique'
 import { statTier, upgradeTier } from '../services/upgrade'
 import { RARITY_LABELS } from '../services/cards'
+import { FORM_LEVELS, formOf } from '../systems/form'
+import PlayerPortrait from './PlayerPortrait'
 
 // Phase 25: những mảnh giao diện dùng chung cho thẻ cầu thủ.
 
@@ -29,8 +31,27 @@ export function UpgradeBadge({ level = 1, size = 'small', className = '' }) {
     )
 }
 
+// Phase 29I: mũi tên phong độ (⬇ ↘ ➡ ↗ ⬆) theo màu.
+export function FormArrow({ player = null, value = null, className = '' }) {
+    const level = value ?? formOf(player)
+    const info = FORM_LEVELS[level] || FORM_LEVELS[0]
+    const bonus = info.bonus > 0 ? `+${info.bonus}` : String(info.bonus)
+
+    return (
+        <span
+            className={`form-arrow form-arrow--${level} ${className}`.trim()}
+            style={{ color: info.color }}
+            title={`Form: ${info.label} (${bonus} on main stats)`}
+            aria-label={`Form ${info.label}`}
+        >
+            {info.arrow}
+        </span>
+    )
+}
+
 // Thẻ cầu thủ (màu thẻ theo độ hiếm OVR; ô +N theo cấp thẻ; số chỉ số theo mốc).
-export function PlayerCardView({ player, size = 'large', hideBadge = false }) {
+// Phase 29J: chân dung vẽ bằng code (portraitClubId = màu áo; mặc định CLB của thẻ).
+export function PlayerCardView({ player, size = 'large', hideBadge = false, portraitClubId = null }) {
     if (!player) return null
 
     const rarity = player.rarity || 'bronze'
@@ -41,7 +62,13 @@ export function PlayerCardView({ player, size = 'large', hideBadge = false }) {
                 <div className="player-card__ovr">
                     <b className={statClass(player.overall)}>{player.overall}</b>
                     <span>{player.position}</span>
+                    <FormArrow player={player} className="player-card__form" />
                 </div>
+                {size === 'large' && (
+                    <div className="player-card__portrait">
+                        <PlayerPortrait player={player} size={104} clubId={portraitClubId} />
+                    </div>
+                )}
                 {!hideBadge && <UpgradeBadge level={player.upgrade} size="large" />}
             </div>
             <div className="player-card__name">{player.name}</div>

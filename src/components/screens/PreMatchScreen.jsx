@@ -13,7 +13,9 @@ import { TACTICS } from '../../systems/constants'
 import { shortPlayerName } from '../../utils/names'
 import { KIT_LABELS, KIT_SLOTS, kitsClash, kitsOf } from '../../data/kits'
 import { DIFFICULTIES } from '../../services/difficulty'
-import { UpgradeBadge } from '../CardBits'
+import { FormArrow, UpgradeBadge } from '../CardBits'
+import { MATCH_LENGTHS } from '../SettingsRows'
+import { withForm } from '../../systems/form'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
 export function KitIcon({ kit }) {
@@ -113,8 +115,9 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
     // Phase 26D: OVR hiển thị đã cộng team color (mũi tên xanh, rê chuột xem gốc).
     const teamColor = teamColorOf(players)
     // Sau Phase 27: đá trái vị trí → OVR hiển thị giảm (chỉ số thật không đổi).
+    // Phase 29I: OVR hiển thị cộng cả phong độ (±).
     const shown = players.map((player) => {
-        const boosted = withTeamColor(player, teamColor.bonus)
+        const boosted = withForm(withTeamColor(player, teamColor.bonus))
         const penalty = positionPenalty(naturalPositionOf(player), player.position)
 
         return { ...boosted, overall: boosted.overall - penalty, positionPenalty: penalty, baseOverall: player.overall }
@@ -149,14 +152,16 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
                         </span>
                         <em>{player.position}</em>
                         {showCondition && <ConditionChip value={player.condition} />}
+                        <FormArrow player={player} />
                         {showUpgrade && <UpgradeBadge level={player.upgrade} />}
                         <b
-                            className={player.positionPenalty ? 'is-off-position' : player.teamColorBonus ? 'is-boosted' : ''}
+                            className={player.positionPenalty || player.formBonus < 0 ? 'is-off-position' : player.teamColorBonus || player.formBonus > 0 ? 'is-boosted' : ''}
                             title={
                                 [
                                     `Base ${player.baseOverall}`,
                                     player.positionPenalty ? `${naturalPositionOf(player)} playing ${player.position} −${player.positionPenalty}` : null,
                                     player.teamColorBonus ? `team color +${player.teamColorBonus}` : null,
+                                    player.formBonus ? `form ${player.formBonus > 0 ? '+' : ''}${player.formBonus}` : null,
                                 ].filter(Boolean).join(' · ')
                             }
                         >
@@ -305,6 +310,11 @@ export default function PreMatchScreen({
     onSimulate,
     onKickOff,
     onBack,
+    // Phase 29G: chọn nhanh độ dài trận.
+    matchDuration = null,
+    onMatchDurationChange = null,
+    // Phase 29I: dùng nhanh thẻ Thể lực / Phong độ (null = ẩn, vd. World Cup).
+    squadItems = null,
 }) {
     if (!fixture || !blueTeam || !opponentTeam) {
         return (
@@ -371,6 +381,37 @@ export default function PreMatchScreen({
                     <button type="button" className="btn btn--primary btn--large" onClick={onKickOff}>
                         ▶ KICK OFF
                     </button>
+                    {squadItems && (squadItems.fitness > 0 || squadItems.form > 0) && (
+                        <div className="prematch-items">
+                            {squadItems.fitness > 0 && (
+                                <button type="button" className="btn btn--small" onClick={squadItems.onUseFitness} title="Whole squad back to fitness 100">
+                                    ♥ FITNESS ×{squadItems.fitness} · USE
+                                </button>
+                            )}
+                            {squadItems.form > 0 && (
+                                <button type="button" className="btn btn--small" onClick={squadItems.onUseForm} title="Whole squad to top form ⬆ (+3)">
+                                    ⬆ FORM ×{squadItems.form} · USE
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {onMatchDurationChange && (
+                        <div className="prematch-length" title="Match length (real time for 90 minutes)">
+                            <span>LENGTH</span>
+                            <div className="segmented">
+                                {MATCH_LENGTHS.map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        className={matchDuration === value ? 'is-active' : ''}
+                                        onClick={() => onMatchDurationChange(value)}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { shortPlayerName } from '../utils/names'
 import { ATTRIBUTE_GROUPS, GOALKEEPING_GROUP, getAttributes } from '../systems/attributes'
 import { progressOf } from '../systems/progression'
-import { UpgradeBadge, statClass } from './CardBits'
+import { FormArrow, UpgradeBadge, statClass } from './CardBits'
+import { formBonus } from '../systems/form'
 
 // Thể lực hiện tại của cầu thủ đang chọn (đọc từ engine 4 lần/giây).
 function LiveStamina({ playerId, statsRef, condition }) {
@@ -86,8 +87,11 @@ export default function MatchSidePanel({ selectedPlayer, statsRef }) {
 
           <div className="overall">
             {/* Sau Phase 27: OVR theo vị trí đang đá (đá trái vị trí → giảm). */}
-            <span className={statClass(selectedPlayer.overall - offPosition)}>{selectedPlayer.overall - offPosition}</span>
-            <small>OVR</small>
+            {/* Phase 29I: OVR cộng phong độ + mũi tên phong độ. */}
+            <span className={statClass(selectedPlayer.overall + formBonus(selectedPlayer) - offPosition)}>
+              {selectedPlayer.overall + formBonus(selectedPlayer) - offPosition}
+            </span>
+            <small>OVR <FormArrow player={selectedPlayer} /></small>
             <UpgradeBadge level={selectedPlayer.upgrade} />
           </div>
         </div>

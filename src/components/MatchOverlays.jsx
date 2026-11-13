@@ -227,6 +227,9 @@ export function FullTimeOverlay({
     onOpenLeague,
     onNewSeason,
     onSummary,
+    // Phase 29G: mô phỏng ngay trận tiếp theo (null = không được).
+    onSimulateNext = null,
+    simsLeft = 0,
 }) {
     const result =
         blueScore > redScore ? 'WIN' : blueScore < redScore ? 'LOSS' : 'DRAW'
@@ -280,6 +283,11 @@ export function FullTimeOverlay({
                     ) : (
                         <button type="button" className="btn" onClick={onNewSeason}>
                             SEASON COMPLETE · NEW SEASON
+                        </button>
+                    )}
+                    {onSimulateNext && resultSaved && (
+                        <button type="button" className="btn" onClick={onSimulateNext} disabled={simsLeft <= 0}>
+                            SIMULATE NEXT {simsLeft}/5
                         </button>
                     )}
                     <button type="button" className="btn" onClick={onOpenLeague}>

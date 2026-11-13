@@ -147,7 +147,7 @@ export function inventoryItem(type, fields) {
 
     return {
         id: `item-${Date.now().toString(36)}${itemCounter.toString(36)}`,
-        type, // 'ep' | 'pack' | 'protection' (Phase 29C)
+        type, // 'ep' | 'pack' | 'protection' (Phase 29C) | 'fitness' | 'form' | 'boost' (Phase 29I)
         createdAt: Date.now(),
         ...fields,
     }
@@ -171,4 +171,41 @@ export function spendProtection(club) {
 
     inventory.splice(index, 1)
     return { ...club, inventory }
+}
+
+// ---- Phase 29I: thẻ Thể lực, thẻ Phong độ, thẻ tăng tỉ lệ đập ----
+// Thể lực: cả đội (đá chính + dự bị + đội hình ngoài) lên thể lực 100.
+// Phong độ: cả đội lên phong độ cao nhất (⬆ +3).
+// Tăng tỉ lệ (Upgrade Boost): +3% / +4% / +5% tỉ lệ đập thẻ, tối đa 5 thẻ mỗi
+// lần đập, dùng là mất (thành công hay thất bại).
+export const FITNESS_PRICE = 2000000
+export const FORM_PRICE = 3000000
+export const BOOST_LIMIT = 5
+
+export const fitnessCard = (source) => inventoryItem('fitness', { source })
+export const formCard = (source) => inventoryItem('form', { source })
+export const boostCard = (percent, source) => inventoryItem('boost', { percent, source })
+export const randomBoostPercent = (random = Math.random) => 3 + Math.min(2, Math.floor(random() * 3))
+
+export const itemCount = (club, type) => (club?.inventory || []).filter((item) => item.type === type).length
+
+// Bỏ một vật phẩm loại `type` khỏi kho (cũ nhất trước). null nếu không còn.
+export function spendItem(club, type) {
+    const inventory = [...(club?.inventory || [])]
+    const index = inventory.findIndex((item) => item.type === type)
+
+    if (index < 0) return null
+
+    inventory.splice(index, 1)
+    return { ...club, inventory }
+}
+
+// Thẻ tăng tỉ lệ trong kho, mạnh nhất trước.
+export const boostCards = (club) =>
+    (club?.inventory || []).filter((item) => item.type === 'boost').sort((a, b) => (b.percent || 0) - (a.percent || 0))
+
+export function spendItemsById(club, ids = []) {
+    const remove = new Set(ids)
+
+    return { ...club, inventory: (club?.inventory || []).filter((item) => !remove.has(item.id)) }
 }

@@ -1,5 +1,8 @@
-// Phase 29E: World Cup — 32 đội tuyển, 4 năm một lần vào kỳ nghỉ hè giữa hai
-// mùa CLB (sau các mùa 2026/27, 2030/31…).
+// Phase 29E: World Cup — 32 đội tuyển.
+// Phase 29H: không còn lịch 4 năm một lần — tab WORLD CUP riêng, bắt đầu giải
+// lúc nào cũng được (2 giải mỗi ngày, tính lúc bắt đầu), giải đang đá được lưu
+// và đá tiếp lúc khác; mỗi lần chỉ một giải. Các kỳ đánh số World Cup #1, #2…
+// (bản lưu Phase 29E có edition = năm, ví dụ 2027, vẫn đọc được).
 //
 // Lưu trong bản lưu thế giới (world.worldCup) rất ít: đội tuyển của người chơi,
 // 32 đội + độ mạnh, 8 bảng đã bốc thăm, kết quả các trận của người chơi. Trận
@@ -12,17 +15,53 @@ import { hashString } from '../data/world'
 import { nationStrength, nationalSquad } from './nationalTeams'
 import { shootoutSkill } from './cupService'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
+import { todayKey } from './quickSim'
 
-export const WORLD_CUP_EVERY = 4
-// Mùa CLB mà World Cup đá ngay sau: 2026, 2030, 2034… (2026/27 → World Cup 2027).
-export const isWorldCupSeason = (season) => ((season % WORLD_CUP_EVERY) + WORLD_CUP_EVERY) % WORLD_CUP_EVERY === 2
-export const nextWorldCupSeason = (season) => {
-    let value = season
+// ---- Phase 29H: 2 giải mỗi ngày (world.worldCupDaily = { date, used }) ----
+export const WC_DAILY_LIMIT = 2
 
-    while (!isWorldCupSeason(value)) value += 1
-    return value
+export function worldCupStartsLeft(world, now = new Date()) {
+    const daily = world?.worldCupDaily
+    const used = daily?.date === todayKey(now) ? daily.used || 0 : 0
+
+    return Math.max(0, WC_DAILY_LIMIT - used)
 }
-export const editionOf = (season) => season + 1
+
+export function spendWorldCupStart(world, now = new Date()) {
+    const key = todayKey(now)
+    const used = world?.worldCupDaily?.date === key ? world.worldCupDaily.used || 0 : 0
+
+    return { ...world, worldCupDaily: { date: key, used: used + 1 } }
+}
+
+// Khoá của giải (dùng trong id trận và hạt giống): giải mới 'n3', bản lưu cũ = năm.
+export const worldCupKey = (wc) => wc?.key || wc?.edition
+
+// Hạt giống mô phỏng: bản lưu Phase 29E (không có seed) giữ công thức cũ để
+// giải đang đá dở không đổi kết quả.
+const seedBase = (wc) => (wc.seed == null ? `${wc.edition}` : `${wc.key}:${wc.seed}`)
+
+// Kỳ tiếp theo: số thứ tự (World Cup #N).
+export const nextWorldCupNumber = (world) => (world?.worldCupCount || 0) + 1
+
+// Lịch sử các kỳ (world.worldCupHistory, mới nhất trước, tối đa 30).
+export function archiveWorldCup(world, wc) {
+    if (!wc || wc.status !== 'done') return world
+
+    const entry = {
+        key: worldCupKey(wc),
+        edition: wc.edition,
+        nationId: wc.nationId,
+        finalStanding: wc.finalStanding || null,
+        champion: wc.champion || null,
+        skipped: Boolean(wc.skipped),
+        season: wc.season,
+        prize: wc.prize || 0,
+    }
+    const history = (world.worldCupHistory || []).filter((item) => item.key !== entry.key)
+
+    return { ...world, worldCupHistory: [entry, ...history].slice(0, 30) }
+}
 
 export const WC_ROUNDS = ['md1', 'md2', 'md3', 'r16', 'qf', 'sf', 'third', 'final']
 export const WC_ROUND_LABELS = {
@@ -38,8 +77,19 @@ export const WC_ROUND_LABELS = {
 const SHORT = { md1: 'MD1', md2: 'MD2', md3: 'MD3', r16: 'R16', qf: 'QF', sf: 'SF', third: '3RD', final: 'FINAL' }
 export const GROUP_NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
-// Tiền thưởng (EP) khi vào tới vòng…, vô địch còn thêm gói Premium + thẻ bảo vệ.
-export const WC_PRIZES = { r16: 5000000, qf: 8000000, sf: 12000000, final: 18000000, champion: 35000000, third: 3000000 }
+// Phase 29H: thưởng theo thành tích CAO NHẤT của cả giải (không cộng dồn),
+// trao khi giải kết thúc (× độ khó). Vô địch thêm gói Premium + thẻ bảo vệ.
+// Giải bị bỏ qua / mô phỏng phần còn lại thì không có thưởng.
+export const WC_PRIZES = {
+    r16: 5000000,
+    qf: 8000000,
+    fourth: 12000000,
+    third: 15000000,
+    runnerUp: 18000000,
+    champion: 35000000,
+}
+
+export const worldCupPrize = (finalStanding) => WC_PRIZES[finalStanding] || 0
 
 function seeded(seed) {
     let value = seed % 2147483647
@@ -53,11 +103,14 @@ function seeded(seed) {
 }
 
 // ---- Tạo giải ----
-export function createWorldCup(season, nationId) {
-    const edition = editionOf(season)
+// number: số thứ tự kỳ (World Cup #number); seed: hạt giống bốc thăm / mô phỏng.
+export function createWorldCup(season, nationId, { number = 1, seed = null } = {}) {
+    const edition = `#${number}`
+    const key = `n${number}`
+    const drawSeed = seed ?? hashString(`wc:${key}:${nationId}`)
     const strength = Object.fromEntries(NATIONS.map((nation) => [nation.id, nationStrength(nation.id)]))
     const ordered = [...NATIONS].sort((a, b) => strength[b.id] - strength[a.id] || a.seed - b.seed)
-    const random = seeded(hashString(`wc:${edition}:draw`))
+    const random = seeded(hashString(`wc:${key}:${drawSeed}:draw`))
     const pots = [0, 1, 2, 3].map((pot) => {
         const list = ordered.slice(pot * 8, pot * 8 + 8).map((nation) => nation.id)
 
@@ -73,6 +126,9 @@ export function createWorldCup(season, nationId) {
 
     return {
         edition,
+        key,
+        number,
+        seed: drawSeed,
         season,
         nationId,
         teams: ordered.map((nation) => nation.id),
@@ -100,7 +156,7 @@ function poisson(lambda, random) {
 }
 
 function simulateMatch(wc, fixture) {
-    const random = seeded(hashString(`wc:${wc.edition}:${fixture.id}`))
+    const random = seeded(hashString(`wc:${seedBase(wc)}:${fixture.id}`))
     const a = wc.strength[fixture.homeTeamId] || 75
     const b = wc.strength[fixture.awayTeamId] || 75
     const homeGoals = poisson(1.25 * Math.exp((a - b) / 11), random)
@@ -112,7 +168,7 @@ function simulateMatch(wc, fixture) {
 const skillOf = (nationId) => shootoutSkill(nationalSquad(nationId).slice(0, 11))
 
 function simulatedShootout(wc, fixture) {
-    const random = seeded(hashString(`wc:${wc.edition}:${fixture.id}:pens`))
+    const random = seeded(hashString(`wc:${seedBase(wc)}:${fixture.id}:pens`))
     const kicks = finishShootout([], 'blue', { blue: skillOf(fixture.homeTeamId), red: skillOf(fixture.awayTeamId) }, random)
 
     return toCupShootout(kicks, true)
@@ -169,7 +225,7 @@ function groupFixtures(wc, round) {
 
     return wc.groups.flatMap((group) =>
         pairs.map(([a, b], index) => ({
-            id: `wc${wc.edition}-g${group.name}-md${md}-${index + 1}`,
+            id: `wc${worldCupKey(wc)}-g${group.name}-md${md}-${index + 1}`,
             round,
             stage: 'group',
             group: group.name,
@@ -182,7 +238,7 @@ function groupFixtures(wc, round) {
 
 function knockoutFixtures(wc, round, pairs) {
     return pairs.map(([home, away], index) => ({
-        id: round === 'third' || round === 'final' ? `wc${wc.edition}-${round}` : `wc${wc.edition}-${round}-${index + 1}`,
+        id: round === 'third' || round === 'final' ? `wc${worldCupKey(wc)}-${round}` : `wc${worldCupKey(wc)}-${round}-${index + 1}`,
         round,
         stage: round,
         tie: index + 1,
@@ -210,7 +266,7 @@ const cache = new Map()
 export function worldCupState(wc) {
     if (!wc) return null
 
-    const key = `${wc.edition}:${wc.nationId}:${wc.simulatedTo}:${JSON.stringify(wc.results)}`
+    const key = `${worldCupKey(wc)}:${wc.seed ?? ''}:${wc.nationId}:${wc.simulatedTo}:${JSON.stringify(wc.results)}`
 
     if (cache.has(key)) return cache.get(key)
 
@@ -349,7 +405,7 @@ export const WC_STANDING_LABELS = {
 
 // ---- Người chơi đá một trận ----
 export function findWorldCupFixture(wc, fixtureId) {
-    if (!wc || !fixtureId || !String(fixtureId).startsWith(`wc${wc.edition}-`)) return null
+    if (!wc || !fixtureId || !String(fixtureId).startsWith(`wc${worldCupKey(wc)}-`)) return null
 
     const state = worldCupState(wc)
     const fixture = state.rounds.flatMap((entry) => entry.fixtures).find((item) => item.id === fixtureId)

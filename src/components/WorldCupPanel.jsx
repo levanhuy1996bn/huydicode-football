@@ -4,13 +4,11 @@ import { NATION_BY_ID } from '../data/nations'
 import {
     WC_ROUND_LABELS,
     WC_STANDING_LABELS,
-    editionOf,
-    nextWorldCupSeason,
     worldCupState,
 } from '../services/worldCupService'
 
-// Phase 29E: tab WORLD CUP trong màn LEAGUE — bảng đấu, nhánh đấu loại trực
-// tiếp, các trận của đội tuyển người chơi.
+// Phase 29E: bảng đấu, nhánh đấu loại trực tiếp, các trận của đội tuyển người
+// chơi. Phase 29H: hiển thị trong màn WORLD CUP (tab riêng trên header).
 const short = (id) => NATION_BY_ID.get(id)?.shortName || '???'
 
 function Team({ id, user, bold }) {
@@ -47,23 +45,11 @@ function Match({ fixture, user }) {
     )
 }
 
-export default function WorldCupPanel({ world, onPlay, onChooseNation }) {
-    const wc = world?.worldCup || null
+export default function WorldCupPanel({ world, worldCup = null, onPlay = null }) {
+    const wc = worldCup || world?.worldCup || null
     const state = useMemo(() => (wc ? worldCupState(wc) : null), [wc])
-    const upcomingSeason = nextWorldCupSeason(world?.season || 2026)
 
-    if (!wc || !state) {
-        return (
-            <section className="cup-panel">
-                <div className="league-section-title">WORLD CUP {editionOf(upcomingSeason)}</div>
-                <p className="league-empty">
-                    The World Cup is played every 4 years in the summer break. Next: after the {upcomingSeason}/
-                    {String((upcomingSeason + 1) % 100).padStart(2, '0')} season — finish the season, then choose the national team you
-                    will manage. 32 nations, 8 groups of 4, then knockout rounds.
-                </p>
-            </section>
-        )
-    }
+    if (!wc || !state) return null
 
     const user = wc.nationId
     const nation = NATION_BY_ID.get(user)

@@ -54,11 +54,12 @@ export const protectionUseful = (card) => {
     return level >= 5 && level < MAX_UPGRADE
 }
 
-// Chi tiết tỉ lệ: base (gốc × nguyên liệu + thẻ phụ), insurance, total.
-export function rateBreakdown(main, material, extras = []) {
+// Chi tiết tỉ lệ: base (gốc × nguyên liệu + thẻ phụ), insurance, boost
+// (Phase 29I: tổng % các thẻ tăng tỉ lệ đang dùng, 0..0.25), total.
+export function rateBreakdown(main, material, extras = [], boost = 0) {
     const current = main?.upgrade || 1
 
-    if (!main || !material || current >= MAX_UPGRADE) return { base: 0, insurance: 0, total: 0 }
+    if (!main || !material || current >= MAX_UPGRADE) return { base: 0, insurance: 0, boost: 0, total: 0 }
 
     const baseRate = BASE_RATES[current + 1] ?? 0
     const factor = materialFactor((material.upgrade || 1) - current)
@@ -68,8 +69,9 @@ export function rateBreakdown(main, material, extras = []) {
     )
     const base = Math.max(0, Math.min(1, baseRate * factor + extra))
     const insurance = insuranceOf(main, current + 1)
+    const boosted = Math.max(0, Math.min(0.25, boost || 0))
 
-    return { base, insurance, total: Math.min(1, base + insurance) }
+    return { base, insurance, boost: boosted, total: Math.min(1, base + insurance + boosted) }
 }
 
 export function successRate(main, material, extras = []) {
@@ -129,8 +131,8 @@ export function applyUpgradeLevel(player, level) {
 // Thực hiện một lần đập (đã có tỉ lệ). random() < rate → thành công.
 // Phase 29C: protect = dùng thẻ bảo vệ (thất bại không tụt cấp); bảo hiểm
 // của cấp đích tăng khi thất bại, về 0 khi thành công.
-export function rollUpgrade(main, material, extras, random = Math.random, { protect = false } = {}) {
-    const breakdown = rateBreakdown(main, material, extras)
+export function rollUpgrade(main, material, extras, random = Math.random, { protect = false, boost = 0 } = {}) {
+    const breakdown = rateBreakdown(main, material, extras, boost)
     const rate = breakdown.total
     const from = main.upgrade || 1
     const target = from + 1

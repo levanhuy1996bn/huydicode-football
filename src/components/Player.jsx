@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { shortPlayerName } from '../utils/names'
 import { bodyScale } from '../systems/physique'
+import { portraitTraits } from './PlayerPortrait'
 import {
     applyPose,
     createPose,
@@ -11,8 +12,96 @@ import {
     targetPose,
 } from '../animation/rig'
 
-const SKIN = '#d9a783'
-const HAIR = '#30251f'
+// Sau Phase 29J: màu da / tóc / kiểu tóc / râu lấy từ chân dung trên thẻ
+// (portraitTraits, theo playerId) → cầu thủ trên sân giống trên thẻ.
+const SKIN_DEFAULT = '#d9a783'
+
+// Tóc 3D giản lược (nhìn từ camera trên cao): style theo PlayerPortrait —
+// 0 ngắn, 1 húi cua, 2 vuốt dựng, 3 xoăn, 4 dài, 5 afro, 6 trọc.
+// simple = đồ hoạ LOW: chỉ chỏm tóc cơ bản.
+const CAP_ARGS = [0.247, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.48]
+const BUZZ_ARGS = [0.25, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.42]
+const CURLS = [[0, 0.25, -0.02], [0.11, 0.22, 0.05], [-0.11, 0.22, 0.05], [0.13, 0.2, -0.1], [-0.13, 0.2, -0.1], [0, 0.22, -0.15], [0, 0.21, 0.12]]
+
+function Hair3D({ looks, simple, trim }) {
+    const color = looks.hairColor
+    const style = looks.hair
+    const material = <meshStandardMaterial color={color} roughness={0.9} />
+
+    if (style === 6) return null
+
+    if (simple || style === 0) {
+        return (
+            <mesh position={[0, 0.105, -0.015]} castShadow={!simple}>
+                <sphereGeometry args={CAP_ARGS} />
+                {material}
+            </mesh>
+        )
+    }
+
+    return (
+        <>
+            {style === 1 && (
+                <mesh position={[0, 0.02, -0.01]} castShadow>
+                    <sphereGeometry args={BUZZ_ARGS} />
+                    {material}
+                </mesh>
+            )}
+            {(style === 2 || style === 3 || style === 4) && (
+                <mesh position={[0, 0.105, -0.015]} castShadow>
+                    <sphereGeometry args={CAP_ARGS} />
+                    {material}
+                </mesh>
+            )}
+            {style === 2 && (
+                <mesh position={[0, 0.27, 0.09]} scale={[1.3, 0.75, 1]} castShadow>
+                    <sphereGeometry args={[0.1, 12, 10]} />
+                    {material}
+                </mesh>
+            )}
+            {style === 3 && CURLS.map((point) => (
+                <mesh key={point.join()} position={point} castShadow>
+                    <sphereGeometry args={[0.075, 10, 8]} />
+                    {material}
+                </mesh>
+            ))}
+            {style === 4 && (
+                <mesh position={[0, -0.04, -0.12]} scale={[1.02, 1.15, 0.62]} castShadow>
+                    <sphereGeometry args={[0.24, 16, 12]} />
+                    {material}
+                </mesh>
+            )}
+            {style === 5 && (
+                <mesh position={[0, 0.14, -0.07]} scale={[1.15, 1, 0.95]} castShadow>
+                    <sphereGeometry args={[0.3, 18, 14]} />
+                    {material}
+                </mesh>
+            )}
+            {looks.headband && (
+                <mesh position={[0, 0.08, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                    <torusGeometry args={[0.246, 0.022, 6, 24]} />
+                    <meshStandardMaterial color={trim} />
+                </mesh>
+            )}
+        </>
+    )
+}
+
+function Beard3D({ looks, simple }) {
+    if (simple || !(looks.beard === 2 || looks.beard === 3)) return null
+
+    return looks.beard === 2 ? (
+        <mesh position={[0, -0.13, 0.065]} scale={[1, 0.6, 0.8]}>
+            <sphereGeometry args={[0.2, 14, 10]} />
+            <meshStandardMaterial color={looks.hairColor} roughness={0.95} />
+        </mesh>
+    ) : (
+        <mesh position={[0, -0.19, 0.16]}>
+            <sphereGeometry args={[0.06, 10, 8]} />
+            <meshStandardMaterial color={looks.hairColor} roughness={0.95} />
+        </mesh>
+    )
+}
 const SHOE = '#171c20'
 const SOCK = '#f4f4f0'
 
@@ -136,8 +225,17 @@ export default function Player({
     isSelected,
     onSelect,
     onReady,
+    // Phase 29B: chất lượng đồ hoạ ('high' | 'low').
+    quality = 'high',
 }) {
     const root = useRef()
+    // Sau Phase 29J: diện mạo theo chân dung trên thẻ.
+    const looks = useMemo(
+        () => portraitTraits(player),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [player.playerId, player.id, player.nationality, player.age],
+    )
+    const SKIN = looks.skin || SKIN_DEFAULT
 
     // Các khớp của rig (Phase 15).
     const hips = useRef()
@@ -477,12 +575,8 @@ export default function Player({
                                 <meshStandardMaterial color={SKIN} roughness={0.82} />
                             </mesh>
 
-                            <mesh position={[0, 0.105, -0.015]} castShadow>
-                                <sphereGeometry
-                                    args={[0.247, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.48]}
-                                />
-                                <meshStandardMaterial color={HAIR} />
-                            </mesh>
+                            <Hair3D looks={looks} simple={quality === 'low'} trim={trim} />
+                            <Beard3D looks={looks} simple={quality === 'low'} />
 
                             {[-1, 1].map((side) => (
                                 <mesh key={`ear-${side}`} position={[side * 0.235, -0.015, 0]}>

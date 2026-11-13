@@ -1,26 +1,12 @@
-import { useState } from 'react'
-import { isMuted, setMuted } from '../../utils/sound'
+import SettingsRows from '../SettingsRows'
 import { SIM_DAILY_LIMIT } from '../../services/quickSim'
 import { fixtureLabel } from '../../services/cupService'
 import ClubCrest from '../ClubCrest'
 import { worldClub } from '../../data/world'
-import { nationStrength } from '../../services/nationalTeams'
 import { isUserClub, userClubId, userTeam } from '../../services/career'
 // Màn hình chính (ngoài trận) — kiểu sảnh của FIFA Online:
 // trận tiếp theo, bảng xếp hạng thu gọn, kết quả gần nhất, đội hình,
 // CLB, tiến độ mùa giải và cài đặt.
-
-const MATCH_LENGTHS = [
-    [180, '3 MIN'],
-    [360, '6 MIN'],
-    [600, '10 MIN'],
-]
-
-const LABEL_MODES = [
-    ['smart', 'SMART'],
-    ['all', 'ALL'],
-    ['off', 'OFF'],
-]
 
 function TeamBadge({ clubId, name, strength, position, side }) {
     return (
@@ -62,14 +48,10 @@ export default function HomeScreen({
     onChangeClub,
     simsLeft = 0,
     onSimulate,
-    // Phase 29E: World Cup
+    // Phase 29H: dòng World Cup (giải đang đá / số lượt còn hôm nay) → tab WORLD CUP.
     worldCup = null,
-    onChooseNation,
-    onPlayWorldCup,
-    onSkipWorldCup,
     onOpenWorldCup,
 }) {
-    const [muted, setMutedState] = useState(isMuted)
     const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
     const topRows = standings.slice(0, 6)
     const blueRow = standings[bluePosition - 1]
@@ -123,62 +105,8 @@ export default function HomeScreen({
                             </button>
                         </div>
                     </>
-                ) : worldCup?.phase === 'due' ? (
-                    <>
-                        <div className="home-hero__eyebrow">SEASON COMPLETE · SUMMER BREAK</div>
-                        <div className="home-hero__title">WORLD CUP {worldCup.edition}</div>
-                        <p className="home-hero__text">
-                            32 nations, 8 groups of 4, then knockout rounds. Choose the national team you will manage — the best
-                            players of that nation are called up from every club, your own cards included.
-                        </p>
-                        <div className="home-hero__actions">
-                            <button type="button" className="btn btn--primary btn--large" onClick={onChooseNation}>
-                                CHOOSE YOUR NATION
-                            </button>
-                            <button type="button" className="btn" onClick={onSkipWorldCup} title="Simulate the whole tournament (no trophy or prizes)">
-                                SKIP WORLD CUP
-                            </button>
-                        </div>
-                    </>
-                ) : worldCup?.phase === 'active' && worldCup.fixture ? (
-                    <>
-                        <div className="home-hero__eyebrow">
-                            NEXT MATCH · {fixtureLabel(worldCup.fixture)} · NEUTRAL VENUE
-                        </div>
-                        <div className="home-hero__teams">
-                            <TeamBadge
-                                side="home"
-                                clubId={worldCup.nationId}
-                                name={worldClub(worldCup.nationId)?.name}
-                                strength={nationStrength(worldCup.nationId)}
-                            />
-                            <div className="home-hero__vs">VS</div>
-                            <TeamBadge
-                                side="away"
-                                clubId={worldCup.opponentId}
-                                name={worldClub(worldCup.opponentId)?.name}
-                                strength={nationStrength(worldCup.opponentId)}
-                            />
-                        </div>
-                        <div className="home-hero__actions">
-                            <button type="button" className="btn btn--primary btn--large" onClick={onPlayWorldCup}>
-                                PLAY MATCH
-                            </button>
-                            <button type="button" className="btn" onClick={onOpenWorldCup}>WORLD CUP</button>
-                            <button type="button" className="btn" onClick={onSkipWorldCup} title="Simulate the rest of the tournament (no trophy or prizes)">
-                                SIMULATE REST
-                            </button>
-                        </div>
-                    </>
                 ) : (
                     <>
-                        {worldCup?.phase === 'done' && (
-                            <div className="home-hero__wc">
-                                World Cup {worldCup.edition}: {worldClub(worldCup.nationId)?.name} · {worldCup.standing || '—'}
-                                {worldCup.skipped ? ' (simulated)' : ''} · champions <b>{worldClub(worldCup.champion)?.name}</b>{' '}
-                                <button type="button" className="link-btn" onClick={onOpenWorldCup}>DETAILS →</button>
-                            </div>
-                        )}
                         <div className="home-hero__eyebrow">SEASON COMPLETE</div>
                         <div className="home-hero__title">
                             {champion ? `${champion.name} ARE CHAMPIONS` : 'SEASON FINISHED'}
@@ -191,6 +119,22 @@ export default function HomeScreen({
                     </>
                 )}
             </div>
+
+            {/* Phase 29H: World Cup chơi lúc nào cũng được (tab WORLD CUP). */}
+            {worldCup && onOpenWorldCup && (
+                <button type="button" className="home-wc-strip" onClick={onOpenWorldCup}>
+                    <b>WORLD CUP</b>
+                    {worldCup.active ? (
+                        <span>
+                            {worldCup.edition} · <ClubCrest clubId={worldCup.nationId} size={16} /> {worldClub(worldCup.nationId)?.name}
+                            {worldCup.nextLabel ? ` · next: ${worldCup.nextLabel}` : ''}
+                        </span>
+                    ) : (
+                        <span>32 nations · play a tournament any time · {worldCup.startsLeft}/{worldCup.limit} left today</span>
+                    )}
+                    <em>{worldCup.active ? 'CONTINUE →' : 'OPEN →'}</em>
+                </button>
+            )}
 
             <div className="home-grid">
                 {/* Bảng xếp hạng thu gọn */}
@@ -304,132 +248,8 @@ export default function HomeScreen({
                 {/* Cài đặt */}
                 <div className="home-card">
                     <div className="home-card__head"><span>SETTINGS</span></div>
-                    {/* Phase 26B */}
-                    <div className="setting-row setting-row--club">
-                        <span>Club</span>
-                        <div className="setting-club">
-                            <ClubCrest clubId={userClubId()} size={22} />
-                            <b>{userTeam().name}</b>
-                            <button type="button" className="btn btn--small" onClick={onChangeClub}>
-                                CHANGE CLUB
-                            </button>
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Match length</span>
-                        <div className="segmented">
-                            {MATCH_LENGTHS.map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={settings.matchDuration === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ matchDuration: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Player names</span>
-                        <div className="segmented">
-                            {LABEL_MODES.map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={settings.labelMode === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ labelMode: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {/* Phase 29B */}
-                    <div className="setting-row">
-                        <span>Graphics</span>
-                        <div className="segmented">
-                            {[['high', 'HIGH'], ['low', 'LOW']].map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={(settings.graphics || 'high') === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ graphics: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Sound</span>
-                        <div className="segmented">
-                            {[[false, 'ON'], [true, 'OFF']].map(([value, label]) => (
-                                <button
-                                    key={label}
-                                    type="button"
-                                    className={muted === value ? 'is-active' : ''}
-                                    onClick={() => {
-                                        setMuted(value)
-                                        setMutedState(value)
-                                    }}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    {/* Phase 29F */}
-                    <div className="setting-row">
-                        <span>Crowd volume</span>
-                        <div className="segmented">
-                            {[['off', 'OFF'], ['low', 'LOW'], ['medium', 'MEDIUM']].map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={(settings.crowdVolume || 'medium') === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ crowdVolume: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>Auto play after</span>
-                        <div className="segmented">
-                            {[5, 10, 20].map((value) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    className={(settings.autoPlayDelay || 10) === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ autoPlayDelay: value })}
-                                >
-                                    {value} S
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="setting-row">
-                        <span>FPS counter</span>
-                        <div className="segmented">
-                            {[[true, 'ON'], [false, 'OFF']].map(([value, label]) => (
-                                <button
-                                    key={label}
-                                    type="button"
-                                    className={Boolean(settings.showFps) === value ? 'is-active' : ''}
-                                    onClick={() => onSettingsChange({ showFps: value })}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <p className="home-card__empty">
-                        Match length is real time for 90 minutes of play. LOW graphics turns off shadows and
-                        smoothing for weaker laptops and phones. Auto play: the AI plays for you when no key is
-                        pressed for that long (press any key to take control back).
-                    </p>
+                    {/* Phase 29G: dùng chung với nút ⚙ trên header (SettingsRows). */}
+                    <SettingsRows settings={settings} onSettingsChange={onSettingsChange} onChangeClub={onChangeClub} />
                 </div>
             </div>
         </section>

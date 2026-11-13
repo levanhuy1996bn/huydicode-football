@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -290,6 +290,7 @@ ultimate-football-manager-3d/
     │   ├── duels.js          # shielding, shoulder duels, poked tackles
     │   ├── attributes.js     # detailed attributes derived from the 6 main stats (+ height / weight, 26C)
     │   ├── physique.js       # height / weight: generation, attribute effects, aerial / keeper reach, body scale (Phase 26C)
+    │   ├── form.js           # player form −2…+2, after-match changes, Fitness / Form cards (Phase 29I)
     │   ├── stamina.js        # in-match stamina, fatigue effects, condition between matches
     │   ├── progression.js    # XP, levels, attribute points by position, potential, OVR
     │   ├── whistle.js        # end of half / match: wait for a dead ball, whistle, animations
@@ -307,7 +308,7 @@ ultimate-football-manager-3d/
     │   ├── matchSound.js     # Web Audio: whistle, kicks, crowd, ooh, roar (Phase 29B, crowd reworked 29F)
     │   └── crowdSynth.js     # crowd voices synthesised in code: murmur, "ooh", goal roar + applause (Phase 29F)
     └── components/
-        ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen
+        ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen, WorldCupScreen (29H)
         ├── GameScene.jsx
         ├── MatchWorld.jsx
         ├── MatchOverlays.jsx
@@ -332,11 +333,14 @@ ultimate-football-manager-3d/
         ├── TrophyIcon.jsx        # SVG trophy for each competition, difficulty star (Phase 28B)
         ├── NewTrophyPopup.jsx    # "NEW TROPHY" pop-up (Phase 28B)
         ├── NationPicker.jsx      # choose your national team for the World Cup (Phase 29E)
-        ├── WorldCupPanel.jsx     # WORLD CUP tab: groups, bracket, your matches (Phase 29E)
+        ├── WorldCupPanel.jsx     # World Cup groups, bracket, your matches (Phase 29E, on the WORLD CUP screen since 29H)
         ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B)
         ├── Stadium.jsx           # stands with crowd, boards, floodlights (Phase 29B)
         ├── Trophy3D.jsx          # 3D turning trophy with SVG fallback; TrophyCanvas.jsx = WebGL part (Phase 29B)
         ├── FpsMeter.jsx          # FPS counter (Phase 29B)
+        ├── PlayerPortrait.jsx    # SVG player portrait drawn in code, on large cards (Phase 29J)
+        ├── SettingsRows.jsx      # settings rows shared by HOME and the ⚙ dialog (Phase 29G)
+        ├── SettingsDialog.jsx    # ⚙ SETTINGS dialog opened from the header (Phase 29G)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
         └── ...
 ```
@@ -395,6 +399,10 @@ The project currently uses browser LocalStorage for local game progress.
 | After 27 | Away goals rule in two-legged cup ties; out-of-position OVR shown lower (display only) | ✅ Done (2026-11-12) |
 | 28 | Quick simulation: 5 instant matches per day (league and cups), 2D replay with commentary, rewards ×0.7 | ✅ Done (2026-11-12) |
 | 28B | Trophy room: titles won as a manager (kept when changing club), a different trophy per competition, difficulty star, career table | ✅ Done (2026-11-12) |
+| 29G | Receiver always runs toward the ball, SIMULATE NEXT after a match, EP in the header, ⚙ Settings in the header, match length 3 / 6 / 9 min | ✅ Done (2026-11-13) |
+| 29H | World Cup as its own tab: start one any time (2 per day), progress saved, prize for the best stage reached | ✅ Done (2026-11-13) |
+| 29I | Player form (5 levels, affects play), Fitness / Form cards for the whole squad, Upgrade Boost cards (+3–5 %, up to 5 per attempt) | ✅ Done (2026-11-13) |
+| 29J | Player portraits drawn in code on the cards | ✅ Done (2026-11-13) |
 | 29A | Mobile controls (joystick + 4 swipe buttons), minimal mobile UI, touch / iOS fixes | 🔜 Later |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
@@ -1424,6 +1432,58 @@ Playtest feedback on 2026-11-12, proposal approved the same day (crowd sound opt
   - **Second half starts by itself during auto play:** the half-time panel shows "AUTO PLAY · 2nd half starts in 5 s" and the CONTINUE button counts down; any key stops the countdown and gives you control, a click on the panel (tactics, substitutions…) just stops the countdown.
 - **Testing:** browser tests for auto play after 5 s idle, the AUTO PLAY button, the automatic second half and the key / click cancel paths, two consecutive matches, a 4-minute AI-vs-AI match with pass and shot breakdowns (compared with the old AI); Node tests for Composure, trained-player migration and kick power. To watch in playtests: goalkeepers face faster shots (their reach was not changed).
 
+### Phases 29G–29J — done (approved and built 2026-11-13)
+
+Playtest requests on 2026-11-13; ideas and details agreed the same day. Order: 29G → 29H → 29I → 29J, then 29A.
+
+#### Phase 29G — Receiving, quick flow, header ✅ (2026-11-13)
+
+- **Receiver always runs toward the ball:** while a pass is travelling to the player you now control (or he is going for a pass that stopped short), he runs to the meeting point by himself even if you press arrows; the arrows only move that point by up to 2 m (`state.receiveNudge`, `control.js` → `teamAI.js`). Full control again once he has the ball, or when the ball is cut out / stops. (Phase 29F only kept the auto run while you held the *same* arrows as when you passed.)
+- **SIMULATE NEXT n/5** on the full-time panel (once the result is saved), the post-match summary and the simulation replay screen — the next club fixture is simulated straight away (not offered for World Cup matches).
+- **EP in the header** next to the season: `EP 123.4M` (full amount in the tooltip), click → TRANSFERS (not during a match), a green "+3.5M" / red "−2M" floats up whenever the budget changes. The CARDS tab already shows a badge with the number of unopened items.
+- **⚙ SETTINGS in the header** on every screen (`SettingsDialog.jsx`, rows shared with the HOME settings box in `SettingsRows.jsx`); opening it during a match pauses the match and closing resumes it; match length and club cannot be changed during a match. Esc or a click outside closes it.
+- **Match length 3 / 6 / 9 minutes** (10 → 9; saved 10-minute settings become 9), also as a quick **LENGTH** choice under KICK OFF on the pre-match screen.
+
+#### Phase 29H — World Cup any time ✅ (2026-11-13)
+
+- New **WORLD CUP** tab in the header (`screens/WorldCupScreen.jsx`; the WORLD CUP tab inside LEAGUE and the home-screen World Cup block were removed). Choose a nation and start a tournament whenever you like; a tournament in progress is saved in the world save — play club matches in between and continue later (home screen strip **WORLD CUP · #3 · England · next: Quarter-final · CONTINUE →**). One tournament at a time; editions numbered **World Cup #1, #2…** (`world.worldCupCount`; ids `wcn3-…`, a new random draw each time). The every-4-years schedule and the START NEW SEASON lock are gone.
+- **2 tournaments per day** (`world.worldCupDaily`, counted when a tournament starts, resets at midnight on the device like quick simulation); the START button shows `n/2 left today` and is disabled at 0.
+- **Prize = best stage reached only** (not added up; confirmed 2026-11-13), paid as an EP card when the tournament ends — knocked out or after the final — × difficulty: round of 16 5,000,000 EP · quarter-final 8,000,000 · 4th 12,000,000 · **3rd 15,000,000** · runner-up 18,000,000 · **champions 35,000,000 + Premium pack + Upgrade Protection**. Group-stage exit, SIMULATE REST and a forfeited last match: no prize. The prize table is shown on the World Cup screen.
+- Match money / club XP per World Cup match now really uses ×1.5 like C1 (Phase 29E forgot to apply it).
+- Trophy: one per title, also several in the same season (`wc-<key>-<nation>`), listed as "WC #3" in the TROPHIES room; trophy subtitle "International · national teams".
+- **Past tournaments** table on the World Cup screen (`world.worldCupHistory`, last 30): edition, your nation, result, champions.
+- Saves from Phase 29E keep working: an unfinished World Cup 2027 can be continued (same results as before), finished ones show in the history.
+
+#### Phase 29I — Form, fitness and form cards, upgrade boost cards ✅ (2026-11-13)
+
+Prices confirmed 2026-11-13 (Fitness 2,000,000 EP, Form 3,000,000 EP). Code: `src/systems/form.js`, items in `src/services/cards.js`.
+
+- **Player form** (`player.form` −2…+2, separate from fitness / condition), 5 levels with coloured arrows: ⬇ −3 · ↘ −1 · ➡ 0 · ↗ +1 · ⬆ +3 on all six main stats.
+  - **It affects play:** added in the 3D match (after team color, `MatchWorld.jsx`) and in quick simulation (`quickSim.js`), so speed, accuracy, tackling… change with it. The pre-match lineup OVR includes it (tooltip: "form +3"), and the match profile panel shows OVR with form.
+  - **After each match** (`applyFormAfterMatch`, real and simulated): match rating ≥ 7.5 → 65 % one step up (5 % down); ≤ 5.5 → 65 % one step down (5 % up); in between 15 % up / 15 % down; players who did not play → 50 % one step back toward ➡. A forfeited match changes nothing. The post-match screen lists **FORM CHANGES** (e.g. `Herrera ⬆ → ↗`).
+  - **AI teams:** random form per match, fixed for that fixture (10 % ⬇, 20 % ↘, 40 % ➡, 20 % ↗, 10 % ⬆; `roster.js` `formSeed`).
+  - Arrows on the player card, the pre-match lineups (both teams), the SQUAD list and the match profile panel. Old saves: every player starts on ➡.
+- **Fitness card** — one card brings the **whole squad** (starting XI, bench and reserves) to condition 100. **Form card** — one card puts the whole squad on ⬆. No separate team cards (dropped 2026-11-13).
+  - **Buy** in CARDS → **SHOP**: Fitness 2,000,000 EP, Form 3,000,000 EP (the card goes to UNOPENED).
+  - **Use** with USE in CARDS → REWARDS, or the quick **♥ FITNESS ×n · USE / ⬆ FORM ×n · USE** buttons under KICK OFF on the pre-match screen (not for World Cup matches).
+  - **Earned:** a Fitness card at every club level; a Form card at levels 5, 10, 15… and with every C1 / C2 / World Cup title.
+- **Upgrade Boost card** (`type: 'boost'`): +3 %, +4 % or +5 % (random when received) on the upgrade success rate. In UPGRADE CARDS choose how many with **− / +** (up to **5 per attempt**, strongest first, max +25 %); stacks with insurance, the rate is still capped at 100 %; used up whether the upgrade succeeds or fails. The rate line shows `Base 8% + insurance 15% + boost 21%`. Earned at club levels 5, 10, 15… (with the Upgrade Protection card).
+- Tests: Node tests for form maths, the after-match rules (≈65 % / 50 % rates checked over 2,000 runs), squad items, boost rate and level rewards; browser test for buying / using cards, the boost stepper, lineup arrows, quick-use buttons and the form-change list after a simulated match.
+
+#### Phase 29J — Player portraits ✅ (2026-11-13)
+
+Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upgrade animation) — not in lists.
+
+- `src/components/PlayerPortrait.jsx`: an SVG portrait drawn in code for every player — no image files, no real photos (copyright, real people). Face shape and jaw, skin tone, 7 hair styles (short, buzz, quiff, curly, long, afro, shaved), hair colour (grey sometimes from 33), stubble / full beard / goatee, eyebrows, eyes, nose, mouth, rare headband — all generated from the `playerId`, so a player always looks the same; skin and hair colours follow a loose regional mix by nationality (every tone appears everywhere). Shirt in the home colour of your club with the shirt number and trim.
+- Shown on `PlayerCardView` (size large) between the OVR and the +N badge; memoised per player / club / number.
+- **Size:** about 6.7 KB of code (2.6 KB gzipped); nothing is added to saves (the portrait is recomputed from the id).
+
+#### Quick update after Phase 29J — players on the pitch look like their cards (2026-11-13)
+
+- The 3D players used one skin colour, one dark-brown hair colour and one hair shape for all 22. Now `Player.jsx` takes skin, hair colour, hair style, beard and headband from the card portrait (`portraitTraits`, by `playerId`), so a blond player with a quiff on his card is blond with a quiff on the pitch.
+- Simplified 3D hair (seen from the high camera): short / quiff (cap + raised front), buzz (thin cap), curly (small balls), long (down to the neck), afro (big round volume), shaved (none); full beard and goatee as a patch on the chin; headband in the kit trim colour.
+- **LOW graphics:** colours change too, but every player keeps the basic hair cap and no beard (fewest shapes). HIGH adds at most 2–8 small shapes per player; no FPS change seen in the test; a few KB of code, saves unchanged.
+
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
@@ -1473,6 +1533,11 @@ Playtest feedback on 2026-11-12, proposal approved the same day (crowd sound opt
 | Luật bàn thắng sân khách ở vòng đấu loại 2 lượt; đá trái vị trí thì OVR hiển thị giảm | Sau 27 ✅ |
 | Mô phỏng nhanh 5 trận mỗi ngày, có hoạt cảnh, thưởng ×0.7 | Phase 28 ✅ |
 | Phòng truyền thống: danh hiệu của HLV (đổi CLB vẫn giữ), mỗi giải một kiểu cúp, sao độ khó, bảng sự nghiệp | Phase 28B ✅ |
+| Người nhận bóng luôn chạy về phía bóng; SIMULATE NEXT sau trận; EP trên header; nút ⚙ Settings; trận 3 / 6 / 9 phút | Phase 29G ✅ |
+| World Cup thành tab riêng, 2 lần / ngày, lưu tiến độ, thưởng theo vòng cao nhất | Phase 29H ✅ |
+| Phong độ cầu thủ; thẻ thể lực / thẻ phong độ cho cả đội; thẻ tăng tỉ lệ đập +3–5% (tối đa 5 thẻ) | Phase 29I ✅ |
+| Hình ảnh cầu thủ trong thẻ (vẽ bằng code, chỉ thẻ lớn) | Phase 29J ✅ |
+| Cầu thủ trong trận 3D có màu da, màu tóc, kiểu tóc, râu giống thẻ | Sau 29J ✅ |
 | Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản | Phase 29A |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |

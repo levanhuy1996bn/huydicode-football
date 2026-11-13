@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PlayerCardView, StatNum, UpgradeBadge } from './CardBits'
 import { upgradeTier } from '../services/upgrade'
 import { isMuted, playFailure, playHeartbeat, playSuccess, setMuted } from '../utils/sound'
+import { userClubId } from '../services/career'
 
 // Phase 25: hoạt cảnh đập thẻ kiểu FIFA Online. Kết quả đã được quyết định
 // lúc bấm nút; hoạt cảnh chỉ tạo kịch tính:
@@ -216,7 +217,7 @@ export default function UpgradeAnimation({ before, after, result, materials = []
                 </svg>
 
                 <div key={`beat-${beat}`} className={`upgrade-anim__card${phase === 'beat' && beat > 0 ? ' is-beating' : ''}`}>
-                    <PlayerCardView player={shown} hideBadge />
+                    <PlayerCardView player={shown} hideBadge portraitClubId={userClubId()} />
                     <span
                         key={revealed ? 'after' : 'before'}
                         className={`upgrade-anim__badge${revealed ? (result.success ? ' is-pop' : dropped ? ' is-crack' : '') : ''}`}
