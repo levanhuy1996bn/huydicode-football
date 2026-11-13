@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import SettingsRows from '../SettingsRows'
 import { SIM_DAILY_LIMIT } from '../../services/quickSim'
 import { fixtureLabel } from '../../services/cupService'
@@ -56,6 +57,8 @@ export default function HomeScreen({
     const topRows = standings.slice(0, 6)
     const blueRow = standings[bluePosition - 1]
     const showBlueRow = bluePosition > 6
+    // Phase 29A4a: trên điện thoại các ô bên dưới hiện từng nhóm theo tab.
+    const [phoneTab, setPhoneTab] = useState('table')
 
     return (
         <section className="screen home-screen">
@@ -136,9 +139,24 @@ export default function HomeScreen({
                 </button>
             )}
 
-            <div className="home-grid">
+            <div className="phone-tabs" role="tablist" aria-label="Home sections">
+                {[['table', 'TABLE'], ['season', 'SEASON'], ['squad', 'SQUAD']].map(([id, label]) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === id}
+                        className={phoneTab === id ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(id)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="home-grid" data-phone-tab={phoneTab}>
                 {/* Bảng xếp hạng thu gọn */}
-                <div className="home-card home-card--table">
+                <div className="home-card home-card--table phone-tab--table">
                     <div className="home-card__head">
                         <span>LEAGUE TABLE</span>
                         <button type="button" className="link-btn" onClick={onOpenLeague}>
@@ -179,7 +197,7 @@ export default function HomeScreen({
                 </div>
 
                 {/* Kết quả gần nhất + mùa giải */}
-                <div className="home-card">
+                <div className="home-card phone-tab--season">
                     <div className="home-card__head"><span>LAST RESULT</span></div>
                     {lastResult ? (
                         <div className="last-result">
@@ -212,7 +230,7 @@ export default function HomeScreen({
                 </div>
 
                 {/* Đội hình */}
-                <div className="home-card">
+                <div className="home-card phone-tab--squad">
                     <div className="home-card__head">
                         <span>SQUAD</span>
                         <button type="button" className="link-btn" onClick={onEditLineup}>
@@ -245,8 +263,8 @@ export default function HomeScreen({
                     <p className="home-card__empty">Sign and sell players, contracts and wages.</p>
                 </div>
 
-                {/* Cài đặt */}
-                <div className="home-card">
+                {/* Cài đặt (điện thoại: MORE → SETTINGS) */}
+                <div className="home-card phone-tab--settings">
                     <div className="home-card__head"><span>SETTINGS</span></div>
                     {/* Phase 29G: dùng chung với nút ⚙ trên header (SettingsRows). */}
                     <SettingsRows settings={settings} onSettingsChange={onSettingsChange} onChangeClub={onChangeClub} />

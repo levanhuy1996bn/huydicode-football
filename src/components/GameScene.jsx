@@ -144,6 +144,7 @@ import {
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
 import { applyPreset } from '../services/lineupHelper'
+import MobileTabBar from './MobileTabBar'
 
 
 // Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
@@ -2307,7 +2308,7 @@ export default function GameScene() {
     const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
 
     return (
-        <main className={`app-shell${screen === 'match' && compactLayout ? ' match-compact' : ''}`}>
+        <main className={`app-shell${screen === 'match' && compactLayout ? ' match-compact' : ''}${screen === 'match' ? ' is-match-screen' : ''}`}>
             <TopBar
                 screen={screen}
                 inMatch={inMatch}
@@ -2318,6 +2319,15 @@ export default function GameScene() {
                 clubLevel={club.level || 0}
                 budget={club.budget || 0}
                 onOpenSettings={openSettings}
+            />
+
+            {/* Phase 29A4a: thanh tab dưới đáy trên điện thoại (ẩn trong trận). */}
+            <MobileTabBar
+                active={isLeagueOpen ? 'league' : isClubOpen ? 'club' : screen}
+                onNavigate={navigate}
+                cardsCount={(club.inventory || []).length}
+                onOpenSettings={openSettings}
+                hidden={screen === 'match'}
             />
 
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}

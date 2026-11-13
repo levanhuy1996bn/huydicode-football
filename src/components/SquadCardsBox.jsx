@@ -25,6 +25,13 @@ export default function SquadCardsBox({ team, items, compact = false, showWarnin
                 {!items.fitness && !items.form && items.onBuy && (
                     <button type="button" className="link-btn" onClick={items.onBuy}>BUY →</button>
                 )}
+                {warnings.length > 0 && (
+                    <ul className="squad-cards__warnings squad-cards__warnings--strip">
+                        {warnings.map((warning) => (
+                            <li key={warning.text} className={`is-${warning.level}`}>{warning.text}</li>
+                        ))}
+                    </ul>
+                )}
             </div>
         )
     }
