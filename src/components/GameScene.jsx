@@ -6,6 +6,8 @@ import { crowdStart, crowdStop, prepareCrowdSounds, roar, setCrowdVolume, whistl
 import { applyFormAfterMatch, maxSquadForm, restoreSquadFitness } from '../systems/form'
 import FpsMeter from './FpsMeter'
 import SettingsDialog from './SettingsDialog'
+import TouchControls from './TouchControls'
+import { fullscreenSupported, isFullscreen, isTouchDevice, setInMatch, toggleFullscreen } from '../utils/device'
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
@@ -140,6 +142,9 @@ import {
     squadOf,
 } from '../systems/roster'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
+import { resolveGraphics } from '../utils/performance'
+import { applyPreset } from '../services/lineupHelper'
+import MobileTabBar from './MobileTabBar'
 
 
 // Phase 29B: khung 3D + vật lý tải riêng (xem MatchCanvas.jsx).
@@ -151,15 +156,22 @@ const MatchCanvas = lazy(loadMatchCanvas)
 
 const SETTINGS_KEY = 'ultimate-football-settings-v1'
 // Phase 29B: graphics 'high' | 'low', showFps (đồng hồ FPS trong trận).
+// Phase 29A5: graphics thêm 'auto' (mặc định): điện thoại / máy yếu → LOW.
 // Phase 29F: crowdVolume 'off' | 'low' | 'medium', autoPlayDelay (giây không
 // bấm phím trước khi máy đá thay: 5 / 10 / 20).
 const DEFAULT_SETTINGS = {
     matchDuration: MATCH_DURATION,
     labelMode: 'smart',
-    graphics: 'high',
+    graphics: 'auto',
+    graphicsAuto: true,
     showFps: false,
     crowdVolume: 'medium',
     autoPlayDelay: 10,
+    // Phase 29A3: điều khiển cảm ứng (điện thoại / tablet).
+    touchSize: 'medium',
+    touchOpacity: 0.85,
+    joystickMode: 'floating',
+    vibration: true,
 }
 
 function loadSettings() {
@@ -169,6 +181,13 @@ function loadSettings() {
 
         // Phase 29G: trận 3 / 6 / 9 phút — bản lưu 10 phút thành 9.
         if (merged.matchDuration === 600) merged.matchDuration = 540
+
+        // Phase 29A5: bản lưu cũ chưa có AUTO ('high' là mặc định cũ) → AUTO
+        // một lần; ai đã chọn LOW thì giữ LOW.
+        if (saved && !saved.graphicsAuto) {
+            if (merged.graphics === 'high') merged.graphics = 'auto'
+            merged.graphicsAuto = true
+        }
 
         return merged
     } catch {
@@ -182,6 +201,49 @@ function saveSettings(settings) {
     } catch {
         // Không lưu được (chế độ riêng tư...) — vẫn dùng trong phiên hiện tại.
     }
+}
+
+// Phase 29A1: trận đấu dạng toàn màn hình trên điện thoại / màn hình nhỏ
+// (ẩn header + bảng bên phải, HUD thu nhỏ) và nhắc xoay ngang.
+const COMPACT_QUERY = '(max-width: 900px), (max-height: 600px)'
+
+function useCompactLayout() {
+    // Máy cảm ứng màn hình vừa / nhỏ (điện thoại, tablet) hoặc cửa sổ nhỏ.
+    // Laptop cảm ứng màn hình lớn vẫn dùng bố cục thường.
+    const read = () =>
+        typeof window !== 'undefined' && (
+            (isTouchDevice() && Math.min(window.innerWidth, window.innerHeight) <= 820) ||
+            Boolean(window.matchMedia?.(COMPACT_QUERY).matches)
+        )
+    const [compact, setCompact] = useState(read)
+
+    useEffect(() => {
+        const update = () => setCompact(read())
+
+        window.addEventListener('resize', update)
+        return () => window.removeEventListener('resize', update)
+    }, [])
+
+    return compact
+}
+
+function usePortraitTouch() {
+    const read = () =>
+        typeof window !== 'undefined' && isTouchDevice() && window.innerHeight > window.innerWidth
+    const [portrait, setPortrait] = useState(read)
+
+    useEffect(() => {
+        const update = () => setPortrait(read())
+
+        window.addEventListener('resize', update)
+        window.addEventListener('orientationchange', update)
+        return () => {
+            window.removeEventListener('resize', update)
+            window.removeEventListener('orientationchange', update)
+        }
+    }, [])
+
+    return portrait
 }
 
 export default function GameScene() {
@@ -240,6 +302,10 @@ export default function GameScene() {
     const matchDurationRef = useRef(matchDuration)
     matchDurationRef.current = matchDuration
 
+    // Phase 29A5: chất lượng đồ hoạ thật (AUTO → HIGH / LOW); tính lại khi đổi
+    // cài đặt hoặc đổi màn hình (máy đã tự hạ LOW ở trận trước).
+    const graphicsQuality = useMemo(() => resolveGraphics(settings.graphics), [settings.graphics, screen])
+
     const updateSettings = useCallback((patch) => {
         setSettings((current) => {
             const next = { ...current, ...patch }
@@ -287,6 +353,13 @@ export default function GameScene() {
     const [halftimeCountdown, setHalftimeCountdown] = useState(null)
     // Phase 29G: bảng cài đặt mở từ nút ⚙ trên header.
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    // Phase 29A1: bố cục trận trên điện thoại, xoay dọc, toàn màn hình.
+    const compactLayout = useCompactLayout()
+    const portraitTouch = usePortraitTouch()
+    const [fullscreen, setFullscreen] = useState(isFullscreen)
+    // Phase 29A2: điều khiển cảm ứng + menu ☰ gom các nút trong trận.
+    const [touchUI] = useState(isTouchDevice)
+    const [hudMenuOpen, setHudMenuOpen] = useState(false)
     const autoPilotRef = useRef(false)
     autoPilotRef.current = autoPilot
     const commandAutoPilot = useCallback((on) => {
@@ -365,7 +438,6 @@ export default function GameScene() {
 
     const activeFixture = useMemo(
         () => findFixture(activeFixtureId),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [league, activeFixtureId, worldCup],
     )
 
@@ -393,7 +465,6 @@ export default function GameScene() {
     // Đội hình 3D của đối thủ theo đúng đội trong vòng đấu.
     const matchRoster = useMemo(
         () => applyKits(buildMatchRoster(roster, opponentTeam, { ...matchOptions, formSeed: activeFixture?.id }), matchKits, opponentTeam?.id || 'red'),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [roster, opponentTeam, activeFixture?.id, kitChoice, league.difficulty, league.season],
     )
 
@@ -752,7 +823,6 @@ export default function GameScene() {
         )
 
         setActionMessage('FULL TIME - RESULT SAVED')
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         matchStatus,
         activeFixtureId,
@@ -974,7 +1044,6 @@ export default function GameScene() {
             cupInfo: cupInfoRef.current,
         })
         // Chỉ chụp một lần khi vừa hết trận.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchStatus, forfeit])
 
     // Thông báo bàn thắng.
@@ -1078,6 +1147,61 @@ export default function GameScene() {
             setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
         }
     }
+
+    // Phase 29A2: id cầu thủ đội mình trong trận (nhãn nút cảm ứng theo đội có bóng).
+    const blueIdSet = useMemo(() => {
+        const blue = matchRoster.find((team) => team.id === 'blue')
+
+        return new Set([...(blue?.players || []), ...(blue?.substitutes || [])].map((player) => player.id))
+    }, [matchRoster])
+
+    // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
+    useEffect(() => {
+        setInMatch(screen === 'match')
+        return () => setInMatch(false)
+    }, [screen])
+
+    // Xoay dọc giữa trận trên điện thoại: tạm dừng, xoay ngang lại thì đá tiếp.
+    const portraitPausedRef = useRef(false)
+
+    useEffect(() => {
+        if (screen !== 'match') return
+
+        if (portraitTouch && matchStatus === 'playing') {
+            portraitPausedRef.current = true
+            setMatchStatus('paused')
+        } else if (!portraitTouch && portraitPausedRef.current) {
+            portraitPausedRef.current = false
+            setMatchStatus((status) => (status === 'paused' ? 'playing' : status))
+        }
+    }, [portraitTouch, matchStatus, screen])
+
+    // Phase 29A5: rời ứng dụng giữa trận (chuyển app, khoá màn hình, chuyển tab):
+    // tạm dừng, quay lại thì bấm RESUME để đá tiếp.
+    const matchStatusRef = useRef(matchStatus)
+    matchStatusRef.current = matchStatus
+
+    useEffect(() => {
+        if (screen !== 'match') return undefined
+
+        const onVisibility = () => {
+            if (document.hidden && matchStatusRef.current === 'playing') setMatchStatus('paused')
+        }
+
+        document.addEventListener('visibilitychange', onVisibility)
+        return () => document.removeEventListener('visibilitychange', onVisibility)
+    }, [screen])
+
+    useEffect(() => {
+        const update = () => setFullscreen(isFullscreen())
+
+        document.addEventListener('fullscreenchange', update)
+        document.addEventListener('webkitfullscreenchange', update)
+        return () => {
+            document.removeEventListener('fullscreenchange', update)
+            document.removeEventListener('webkitfullscreenchange', update)
+        }
+    }, [])
 
     const togglePause = () => {
         if (matchStatus === 'playing') {
@@ -1595,6 +1719,54 @@ export default function GameScene() {
         return fail('Drag between the pitch, the bench and the reserves.')
     }
 
+    // Phase 29K: đặt cả đội hình một lần (AUTO PICK XI, UNDO, đội hình lưu sẵn).
+    // next = { players, substitutes, reserves, formationKey? } — chỉ trước trận.
+    const setBlueLineup = (next) => {
+        if (!next?.players?.length) return { ok: false, message: 'Lineup not found.' }
+
+        setRoster((current) =>
+            current.map((team) =>
+                team.id !== 'blue'
+                    ? team
+                    : {
+                        ...team,
+                        players: next.players,
+                        substitutes: next.substitutes ?? team.substitutes,
+                        reserves: next.reserves ?? team.reserves,
+                        formationKey: next.formationKey || team.formationKey,
+                    },
+            ),
+        )
+
+        if (selectedId && !next.players.some((player) => player.id === selectedId)) {
+            setSelectedId(next.players.find((player) => player.position !== 'GK')?.id || next.players[0].id)
+        }
+
+        return { ok: true }
+    }
+
+    // Phase 29K: nạp một đội hình đã lưu (đổi sơ đồ trước nếu khác).
+    const applyLineupPreset = (preset) => {
+        const team = roster.find((item) => item.id === 'blue')
+
+        if (!team || !preset) return { ok: false, message: 'Saved lineup not found.' }
+
+        const formationKey = preset.formationKey && FORMATIONS[preset.formationKey] ? preset.formationKey : team.formationKey
+        const base = formationKey !== team.formationKey
+            ? { ...team, players: assignFormation(team.players, FORMATIONS[formationKey]) }
+            : team
+        const result = applyPreset(base, preset, SQUAD_LIMITS.bench)
+
+        if (!result) return { ok: false, message: 'Could not load this lineup (not enough players).' }
+
+        setBlueLineup({ ...result.team, formationKey })
+
+        return {
+            ok: true,
+            message: `Loaded "${preset.name}" (${formationKey})${result.missing ? ` · ${result.missing} player${result.missing === 1 ? '' : 's'} no longer available, replaced by the best option` : ''}.`,
+        }
+    }
+
     // Đổi vị trí hai cầu thủ đang trên sân (không tính lượt thay người).
     const swapStarters = (firstId, secondId) => {
         const blueTeam = roster.find((team) => team.id === 'blue')
@@ -1700,7 +1872,6 @@ export default function GameScene() {
             findFixture(prematchFixtureId) ||
             nextFixture ||
             null,
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [league, prematchFixtureId, nextFixture, worldCup],
     )
 
@@ -1794,7 +1965,9 @@ export default function GameScene() {
     }
 
     // Phase 23: tab CARDS (mở gói cầu thủ, thẻ EP).
-    const openCards = () => {
+    const [cardsFocus, setCardsFocus] = useState(null)
+    const openCards = (options = {}) => {
+        setCardsFocus(options?.shop ? 'shop' : null)
         exitWorldCupSession()
         setIsLeagueOpen(false)
         setIsClubOpen(false)
@@ -1834,6 +2007,15 @@ export default function GameScene() {
         setLineupMode('prematch')
         resumeAfterSubsRef.current = false
         setIsSubsOpen(true)
+    }
+
+    // Phase 29K: thẻ Thể lực / Phong độ — dùng chung cho PLAY và SQUAD.
+    const squadItemsProps = {
+        fitness: itemCount(club, 'fitness'),
+        form: itemCount(club, 'form'),
+        onUseFitness: () => applySquadItem('fitness'),
+        onUseForm: () => applySquadItem('form'),
+        onBuy: () => openCards({ shop: true }),
     }
 
     // ---- Dữ liệu cho các màn hình ngoài trận ----
@@ -1933,7 +2115,6 @@ export default function GameScene() {
             prematchOpponent
                 ? applyKits(buildMatchRoster(roster, prematchOpponent, { ...matchOptions, formSeed: prematchFixture?.id }), prematchKits, prematchOpponent.id)
                 : roster,
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [roster, prematchOpponent, prematchFixture?.id, kitChoice, league.difficulty, league.season],
     )
 
@@ -2127,7 +2308,7 @@ export default function GameScene() {
     const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
 
     return (
-        <main className="app-shell">
+        <main className={`app-shell${screen === 'match' && compactLayout ? ' match-compact' : ''}${screen === 'match' ? ' is-match-screen' : ''}`}>
             <TopBar
                 screen={screen}
                 inMatch={inMatch}
@@ -2138,6 +2319,15 @@ export default function GameScene() {
                 clubLevel={club.level || 0}
                 budget={club.budget || 0}
                 onOpenSettings={openSettings}
+            />
+
+            {/* Phase 29A4a: thanh tab dưới đáy trên điện thoại (ẩn trong trận). */}
+            <MobileTabBar
+                active={isLeagueOpen ? 'league' : isClubOpen ? 'club' : screen}
+                onNavigate={navigate}
+                cardsCount={(club.inventory || []).length}
+                onOpenSettings={openSettings}
+                hidden={screen === 'match'}
             />
 
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
@@ -2205,12 +2395,7 @@ export default function GameScene() {
                     onBack={goHome}
                     matchDuration={settings.matchDuration}
                     onMatchDurationChange={(value) => updateSettings({ matchDuration: value })}
-                    squadItems={wcSession ? null : {
-                        fitness: itemCount(club, 'fitness'),
-                        form: itemCount(club, 'form'),
-                        onUseFitness: () => applySquadItem('fitness'),
-                        onUseForm: () => applySquadItem('form'),
-                    }}
+                    squadItems={wcSession ? null : squadItemsProps}
                 />
             )}
 
@@ -2242,7 +2427,7 @@ export default function GameScene() {
             )}
 
             {screen === 'trophies' && (
-                <TrophyRoomScreen world={world} league={league} onBack={goHome} quality={settings.graphics} />
+                <TrophyRoomScreen world={world} league={league} onBack={goHome} quality={graphicsQuality} />
             )}
 
             {newTrophies.length > 0 && screen !== 'match' && screen !== 'simulation' && (
@@ -2250,7 +2435,7 @@ export default function GameScene() {
                     key={newTrophies[0].id}
                     trophy={newTrophies[0]}
                     remaining={newTrophies.length - 1}
-                    quality={settings.graphics}
+                    quality={graphicsQuality}
                     onClose={() => setNewTrophies((queue) => queue.slice(1))}
                     onOpenRoom={() => {
                         setNewTrophies([])
@@ -2264,6 +2449,8 @@ export default function GameScene() {
                     team={blueTeam}
                     onUpdatePlayer={updateBluePlayer}
                     onBack={goHome}
+                    onEditLineup={openLineupEditor}
+                    squadItems={squadItemsProps}
                 />
             )}
 
@@ -2288,6 +2475,7 @@ export default function GameScene() {
 
             {screen === 'cards' && (
                 <CardsScreen
+                    focus={cardsFocus}
                     club={club}
                     onClubChange={setClub}
                     team={blueTeam}
@@ -2305,7 +2493,9 @@ export default function GameScene() {
         <div className="game-canvas">
             <Suspense fallback={<div className="match-loading">LOADING STADIUM…</div>}>
                         <MatchCanvas
-                            graphics={settings.graphics}
+                            graphics={graphicsQuality}
+                            autoGraphics={(settings.graphics || 'auto') === 'auto'}
+                            paused={matchStatus === 'paused'}
                             chargeHudRef={chargeHudRef}
                             radarRef={radarRef}
                             statsRef={statsRef}
@@ -2346,6 +2536,7 @@ export default function GameScene() {
 
             {/* SCOREBOARD */}
             <div
+                className="hud-scoreboard"
                 style={{
                     position: 'absolute',
                     top: 16,
@@ -2458,6 +2649,7 @@ export default function GameScene() {
 
             {/* TACTIC SELECTOR */}
             <div
+                className="hud-tactic"
                 style={{
                     position: 'absolute',
                     top: 16,
@@ -2528,8 +2720,28 @@ export default function GameScene() {
 
             {/* Trong trận không mở quản lý CLB (giống FO4) — dùng ở sảnh. */}
 
+            {/* Phase 29A2: trên điện thoại các nút trong trận gom vào menu ☰. */}
+            {touchUI && compactLayout && (
+                <button
+                    type="button"
+                    className={`hud-menu-btn${hudMenuOpen ? ' is-open' : ''}`}
+                    onClick={(event) => {
+                        event.currentTarget.blur()
+                        setHudMenuOpen((open) => !open)
+                    }}
+                    aria-label="Match menu"
+                    aria-expanded={hudMenuOpen}
+                >
+                    {hudMenuOpen ? '✕' : '☰'}
+                </button>
+            )}
+
             {/* MATCH CONTROLS */}
             <div
+                className={`hud-controls${touchUI && compactLayout ? ' is-menu' : ''}${hudMenuOpen ? ' is-open' : ''}`}
+                onClickCapture={() => {
+                    if (hudMenuOpen) setTimeout(() => setHudMenuOpen(false), 0)
+                }}
                 style={{
                     position: 'absolute',
                     top: 78,
@@ -2539,6 +2751,22 @@ export default function GameScene() {
                     gap: 8,
                 }}
             >
+                {/* Phase 29A1: toàn màn hình (không có trên iPhone Safari). */}
+                {fullscreenSupported() && (compactLayout || fullscreen) && (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.currentTarget.blur()
+                            toggleFullscreen().then(setFullscreen)
+                        }}
+                        style={matchButtonStyle}
+                        title={fullscreen ? 'Exit full screen' : 'Full screen'}
+                        aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+                    >
+                        {fullscreen ? '⤡' : '⛶'}
+                    </button>
+                )}
+
                 <button
                     onClick={openLeague}
                     style={matchButtonStyle}
@@ -2709,6 +2937,18 @@ export default function GameScene() {
             )}
 
             {/* Bản đồ mini kiểu FO4 — MatchWorld vẽ mỗi frame */}
+            {/* Phase 29A2: cần điều khiển + 4 nút trên điện thoại. */}
+            {touchUI && screen === 'match' && (matchStatus === 'playing' || matchStatus === 'shootout') && (
+                <TouchControls
+                    statsRef={statsRef}
+                    blueIds={blueIdSet}
+                    size={settings.touchSize}
+                    opacity={settings.touchOpacity}
+                    joystickMode={settings.joystickMode}
+                    vibration={settings.vibration !== false}
+                />
+            )}
+
             <canvas
                 ref={radarRef}
                 className="radar"
@@ -2771,7 +3011,7 @@ export default function GameScene() {
             )}
 
             {isClubOpen && screen !== 'match' && (
-                <div className="modal-host">
+                <div className="modal-host modal-host--screen">
                     <ClubManagementPanel
                         roster={roster}
                         world={world}
@@ -2829,9 +3069,20 @@ export default function GameScene() {
                         }
                         onSwap={swapStarters}
                         onMoveSquad={moveSquadPlayer}
+                        onSetLineup={lineupMode === 'prematch' ? setBlueLineup : null}
+                        onApplyPreset={lineupMode === 'prematch' ? applyLineupPreset : null}
                         benchLimit={SQUAD_LIMITS.bench}
                         onClose={closeSubstitutions}
                     />
+                </div>
+            )}
+
+            {/* Phase 29A1: nhắc xoay ngang khi đang ở màn trận trên điện thoại. */}
+            {screen === 'match' && portraitTouch && (
+                <div className="rotate-prompt" role="alert">
+                    <div className="rotate-prompt__phone" aria-hidden="true" />
+                    <b>TURN YOUR PHONE SIDEWAYS</b>
+                    <span>The match is paused · it plays in landscape</span>
                 </div>
             )}
 

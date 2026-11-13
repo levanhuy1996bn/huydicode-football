@@ -25,6 +25,12 @@ import { userClubId } from '../services/career'
 
 const GROUP_LABELS = { starter: 'XI', bench: 'BENCH', reserve: 'RES' }
 
+// Phase 29A4b: trên điện thoại mở bước chi tiết thì cuộn về đầu trang.
+const PHONE_QUERY = '(max-width: 760px), (max-height: 500px) and (pointer: coarse)'
+const scrollTopOnPhone = () => {
+    if (typeof window !== 'undefined' && window.matchMedia?.(PHONE_QUERY).matches) window.scrollTo({ top: 0 })
+}
+
 function CardRow({ player, group, active, disabled, note, onClick }) {
     return (
         <button
@@ -142,6 +148,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
     const chooseMain = (id) => {
         setMainId(id)
         setMessage(null)
+        scrollTopOnPhone()
         setMaterialId(bestMaterial(byId.get(id))?.id || null)
         setExtraIds([])
     }
@@ -216,7 +223,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
     )
 
     return (
-        <div className="upgrade-panel">
+        <div className="upgrade-panel" data-step={main ? 'detail' : 'list'}>
             <div className="home-card upgrade-panel__list">
                 <div className="home-card__head">
                     <span>CHOOSE A CARD</span>
@@ -262,6 +269,10 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
                     <p className="home-card__empty">Pick a card on the left to upgrade it.</p>
                 ) : (
                     <>
+                        {/* Phase 29A4b: điện thoại — bước 2, quay lại danh sách */}
+                        <button type="button" className="link-btn upgrade-back" onClick={() => setMainId(null)}>
+                            ← CHOOSE ANOTHER CARD
+                        </button>
                         <div className="upgrade-main">
                             <PlayerCardView player={main} portraitClubId={userClubId()} />
                             <div className="upgrade-main__info">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatMoney } from '../../services/clubService'
 import {
     FITNESS_PRICE,
@@ -44,10 +44,25 @@ const ITEM_TEXT = {
     ep: 'Adds EP to the transfer budget',
 }
 
-export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers }) {
-    const [tab, setTab] = useState('rewards') // 'rewards' | 'upgrade' (Phase 25)
+export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers, focus = null }) {
+    // 'rewards' | 'upgrade' (Phase 25); 'shop' | 'info' chỉ là tab riêng trên
+    // điện thoại (Phase 29A4b) — trên máy tính vẫn nằm chung trang REWARDS.
+    const [tab, setTab] = useState(focus === 'shop' ? 'shop' : 'rewards')
     const [reveal, setReveal] = useState(null)
     const [notice, setNotice] = useState(null)
+
+    // Phase 29K: mở từ nút BUY (thẻ Thể lực / Phong độ) → cuộn tới SHOP.
+    useEffect(() => {
+        if (focus !== 'shop') return
+
+        setTab('shop')
+
+        const timer = setTimeout(() => {
+            document.querySelector('.cards-shop')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 80)
+
+        return () => clearTimeout(timer)
+    }, [focus])
 
     const inventory = club.inventory || []
     const squad = squadOf(team)
@@ -115,7 +130,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
             budget: (current.budget || 0) - price,
             inventory: [...(current.inventory || []), type === 'fitness' ? fitnessCard('Bought with EP') : formCard('Bought with EP')],
         }))
-        setNotice({ tone: 'ok', text: `${type === 'fitness' ? 'Fitness' : 'Form'} card bought for ${formatMoney(price)} — use it below.` })
+        setNotice({ tone: 'ok', text: `${type === 'fitness' ? 'Fitness' : 'Form'} card bought for ${formatMoney(price)} — it is in REWARDS (UNOPENED).` })
     }
 
     const openItem = (item) => {
@@ -124,6 +139,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         else openPack(item)
     }
 
+    const rewardsView = tab !== 'upgrade'
     const epTotal = inventory.filter((item) => item.type === 'ep').reduce((sum, item) => sum + item.amount, 0)
 
     const openAllEp = () => {
@@ -169,16 +185,32 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
             </div>
 
             <nav className="cards-tabs" aria-label="Cards">
-                {[['rewards', `REWARDS · ${inventory.length}`], ['upgrade', 'UPGRADE CARDS']].map(([id, label]) => (
-                    <button
-                        key={id}
-                        type="button"
-                        className={tab === id ? 'cards-tab active' : 'cards-tab'}
-                        onClick={() => setTab(id)}
-                    >
-                        {label}
-                    </button>
-                ))}
+                {[
+                    ['rewards', `REWARDS · ${inventory.length}`, `REWARDS · ${inventory.length}`],
+                    ['shop', null, 'SHOP'],
+                    ['upgrade', 'UPGRADE CARDS', 'UPGRADE'],
+                    ['info', null, 'EARN'],
+                ].map(([id, label, phoneLabel]) => {
+                    // Máy tính: REWARDS sáng khi đang ở rewards / shop / info.
+                    const desktopActive = id === 'rewards' ? rewardsView : tab === id
+
+                    return (
+                        <button
+                            key={id}
+                            type="button"
+                            className={[
+                                'cards-tab',
+                                desktopActive ? 'active' : '',
+                                tab === id ? 'is-phone-active' : '',
+                                label ? '' : 'cards-tab--phone',
+                            ].join(' ')}
+                            onClick={() => setTab(id)}
+                        >
+                            {label && <span className="dt-only">{label}</span>}
+                            <span className="ph-only">{phoneLabel}</span>
+                        </button>
+                    )
+                })}
             </nav>
 
             {tab === 'upgrade' && (
@@ -191,7 +223,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                 />
             )}
 
-            {tab === 'rewards' && notice && (
+            {rewardsView && notice && (
                 <div className={`cards-notice cards-notice--${notice.tone}`} role="alert">
                     {notice.text}
                     {squadFull && notice.tone === 'error' && (
@@ -202,9 +234,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                 </div>
             )}
 
-            {tab === 'rewards' && (
-            <div className="cards-layout">
-                <div className="home-card">
+            {rewardsView && (
+            <div className="cards-layout" data-phone-tab={tab}>
+                <div className="home-card phone-tab--rewards">
                     <div className="home-card__head">
                         <span>UNOPENED · {inventory.length}</span>
                         {epTotal > 0 && (
@@ -266,7 +298,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                 </div>
 
                 {/* Phase 29I: mua thẻ Thể lực / Phong độ */}
-                <div className="home-card cards-shop">
+                <div className="home-card cards-shop phone-tab--shop">
                     <div className="home-card__head"><span>SHOP</span><small>budget {formatMoney(club.budget)}</small></div>
                     {[
                         ['fitness', '♥ Fitness card', FITNESS_PRICE, 'Whole squad back to fitness 100'],
@@ -290,7 +322,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                     ))}
                 </div>
 
-                <div className="home-card">
+                <div className="home-card phone-tab--info">
                     <div className="home-card__head"><span>HOW TO EARN</span></div>
                     <ul className="cards-rules">
                         <li>

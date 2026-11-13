@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29B, 29C, 29D, 29E and 29F — all done ✅ (2026-11-12).** Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. **Next:** Phase 29A (mobile controls and UI, touch / iOS fixes) — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K — all done ✅ (2026-11-13).** Latest: 29A4c (phone: LEAGUE + cups, WORLD CUP, TROPHIES, post-match and quick simulation). Every planned phase is done; only the backlog is left. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13) — all planned phases are done; next ideas are in the backlog — the last planned phases; card seasons and real data moved to the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -29,7 +29,7 @@ npm run preview
 - **Netlify:** drag the `dist/` folder onto app.netlify.com/drop, or connect the repo with build command `npm run build` and publish directory `dist`.
 - **Vercel:** import the repo; framework preset *Vite* (build `npm run build`, output `dist`).
 - **GitHub Pages:** build, then publish the contents of `dist/` to the `gh-pages` branch (e.g. `npx gh-pages -d dist`); the game then runs at `https://<user>.github.io/<repo>/`.
-- **Install as an app:** the site has a web app manifest and icons (`public/manifest.webmanifest`, `public/icon*.png`), so Chrome / Edge offer *Install* and phones offer *Add to Home Screen*. There is no offline mode (no service worker).
+- **Install as an app:** the site has a web app manifest and icons (`public/manifest.webmanifest`, `public/icon*.png`), so Chrome / Edge offer *Install* and phones offer *Add to Home Screen* (⚙ Settings → *Install app* shows a button or the steps). Since Phase 29A5 a service worker (`public/sw.js`, production build only) caches the game: it opens faster and works **offline** after the first visit. The site must be served over HTTPS (all hosts above do) — on `http://` with a LAN IP the service worker and *Install* are not available.
 - **Loading:** the first screen loads ~1.3 MB of JavaScript (~380 KB gzipped); the 3D match engine with Rapier physics (~2.4 MB) is a separate file fetched in the background 1.5 s after start, and the 3D trophy viewer is loaded only when needed.
 
 ## Current features
@@ -290,6 +290,7 @@ ultimate-football-manager-3d/
     │   ├── duels.js          # shielding, shoulder duels, poked tackles
     │   ├── attributes.js     # detailed attributes derived from the 6 main stats (+ height / weight, 26C)
     │   ├── physique.js       # height / weight: generation, attribute effects, aerial / keeper reach, body scale (Phase 26C)
+    │   ├── touchInput.js     # analog joystick direction shared with control.js (Phase 29A2)
     │   ├── form.js           # player form −2…+2, after-match changes, Fitness / Form cards (Phase 29I)
     │   ├── stamina.js        # in-match stamina, fatigue effects, condition between matches
     │   ├── progression.js    # XP, levels, attribute points by position, potential, OVR
@@ -306,7 +307,10 @@ ultimate-football-manager-3d/
     │   ├── names.js          # shortPlayerName()
     │   ├── sound.js          # Web Audio: upgrade sounds, SOUND ON / OFF (Phase 25)
     │   ├── matchSound.js     # Web Audio: whistle, kicks, crowd, ooh, roar (Phase 29B, crowd reworked 29F)
-    │   └── crowdSynth.js     # crowd voices synthesised in code: murmur, "ooh", goal roar + applause (Phase 29F)
+    │   ├── crowdSynth.js     # crowd voices synthesised in code: murmur, "ooh", goal roar + applause (Phase 29F)
+    │   ├── device.js         # touch / iOS detection, full screen, zoom blocking in a match (Phase 29A1)
+    │   ├── performance.js    # AUTO graphics, resolution levels, slow-device memory (Phase 29A5)
+    │   └── install.js        # install as an app (button / iPhone steps), service worker registration (Phase 29A5)
     └── components/
         ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen, WorldCupScreen (29H)
         ├── GameScene.jsx
@@ -334,11 +338,12 @@ ultimate-football-manager-3d/
         ├── NewTrophyPopup.jsx    # "NEW TROPHY" pop-up (Phase 28B)
         ├── NationPicker.jsx      # choose your national team for the World Cup (Phase 29E)
         ├── WorldCupPanel.jsx     # World Cup groups, bracket, your matches (Phase 29E, on the WORLD CUP screen since 29H)
-        ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B)
+        ├── MatchCanvas.jsx       # 3D match canvas + physics, loaded on demand (Phase 29B); adaptive resolution (29A5)
         ├── Stadium.jsx           # stands with crowd, boards, floodlights (Phase 29B)
         ├── Trophy3D.jsx          # 3D turning trophy with SVG fallback; TrophyCanvas.jsx = WebGL part (Phase 29B)
         ├── FpsMeter.jsx          # FPS counter (Phase 29B)
         ├── PlayerPortrait.jsx    # SVG player portrait drawn in code, on large cards (Phase 29J)
+        ├── TouchControls.jsx     # touch joystick + PASS / THROUGH / SHOOT / SPRINT buttons (29A2), swipes / vibration / settings (29A3)
         ├── SettingsRows.jsx      # settings rows shared by HOME and the ⚙ dialog (Phase 29G)
         ├── SettingsDialog.jsx    # ⚙ SETTINGS dialog opened from the header (Phase 29G)
         ├── TeamColorPanel.jsx    # TEAM COLOR box: active colors, bonus, what is missing (Phase 26D)
@@ -403,7 +408,14 @@ The project currently uses browser LocalStorage for local game progress.
 | 29H | World Cup as its own tab: start one any time (2 per day), progress saved, prize for the best stage reached | ✅ Done (2026-11-13) |
 | 29I | Player form (5 levels, affects play), Fitness / Form cards for the whole squad, Upgrade Boost cards (+3–5 %, up to 5 per attempt) | ✅ Done (2026-11-13) |
 | 29J | Player portraits drawn in code on the cards | ✅ Done (2026-11-13) |
-| 29A | Mobile controls (joystick + 4 swipe buttons), minimal mobile UI, touch / iOS fixes | 🔜 Later |
+| 29A1 | Mobile foundation: touch detection, no zoom / scroll in a match, full-screen match layout, rotate prompt, full-screen button, iPhone Safari fixes, smaller HUD | ✅ Done (2026-11-13) |
+| 29A2 | Basic touch controls: joystick + PASS / THROUGH / SHOOT / SPRINT buttons, ☰ menu | ✅ Done (2026-11-13) |
+| 29A3 | Advanced touch controls: swipe variants, vibration, button size / opacity / joystick settings | ✅ Done (2026-11-13) |
+| 29A5 | Phone performance: AUTO graphics, adaptive resolution, LOW mid-match when needed, pause when leaving the app, install as an app + offline | ✅ Done (2026-11-13) |
+| 29K | Lineup & squad: Fitness / Form cards under TEAM SETUP and in SQUAD, clear EDIT LINEUP in PLAY and SQUAD, player info card when you click a player, team-color helper, AUTO PICK XI, pre-kick-off warnings, compare, saved lineups | ✅ Done (2026-11-13) |
+| 29A4a | Mobile UI, part 1: bottom tab bar + MORE, compact header, full-screen dialogs, HOME and PLAY as tabbed screens | ✅ Done (2026-11-13) |
+| 29A4b | Mobile UI, part 2: SQUAD, CARDS, TRANSFERS as tabbed screens | ✅ Done (2026-11-13) |
+| 29A4c | Mobile UI, part 3: LEAGUE + cups, WORLD CUP, TROPHIES, post-match, quick simulation | ✅ Done (2026-11-13) |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
@@ -887,7 +899,7 @@ Hold a modifier, then press or charge the action key. The modifier also counts i
 
 ### Later phases (not started)
 
-Everything up to and including Phase 25 is done. Roadmap agreed on 2026-11-12:
+Everything up to and including Phase 29K and 29A1–29A5 (with 29A4a–c) is done (see the status table). No planned phase left — see the backlog. Roadmap originally agreed on 2026-11-12:
 
 ### Phase 22 — Match feel, screens and squad rules, season player stats ✅ (2026-11-12)
 
@@ -1315,11 +1327,19 @@ Agreed on 2026-11-12. Data in `src/services/trophyService.js`, screen in `src/co
 
 Also: **SIMULATE n/5 is the same size as KICK OFF** (pre-match) and PLAY MATCH (home).
 
-### Phase 29 — Mobile, graphics, performance, sound and release (planned)
+### Phase 29 — Mobile, graphics, performance, sound and release
 
-Split on 2026-11-12 into **29A** (mobile controls, minimal mobile UI and the touch-only fixes: block page zoom / scroll, iOS Safari), **29B** (graphics, sound, performance, release — see the 29B section below) and **29C** (upgrade insurance, protection cards, xG for rebounds). Order: 29C → 29B now, 29A later.
+Split on 2026-11-12 into **29A** (mobile), **29B** (graphics, sound, performance, release — done) and **29C** (upgrade insurance, protection cards, xG for rebounds — done). On 2026-11-13 the mobile part was split again into five smaller phases, each usable on its own. Order approved: **29A1 → 29A2 → 29A3 → 29A5 → 29A4** (after 29A2 a match can be played on a phone; 29A4 is the biggest but does not block playing).
 
-- **Mobile controls** (reference: FC Mobile layout), landscape and full screen:
+| Phase | Content | Size |
+| --- | --- | --- |
+| **29A1 — Mobile foundation** | Detect touch devices; during a match block page zoom and scrolling; full-screen match layout on phones (header and side panel hidden); "rotate to landscape" prompt; full-screen button; iPhone Safari fixes (screen height, notch / safe areas, sound only starts after the first touch); smaller scoreboard, mini map and power bar on small screens | Small |
+| **29A2 — Basic touch controls** | Floating joystick where the left thumb touches; four round buttons on the right **PASS / THROUGH / SHOOT / SPRINT**, hold to charge like the keyboard; when defending PASS = switch player, SHOOT = press; ☰ menu (pause, subs, stats) | Medium — the core |
+| **29A3 — Advanced touch controls** | Swipe on a button for the variant: lofted pass / cross, lobbed through ball, chip, finesse / trivela, shield, slide tackle; light vibration on kicks; button size and opacity settings | Medium |
+| **29A4 — Mobile UI for the management screens** | Tab bar at the bottom of the screen; HOME, TRANSFERS, CARDS, SQUAD, LEAGUE, WORLD CUP, TROPHIES as step-by-step screens with tabs and back buttons instead of one long page; pickers and dialogs full screen | Large — split on 2026-11-13 into 29A4a / 29A4b / 29A4c (see below) |
+| **29A5 — Phone performance** | LOW graphics chosen automatically on weaker phones; lower resolution when FPS drops; install to the home screen like an app (prepared in 29B) | Small |
+
+- **Touch button layout planned for 29A2 / 29A3** (reference: FC Mobile), landscape and full screen:
   - Top left: compact score and clock. Top right: formation / tactics selector and a ☰ menu (Pause, Subs, Stats, Controls).
   - Left: floating joystick that appears where the thumb touches (replaces the arrow keys).
   - Right: four round buttons, each with arrows on its rim — swipe on a button for a variant. Hold to charge power, like the keyboard.
@@ -1329,11 +1349,80 @@ Split on 2026-11-12 into **29A** (mobile controls, minimal mobile UI and the tou
     | PASS | Short pass (S) | Up: lofted pass / cross (A) | Switch player (S) |
     | THROUGH | Through ball (W) | Up: lobbed through ball (Q+W) | Call teammate press (W) |
     | SHOOT (largest) | Shot (D) | Up: chip (Q+D); sideways: finesse (Z+D) / trivela (C+D) | Contain / press (D) |
-    | SPRINT & SKILL | Sprint (E) | Long hold: shield (C) | Tackle / slide |
+    | SPRINT & SKILL | Sprint (E) | Long hold: shield (C) | Sprint & tackle (tap) — slide on the red button |
 
   - Touch buttons write into the same `keys.current` input the engine already reads, so the engine needs almost no change.
-- **Minimal mobile UI:** management screens become step-by-step screens with tabs and back buttons instead of one long scrolling page.
-- **Touch fixes (29A):** block page zoom and scroll during a match, iOS Safari fixes.
+- **Testing:** emulated iPhone / Android in the browser (screen sizes, touch, swipes); the real feel has to be checked on a phone — open the game with `npm run dev -- --host` on the Mac and the Mac's IP address on a phone in the same Wi-Fi, or publish it (see *Publish online*).
+
+### Phase 29A5 — Phone performance ✅ (2026-11-13)
+
+Code: `src/utils/performance.js`, `src/utils/install.js`, `public/sw.js` (new), `MatchCanvas.jsx` (adaptive resolution), `GameScene.jsx`, `SettingsRows.jsx`, `FpsMeter.jsx`, `device.js`, `main.jsx`, `public/manifest.webmanifest`, CSS at the end of `styles.css`.
+
+- **Graphics AUTO** (new default; the button shows what it picked, e.g. `AUTO · LOW`): **LOW** on phones (touch screen with the short side ≤ 600 px), on devices with ≤ 4 GB RAM (Chrome reports it) and on touch tablets with ≤ 4 CPU cores; **HIGH** otherwise. Saves from before 29A5 that had the old default HIGH switch to AUTO once; LOW stays LOW. HIGH and LOW still force the quality.
+- **Adaptive resolution** in every match (`AdaptiveResolution` in `MatchCanvas.jsx`): the frame rate is measured every 2 s (the first 3 s are skipped while the stadium builds).
+  - Below **45 FPS** → one step lower resolution (HIGH: 1.75 → 1.5 → 1.25 → 1 → 0.85 × pixel ratio, LOW: 1 → 0.85 → 0.75 → 0.65; never above the screen's own ratio).
+  - If the lower step was **not faster** (the phone caps at 30 FPS in battery saver, or the slowness is the CPU, not the graphics) the old step comes back and the resolution stays fixed for the rest of the match — no blurry picture for nothing.
+  - Smooth again (**≥ 57 FPS** three times in a row) → one step back up (at most twice per match, so it does not flicker).
+- **Switch to LOW mid-match** (AUTO only): still below **25 FPS** twice in a row at the lowest step (or when lower resolution did not help) → shadows, the soft shadows under the players and the floodlights turn off at once, without restarting the match. The game remembers it, so AUTO starts the next matches on LOW; pressing **AUTO** again in Settings forgets it and guesses again.
+- **FPS counter** now also shows the resolution in use and `LOW*` after an automatic switch (e.g. `52 FPS 1.25×`).
+- **Battery:** while the match is paused the 3D scene is only redrawn when something changes (`frameloop: 'demand'`), so a paused phone does not heat up. **Leaving the app mid-match** (switching app, locking the screen, another tab) pauses the match; press RESUME when you come back.
+- **Install as an app** (⚙ Settings → *Install app*):
+  - Android / Chrome / Edge: **📲 INSTALL** button (the browser's install prompt) when the browser offers it, otherwise the menu steps; `INSTALLED ✓` once installed.
+  - iPhone / iPad: *Safari: Share ⬆ → Add to Home Screen* (Safari has no install button for web pages).
+  - The installed app opens **full screen** (`display: fullscreen` with standalone fallback; the ⛶ button hides there).
+  - **Service worker** (`public/sw.js`, build only, not in `npm run dev`): the page comes from the network first (3 s timeout, then the saved copy), so updates arrive on the next start; hashed files in `assets/` are kept (at most 30, older ones removed); the game then **works offline** — saves were always on the device.
+- **Tested** in emulated Pixel 7 / iPhone 13 landscape and desktop: AUTO picks LOW on phones and HIGH on desktop; the resolution drops a step and comes back when it does not help; in a very slow software renderer AUTO switched to LOW mid-match (2 → 5 FPS) and remembered it; hiding the page paused the clock and RESUME continued it; Install row shows the Android menu steps / the iPhone Share steps; the service worker controls the page and the game reloads with the network **offline**; desktop regression tests unchanged.
+
+### Phase 29A3 — Advanced touch controls ✅ (2026-11-13)
+
+Code: `src/components/TouchControls.jsx` (swipes, vibration, settings), a `ufm:cancel-charge` event in `MatchWorld.jsx`, four new settings in `GameScene.jsx` / `SettingsRows.jsx`, CSS at the end of `styles.css`.
+
+- **Swipe on a button** (press, then slide the thumb ~22 px before letting go) for the variant — the same keys and modifiers as the keyboard:
+
+  | Button | Swipe ↑ | Swipe ← / → | Swipe ↓ |
+  | --- | --- | --- | --- |
+  | **PASS** (with the ball) | **Lofted pass / cross** (A) | — | — |
+  | **THROUGH** | **Lobbed through ball** (W + Q) | — | — |
+  | **SHOOT** | **Chip** (D + Q) | **Finesse** (D + Z) | **Trivela** (D + C) |
+  | **SPRINT & SKILL** | — | — | **Shield** the ball (C, hold) |
+
+  Small arrows on the button rim show which swipes exist; while swiping, the label changes (LOB, CHIP, FINESSE…) and the arrow lights up. PASS waits 0.14 s before it starts a short pass so a quick swipe up becomes a lofted pass instead; if the short pass has already started charging it is cancelled (`ufm:cancel-charge`) and the lofted pass starts with the same press. Modifiers are released just after the main key, so the engine reads them on release. Without the ball nothing changes: SWITCH / SUPPORT / SLIDE / SPRINT & TACKLE.
+- **Vibration** (Android; iPhone Safari has no vibration API): short buzz on press, longer on shots (30 ms) and tackles.
+- **Settings** (⚙, shown only on touch devices): **Touch buttons** SMALL / MEDIUM / LARGE (×0.85 / ×1 / ×1.15, a bit smaller again on very low screens), **Button opacity** 50 % / 85 % / 100 %, **Joystick** FLOATING (appears under the thumb) / FIXED (always bottom left), **Vibration** ON / OFF. Saved with the other settings.
+- Switching between attack and defence while a button is held releases it (no stuck keys).
+- **Tested** with real touch events (CDP) in emulated Pixel 7 / iPhone 13 landscape: every swipe sends the right keys (`+KeyS -KeyS +KeyA` → "LOFTED PASS", `+KeyD +KeyQ` chip, `+KeyD +KeyZ` finesse, `+KeyD +KeyC` trivela, `+KeyW +KeyQ` lobbed through, `+KeyC` shield); LARGE size, FIXED joystick and opacity work; desktop shows no touch buttons or touch settings; desktop regression tests unchanged.
+
+### Phase 29A2 — Basic touch controls ✅ (2026-11-13)
+
+Code: `src/components/TouchControls.jsx`, `src/systems/touchInput.js` (both new), `inputDirection` in `control.js`, ☰ menu in `GameScene.jsx`, CSS at the end of `styles.css`. Shown on touch devices while the match is being played (also in a penalty shoot-out); hidden when paused, at half time and full time.
+
+- **Floating joystick** on the left ~40 % of the screen (below the top HUD): it appears where the thumb touches (a faint hint shows its usual place), drag to run. Movement is **analog 360°** (`touchInput` → `inputDirection`), and the joystick also sends the arrow keys (8 directions) for everything that reads arrows (aiming penalties, keeper dive, the receiver nudge…). Holding a direction re-sends the key every second so auto play does not think you left.
+- **Four round buttons** bottom right, in the **FC Mobile layout** (rearranged on 2026-11-13 after the user's FC Mobile screenshots), hold to charge exactly like the keys (the power bar appears):
+
+  | Position (rim colour) | With the ball | Without the ball |
+  | --- | --- | --- |
+  | Bottom left (blue) | **PASS** — short pass (S) | **SWITCH** player (S) |
+  | Top left (yellow) | **THROUGH** — through ball (W) | **SUPPORT** — call a teammate to press (W, hold) |
+  | Top right (red) | **SHOOT** (D) | **SLIDE** tackle (A) |
+  | Bottom right, big (green) | **SPRINT & SKILL** — sprint (E, hold); swipe ↓ = shield (29A3) | **SPRINT & TACKLE** — hold = sprint (E), quick tap (< 0.22 s) = standing tackle (Space) |
+
+  Labels change automatically with possession (checked 6–7 times a second). Lofted passes / crosses, chips and finesse shots come with the swipe gestures of 29A3 (done, see above).
+- The buttons send the same keyboard events as a real keyboard (`KeyboardEvent` on `window`), so the engine is unchanged and touching any button takes control back from auto play. Joystick and buttons work at the same time (multi-touch, pointer capture); a short vibration on Android when a button is pressed.
+- **☰ menu** (top right on phones): LEAGUE, PAUSE, STATS, SUBS, CONTROLS, QUIT (and ⛶ full screen where supported) in one list instead of a row of small buttons; it closes after a choice.
+- Desktop / laptop without touch: nothing changes.
+- **Tested** in emulated iPhone 13 and Pixel 7 (landscape): the PASS button makes a real pass (receiver's first touch), the joystick shows under the finger and sends the right arrows, the ☰ menu opens and PAUSE works; desktop regression tests unchanged.
+
+### Phase 29A1 — Mobile foundation ✅ (2026-11-13)
+
+Code: `src/utils/device.js` (new), `installAudioUnlock` in `src/utils/sound.js`, `main.jsx`, compact match layout in `GameScene.jsx` + `styles.css`.
+
+- **Touch detection:** `html.is-touch` / `html.is-ios` classes at start (`setupDevice`); `html.in-match` while the match screen is open.
+- **Phone match layout** (touch device with a screen up to ~820 px on its short side — phones and small tablets — or any window narrower than 900 px / lower than 600 px): the match fills the whole screen (`position: fixed`, real browser height via `100dvh` / `--app-height`), header, side panel and footer hidden; scoreboard, tactic box, AUTO PLAY, match buttons, messages, mini map, power bar and auto-play badge are smaller and kept clear of the notch (`env(safe-area-inset-*)`); extra-small sizes below 440 px height (phones in landscape). Laptops and big tablets keep the normal layout.
+- **No zoom / scroll in a match:** pinch zoom blocked (`gesturestart`, two-finger `touchmove`), double-tap zoom off everywhere (`touch-action: manipulation`), no page bounce, the 3D canvas takes all touches (`touch-action: none`) — ready for the touch controls of 29A2.
+- **Rotate prompt:** a phone held upright on the match screen shows **TURN YOUR PHONE SIDEWAYS** (animated phone) and pauses the match; turning it sideways resumes it.
+- **Full-screen button ⛶ / ⤡** in the match buttons on phones and tablets (Android Chrome also locks landscape). Not shown on iPhone, where Safari has no full screen for web pages — use *Add to Home Screen* for a full-screen app (manifest from 29B).
+- **Sound on phones:** iOS / Android only allow audio after a user action, so the first touch / key press creates and wakes the audio context with a silent sample; the whistle and crowd then work.
+- **Tested** with emulated iPhone 13 (landscape and portrait), Pixel 7 (landscape) and iPad Pro 11 (normal layout) plus the desktop regression tests; on a real phone: `npm run dev -- --host`, then open the Mac's IP address (port 5173) on the phone in the same Wi-Fi.
 
 ### Phase 29B — Graphics, sound, performance, release ✅ (2026-11-12)
 
@@ -1484,6 +1573,150 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 - Simplified 3D hair (seen from the high camera): short / quiff (cap + raised front), buzz (thin cap), curly (small balls), long (down to the neck), afro (big round volume), shaved (none); full beard and goatee as a patch on the chin; headband in the kit trim colour.
 - **LOW graphics:** colours change too, but every player keeps the basic hair cap and no beard (fewest shapes). HIGH adds at most 2–8 small shapes per player; no FPS change seen in the test; a few KB of code, saves unchanged.
 
+### Phase 29K — Lineup, player info and squad cards ✅ (2026-11-13)
+
+Playtest requests on 2026-11-13, done before 29A4. New files: `src/services/lineupHelper.js`, `src/components/PlayerInfoPanel.jsx`, `src/components/SquadCardsBox.jsx`.
+
+**1. Fitness / Form cards where you pick the team**
+
+- New **SQUAD CARDS** box directly **under TEAM SETUP** on the PLAY (pre-match) screen:
+  - Fitness and Form cards owned, what each does (whole squad → condition 100 / form ⬆ +3), **USE** — or **BUY** with 0 cards (opens CARDS and scrolls to the SHOP).
+  - State of the starting XI: average fitness, how many below 70 %, form arrows (e.g. ➡9 ⬇1 ⬆1).
+  - **BEFORE KICK-OFF** warnings: tired starters (< 60 %), players out of position (natural → played), a Fitness card available while the XI is tired, 3+ starters in poor form while you own a Form card, fewer than 11 starters.
+- The old quick-use buttons under KICK OFF are gone (one place only).
+- The same box at the top of the **SQUAD** tab, next to TEAM COLOR.
+- **Phone** (≤ 760 px): a compact strip right under your lineup (XI fitness % · ♥ n · USE · ⬆ n · USE); moves into the SQUAD screen of the bottom tab bar in 29A4b.
+- Not shown for World Cup matches.
+
+**2. Edit the lineup from PLAY and SQUAD**
+
+- PLAY: a full-width **✎ EDIT LINEUP** button under the lineup header (was a small EDIT ✎ button in the header).
+- SQUAD: **✎ EDIT LINEUP** under TEAM COLOR. Same editor as HOME; changes before kick-off use no substitutions.
+
+**3. Player info card**
+
+- Click / tap any player in the PLAY lineups (yours and the opponent's, read-only) → a dialog with the large card and portrait, club with crest, nation, age (when known), height / weight, natural position and the position he plays (penalty in red), fitness, form, level / potential, market value, detailed attributes (open with **DETAILED ATTRIBUTES ▼**) and a **TEAM COLOR** box: club / nation / card level and what he means for the XI (e.g. "From Arsenal — 9/11 starters from Arsenal, 2 more needed for club color +3", "Lowest card in the XI (+1) — every starter needs +2 for Bronze"). Esc or a click outside closes it.
+- SQUAD: **ⓘ CARD** next to the player's name opens the same dialog.
+- In the lineup editor the panel opens beside the pitch (below it on narrower screens).
+
+**4. Lineup editor (team-color helper)**
+
+- **Click = info, second click = compare:** the first click opens the player info panel; clicking a second player shows a stat-by-stat **comparison** (OVR at the position he would play, PAC…PHY, fitness, with + / −) and a **⇄ SWAP** button (clicking the second player again also swaps). Drag-and-drop still swaps at once. Works the same with fingers (tap, tap, SWAP).
+- Every tile shows the club crest, nation code (bench / reserves) and the +N card badge.
+- **Swap preview:** while a player is selected, every other tile shows what swapping would do to the XI — team color change (`TC +3`) and average OVR change (`+0.8`), green / red.
+- **HIGHLIGHT** chips: SAME CLUB (the club most of your XI comes from), SAME NATION, CARD ≥ +5 / ≥ +8 / +10 — matching players glow, the rest fade.
+- **⚡ AUTO PICK XI** (before the match): the best XI for the current formation, scoring OVR at each position + form − fatigue (100 − fitness × 0.12) + team color × 11. It starts from the current XI, a greedy pick and team-color candidates (11 from one club, one nationality, every card ≥ +2 / +5 / +8 / +10), then improves by single swaps — so it is never worse than the current XI. Players left out go to the bench (a back-up keeper first, best players, max 9), the rest to the reserves; no two cards of the same player in the matchday squad. **↶ UNDO** restores the previous lineup.
+- **SAVED LINEUPS:** 3 slots per club (in this browser): SAVE (optional name), LOAD (also switches to the saved formation; players sold since are replaced by the best option), ✕ delete; UNDO also works after LOAD.
+
+- Tests: Node tests for auto pick (11 players, one keeper, no duplicate cards, a tired starter is rested, never lower than the current XI), swap preview, warnings, presets; browser test (desktop and 390 px phone) for the SQUAD CARDS box and USE, info dialogs for both teams, compare + SWAP, previews, highlight, auto pick + UNDO, saved lineups, SQUAD tab buttons — no console errors.
+
+### Phase 29A4 — Mobile UI for the management screens (split 2026-11-13)
+
+29A4 was too big for one delivery, so it is split by screen group into three phases, each usable on its own. Order: **29A4a → 29A4b → 29A4c**. Desktop layout does not change in any of them; everything applies to phones (≤ 760 px wide, or a landscape phone ≤ 500 px high).
+
+| Phase | Content |
+| --- | --- |
+| **29A4a — Common frame + HOME + PLAY** ✅ | Bottom tab bar instead of the top menu; compact header (EP + ⚙); settings, club / nation picker, player info and lineup editor full screen; HOME and PLAY as tabbed screens |
+| **29A4b — SQUAD, CARDS, TRANSFERS** ✅ | SQUAD: tabs TEAM / PLAYERS / TRAINING; CARDS: tabs REWARDS / SHOP / UPGRADE / EARN, upgrade in two steps; TRANSFERS: full screen above the tab bar, short tabs, filters behind a FILTERS button, compact player list, full player card before signing |
+| **29A4c — LEAGUE, WORLD CUP, TROPHIES, after the match** ✅ | LEAGUE + C1 / C2 cups: tabs (table / fixtures / player stats / cups), tables narrowed to the key columns; WORLD CUP: steps (pick nation → groups → knockouts); TROPHIES as a list; post-match and quick simulation screens laid out for a phone |
+
+### Phase 29A4a — Mobile frame, HOME and PLAY ✅ (2026-11-13)
+
+New file: `src/components/MobileTabBar.jsx`.
+
+**1. Bottom tab bar (phone only)**
+
+- Fixed at the bottom: **HOME · PLAY · SQUAD · CARDS · MORE**, line icons, active tab highlighted; CARDS shows a badge with the number of cards in the inventory.
+- **MORE** opens a sheet from the bottom: LEAGUE, WORLD CUP, TROPHIES, TRANSFERS and ⚙ SETTINGS (each with a one-line hint). A tap outside or a screen change closes it. MORE is highlighted while one of its screens is open.
+- Hidden during a match (the match keeps its full-screen layout from 29A1) and on desktop.
+
+**2. Compact header**
+
+- The top menu is gone on phones; the header is one sticky row: crest, EP and ⚙. Club name, level bar text and the page footer are hidden to save height.
+
+**3. HOME as tabs**
+
+- **TABLE · SEASON · SQUAD** tabs (sticky under the header) instead of one long page. The settings card moves to MORE → SETTINGS.
+
+**4. PLAY as tabs**
+
+- **MY TEAM · SETUP · OPPONENT** tabs. MY TEAM = your lineup, ✎ EDIT LINEUP and the squad-cards strip (now also with the BEFORE KICK-OFF warnings); SETUP = TEAM SETUP (kits, tactics, difficulty); OPPONENT = their lineup (tap a player for his card).
+- **SIMULATE / KICK OFF** and the match LENGTH row are pinned above the tab bar, always reachable. Smaller title and crests.
+
+**5. Full-screen dialogs**
+
+- Settings, club / nation picker, player info card and the lineup editor open full screen (no rounded floating box). The lineup editor footer (SAVE / CANCEL) stays visible at the bottom; its header, team-color rows and saved-lineup presets are compact; pitch cards are smaller so 11 players do not overlap on a 390 px screen.
+
+**6. Landscape phone**
+
+- Header and the KICK OFF bar scroll with the page instead of sticking; tab bar is lower with icon and label side by side; the MORE sheet uses two columns.
+
+### Phase 29A4b — Mobile SQUAD, CARDS and TRANSFERS ✅ (2026-11-13)
+
+Phone only (≤ 760 px, or a landscape phone); the desktop layout is unchanged except the new player card in the transfer market (item 3).
+
+**1. SQUAD — TEAM · PLAYERS · TRAINING**
+
+- **TEAM**: team color of the starting XI, ✎ EDIT LINEUP and the full SQUAD CARDS box (Fitness / Form cards, BEFORE KICK-OFF warnings).
+- **PLAYERS**: the whole squad as one list (no inner scroll box); the tab shows a red badge with the training points waiting. Tapping a player opens **TRAINING** for him.
+- **TRAINING**: ← PLAYERS, position in the list (e.g. 3 / 18) and ‹ › to go to the previous / next player; attributes in two columns. The pending bar (UNDO LAST / UNDO ALL / CONFIRM) sticks above the tab bar while you add points; the TRAINING tab shows a dot while upgrades are unsaved (you still can't leave a player with unsaved points).
+- Shorter title; the long rules text is hidden on phones.
+
+**2. CARDS — REWARDS · SHOP · UPGRADE · EARN**
+
+- Smaller club-level header (level, XP to the next level, next reward, budget, squad size).
+- **REWARDS** = unopened items, **SHOP** = buy Fitness / Form cards (BUY from SQUAD CARDS opens this tab), **EARN** = how to earn XP and cards. Desktop keeps the two tabs REWARDS (with shop and rules on the same page) and UPGRADE CARDS.
+- **UPGRADE in two steps**: step 1 = choose a card (list); step 2 = the upgrade screen for that card (rate, boost, protection, material) with **← CHOOSE ANOTHER CARD**. The page scrolls back to the top when a card is chosen.
+
+**3. TRANSFERS**
+
+- Opens as a full screen **above the bottom tab bar** (the tab bar stays usable; HOME / PLAY / SQUAD / CARDS close it; MORE opens over it). Smaller header, short tabs **MARKET · SALES · CONTRACTS · OVERVIEW**.
+- MARKET: number of players found and a **FILTERS** button (shows how many filters are active); position, card type, sort, country, league and club open under it in two columns. Search stays visible. Bigger text in the fields so iPhone does not zoom in.
+- Player list: one compact row per player (name, position, body, nation, club, OVR, fee and wage side by side, VIEW PLAYER); two columns on a landscape phone. SALES uses the same compact rows; CONTRACTS rows are narrower.
+- **VIEW PLAYER now opens the full player card** (all screens): the large card with portrait, club with crest, nation, age, height / weight, position, form, value and DETAILED ATTRIBUTES, plus transfer fee, weekly wage, budget after signing (red if not enough EP), how many copies you own, **BACK** and **SIGN PLAYER**. On a phone it is full screen with BACK / SIGN PLAYER pinned at the bottom.
+- The sale confirmation fits the phone screen.
+
+**4. Landscape phone**
+
+- Smaller headers on SQUAD, CARDS and TRANSFERS; the market list and the player card use two columns.
+
+### Phase 29A4c — Mobile LEAGUE, cups, WORLD CUP, TROPHIES, post-match ✅ (2026-11-13)
+
+Phone only (≤ 760 px, or a landscape phone); the desktop layout is unchanged. With this, mobile phase 29A4 (and the whole 29A mobile plan) is complete.
+
+**1. No more sideways scrolling**
+
+- The score rows on the quick simulation and post-match screens (long club names like MANCHESTER UNITED) made the page wider than the phone, so every screen (and the LEAGUE panel on top) could be pushed sideways. Names now wrap under the crest and the score keeps its size; nothing is wider than the screen any more.
+
+**2. Quick simulation**
+
+- Crest above the club name, score in the middle; MATCH SUMMARY / SIMULATE NEXT side by side at the end.
+
+**3. Post-match — STATS · PLAYERS · EVENTS · REWARDS**
+
+- Score, result and buttons stay on top: NEXT MATCH full width, then SIMULATE NEXT · LEAGUE TABLE · HOME in one row.
+- **STATS** = match stats; **PLAYERS** = player of the match, ratings (T and PASS columns hidden on phones), form changes and XP / level-ups; **EVENTS** = timeline, top performers and shot map; **REWARDS** = club XP, prize money and level-ups. EVENTS is not shown for an abandoned match.
+
+**4. LEAGUE**
+
+- Full screen **above the bottom tab bar** (like TRANSFERS); short tabs **TABLE · STATS · FIXTURES · C1 · C2**.
+- TABLE: position / points / played / season in one row and PLAY full width; season difficulty is hidden here (it is in PLAY → SETUP); the table keeps # · club · P · GD · PTS (W / D / L come back on a landscape phone).
+- STATS: only the column you sort by is shown next to the player and club (chips scroll sideways); all columns on a landscape phone.
+- FIXTURES: narrower rows, long club names cut with …
+
+**5. Cups (C1, C2, World Cup) — MY MATCHES · GROUPS · KNOCKOUT**
+
+- One part at a time on a phone; MY MATCHES only when you play in that cup. Groups in two columns (four on a landscape phone), knockout rounds one under another.
+
+**6. WORLD CUP — TOURNAMENT · PRIZES**
+
+- TOURNAMENT = next match / start card and the cup (with the sub-tabs above); PRIZES = prize table and past tournaments. Shorter header.
+- The national-team picker no longer squeezes the nation list to one row; the list scrolls and MANAGE … stays at the bottom.
+
+**7. TROPHIES — SHELF · CAREER**
+
+- SHELF = the trophy shelves; tap a trophy and its details (3D trophy, wins) open as a full page with **← ALL TROPHIES**. CAREER = the totals in four small columns and the season-by-season table (difficulty column hidden on a portrait phone).
+
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
@@ -1538,7 +1771,13 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 | Phong độ cầu thủ; thẻ thể lực / thẻ phong độ cho cả đội; thẻ tăng tỉ lệ đập +3–5% (tối đa 5 thẻ) | Phase 29I ✅ |
 | Hình ảnh cầu thủ trong thẻ (vẽ bằng code, chỉ thẻ lớn) | Phase 29J ✅ |
 | Cầu thủ trong trận 3D có màu da, màu tóc, kiểu tóc, râu giống thẻ | Sau 29J ✅ |
-| Điều khiển mobile kiểu FC Mobile, giao diện mobile tối giản | Phase 29A |
+| Nền tảng mobile: chặn phóng to / cuộn trong trận, trận toàn màn hình, nhắc xoay ngang, sửa lỗi iPhone | Phase 29A1 ✅ |
+| Điều khiển cảm ứng cơ bản: cần điều khiển + 4 nút | Phase 29A2 ✅ |
+| Điều khiển cảm ứng nâng cao: vuốt trên nút, rung, tuỳ chỉnh nút | Phase 29A3 ✅ |
+| Hiệu năng điện thoại: tự chọn đồ hoạ LOW, cài như ứng dụng | Phase 29A5 ✅ |
+| Mobile: thanh tab dưới, header gọn, hộp thoại toàn màn hình, HOME / PLAY chia tab | Phase 29A4a ✅ |
+| Mobile: SQUAD, CARDS, TRANSFERS chia tab | Phase 29A4b ✅ |
+| Mobile: LEAGUE + cúp, WORLD CUP, TROPHIES, sau trận, mô phỏng nhanh | Phase 29A4c ✅ |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
 | AI sút xa, chuyền dài theo chỉ số; thêm chỉ số Composure (quyết đoán) để tiền đạo dứt điểm thay vì chuyền vòng vo | Phase 29F ✅ |
@@ -1551,7 +1790,7 @@ Scope chosen 2026-11-13: **large cards only** (pack opening, upgrade screen, upg
 ---
 
 **Project:** Ultimate Football Manager 3D  
-**Current delivery:** Steps 1–6 + Phases 15–29F (see roadmap)  
+**Current delivery:** Steps 1–6 + Phases 15–29K, 29A1–29A5 (see roadmap)  
 **Game mode:** 3D Football + Club Management  
 **Match format:** 11 vs 11  
 **Stack:** React + Vite + Three.js + React Three Fiber + Drei + Rapier  

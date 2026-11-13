@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { CupPartTabs } from './CupPanel'
 import ClubCrest from './ClubCrest'
 import { NATION_BY_ID } from '../data/nations'
 import {
@@ -48,6 +49,7 @@ function Match({ fixture, user }) {
 export default function WorldCupPanel({ world, worldCup = null, onPlay = null }) {
     const wc = worldCup || world?.worldCup || null
     const state = useMemo(() => (wc ? worldCupState(wc) : null), [wc])
+    const [partChoice, setPartChoice] = useState(null)
 
     if (!wc || !state) return null
 
@@ -57,8 +59,11 @@ export default function WorldCupPanel({ world, worldCup = null, onPlay = null })
     const roundOf = (key) => state.rounds.find((entry) => entry.round === key)
     const userFixtures = state.rounds.flatMap((entry) => entry.fixtures).filter((fixture) => fixture.homeTeamId === user || fixture.awayTeamId === user)
 
+    const hasMatches = userFixtures.length > 0
+    const part = partChoice && (partChoice !== 'matches' || hasMatches) ? partChoice : hasMatches ? 'matches' : 'groups'
+
     return (
-        <section className="cup-panel">
+        <section className="cup-panel" data-part={part}>
             <div className="cup-panel__head">
                 <div>
                     <div className="league-section-title">WORLD CUP {wc.edition}</div>
@@ -81,8 +86,10 @@ export default function WorldCupPanel({ world, worldCup = null, onPlay = null })
                 )}
             </div>
 
-            {userFixtures.length > 0 && (
-                <>
+            <CupPartTabs part={part} onChange={setPartChoice} hasMatches={hasMatches} />
+
+            {hasMatches && (
+                <div className="cup-part cup-part--matches">
                     <div className="league-section-title league-section-title--spaced">{nation?.shortName} MATCHES</div>
                     <div className="league-fixture-list league-fixture-list--compact">
                         {userFixtures.map((fixture) => (
@@ -106,9 +113,10 @@ export default function WorldCupPanel({ world, worldCup = null, onPlay = null })
                             </div>
                         ))}
                     </div>
-                </>
+                </div>
             )}
 
+            <div className="cup-part cup-part--groups">
             <div className="league-section-title league-section-title--spaced">GROUP STAGE · TOP 2 GO THROUGH</div>
             <div className="cup-groups">
                 {state.groups.map((group) => (
@@ -131,6 +139,9 @@ export default function WorldCupPanel({ world, worldCup = null, onPlay = null })
                 ))}
             </div>
 
+            </div>
+
+            <div className="cup-part cup-part--ko">
             <div className="league-section-title league-section-title--spaced">KNOCKOUT · ONE MATCH · LEVEL → PENALTIES</div>
             <div className="cup-bracket cup-bracket--wc">
                 {knockout.map((key) => (
@@ -143,6 +154,7 @@ export default function WorldCupPanel({ world, worldCup = null, onPlay = null })
                         )}
                     </div>
                 ))}
+            </div>
             </div>
         </section>
     )

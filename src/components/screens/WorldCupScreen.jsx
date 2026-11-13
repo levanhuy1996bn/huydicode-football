@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import ClubCrest from '../ClubCrest'
 import WorldCupPanel from '../WorldCupPanel'
 import { NATION_BY_ID } from '../../data/nations'
@@ -34,6 +35,8 @@ export default function WorldCupScreen({
     onBack,
 }) {
     const wc = world?.worldCup || null
+    // Phase 29A4c: trên điện thoại chia tab TOURNAMENT / PRIZES.
+    const [phoneTab, setPhoneTab] = useState('play')
     const active = wc?.status === 'active' ? wc : null
     const last = wc?.status === 'done' ? wc : null
     const history = [
@@ -46,21 +49,36 @@ export default function WorldCupScreen({
     const prize = (id) => Math.round((WC_PRIZES[id] * rewardFactor) / 100000) * 100000
 
     return (
-        <section className="screen wc-screen">
+        <section className="screen wc-screen" data-phone-tab={phoneTab}>
             <div className="prematch-header">
                 <button type="button" className="link-btn" onClick={onBack}>← HOME</button>
                 <div>
                     <div className="home-hero__eyebrow">32 NATIONS · 8 GROUPS · KNOCKOUTS</div>
                     <h1 className="prematch-title">WORLD CUP</h1>
-                    <p>
+                    <p className="wc-intro">
                         Play a tournament whenever you like — {WC_DAILY_LIMIT} new tournaments per day; a tournament in progress
                         is saved, so you can play club matches in between and come back.
                     </p>
                 </div>
             </div>
 
+            <div className="phone-tabs" role="tablist" aria-label="World Cup">
+                {[['play', 'TOURNAMENT'], ['info', history.length ? 'PRIZES · HISTORY' : 'PRIZES']].map(([key, label]) => (
+                    <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === key}
+                        className={phoneTab === key ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(key)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
             <div className="wc-top">
-                <div className="home-hero wc-hero">
+                <div className="home-hero wc-hero phone-tab--play">
                     {active ? (
                         <>
                             <div className="home-hero__eyebrow">
@@ -110,7 +128,7 @@ export default function WorldCupScreen({
                     )}
                 </div>
 
-                <div className="home-card wc-prizes">
+                <div className="home-card wc-prizes phone-tab--info">
                     <div className="home-card__head"><span>PRIZE</span><small>best stage reached · not added up</small></div>
                     <ol>
                         {PRIZE_ROWS.map(([id, label, extra]) => (
@@ -128,10 +146,14 @@ export default function WorldCupScreen({
                 </div>
             </div>
 
-            {wc && <WorldCupPanel world={world} worldCup={wc} />}
+            {wc && (
+                <div className="phone-tab--play">
+                    <WorldCupPanel world={world} worldCup={wc} />
+                </div>
+            )}
 
             {history.length > 0 && (
-                <div className="home-card wc-history">
+                <div className="home-card wc-history phone-tab--info">
                     <div className="home-card__head"><span>PAST TOURNAMENTS</span><small>{history.length}</small></div>
                     <table className="career-table">
                         <thead>

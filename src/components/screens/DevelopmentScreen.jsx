@@ -15,9 +15,17 @@ import {
 } from '../../systems/progression'
 import { shortPlayerName } from '../../utils/names'
 import { FormArrow, UpgradeBadge, statClass } from '../CardBits'
+import SquadCardsBox from '../SquadCardsBox'
+import { PlayerInfoModal } from '../PlayerInfoPanel'
 
 // Phase 19B: màn phát triển cầu thủ — cấp độ, XP, điểm chưa dùng, tiềm năng
 // và cộng điểm chỉ số (giá theo vị trí), có nút tự cộng theo vị trí.
+
+// Phase 29A4b: trên điện thoại mở bước chi tiết thì cuộn về đầu trang.
+const PHONE_QUERY = '(max-width: 760px), (max-height: 500px) and (pointer: coarse)'
+const scrollTopOnPhone = () => {
+    if (typeof window !== 'undefined' && window.matchMedia?.(PHONE_QUERY).matches) window.scrollTo({ top: 0 })
+}
 
 const TIER_LABEL = { key: 'KEY', secondary: 'SECONDARY', other: 'OTHER' }
 
@@ -45,7 +53,7 @@ export function LevelBadge({ player, compact = false }) {
     )
 }
 
-export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
+export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEditLineup = null, squadItems = null }) {
     const players = useMemo(
         () => [...(team?.players || []), ...(team?.substitutes || []), ...(team?.reserves || [])],
         [team],
@@ -56,10 +64,14 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
         return (withPoints || players[0])?.id || null
     })
     const [feedback, setFeedback] = useState(null)
+    // Phase 29K: bảng thông tin cầu thủ (thẻ lớn, team color).
+    const [infoOpen, setInfoOpen] = useState(false)
     // Playtest 3: cộng điểm vào bản nháp trước, bấm CONFIRM mới lưu.
     // history = các bản nháp trước đó (để hoàn tác từng bước).
     const [draft, setDraft] = useState(null)
     const [history, setHistory] = useState([])
+    // Phase 29A4b: trên điện thoại chia 3 tab (TEAM / PLAYERS / TRAINING).
+    const [phoneTab, setPhoneTab] = useState('team')
 
     const saved = players.find((player) => player.id === selectedId) || players[0]
     const pending = Boolean(draft && saved && draft.id === saved.id)
@@ -84,6 +96,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
         ? [GOALKEEPING_GROUP, ...ATTRIBUTE_GROUPS]
         : ATTRIBUTE_GROUPS
     const totalUnspent = players.reduce((sum, player) => sum + progressOf(player).unspentPoints, 0)
+    const selectedIndex = Math.max(0, players.findIndex((player) => player.id === saved.id))
 
     const pushDraft = (next) => {
         setHistory((list) => [...list, pending ? draft : null])
@@ -146,14 +159,36 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
         action()
     }
 
+    const selectPlayer = (player) => {
+        if (player.id === saved.id) {
+            setPhoneTab('training')
+            scrollTopOnPhone()
+            return
+        }
+
+        guard(() => {
+            setSelectedId(player.id)
+            setFeedback(null)
+            setPhoneTab('training')
+            scrollTopOnPhone()
+        })
+    }
+
+    // Trước / sau trong danh sách (tab TRAINING trên điện thoại).
+    const stepPlayer = (delta) => {
+        const next = players[(selectedIndex + delta + players.length) % players.length]
+
+        if (next) selectPlayer(next)
+    }
+
     return (
-        <section className="screen development-screen">
+        <section className="screen development-screen" data-phone-tab={phoneTab}>
             <div className="prematch-header">
                 <button type="button" className="link-btn" onClick={() => guard(onBack)}>← HOME</button>
                 <div>
                     <div className="home-hero__eyebrow">PLAYER DEVELOPMENT · {userTeam().name}</div>
                     <h1>Level up your squad</h1>
-                    <p>
+                    <p className="dev-intro">
                         Players earn XP from every match (minutes, rating, goals, assists, tackles,
                         saves, clean sheets). Max level {MAX_LEVEL}: {POINTS_PER_LEVEL} points per level up to level 30,
                         then 1 point per level. Key attributes for the position cost 1 point, secondary 2, others 3.
@@ -162,13 +197,41 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                 </div>
             </div>
 
-            {/* Phase 26D */}
-            <div className="home-card team-color-card">
-                <TeamColorPanel info={teamColorOf(team?.players || [])} title="TEAM COLOR · STARTING XI" />
+            <div className="phone-tabs" role="tablist" aria-label="Squad">
+                {[
+                    ['team', 'TEAM'],
+                    ['players', 'PLAYERS', totalUnspent],
+                    ['training', 'TRAINING', pending ? '•' : 0],
+                ].map(([key, label, badge]) => (
+                    <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === key}
+                        className={phoneTab === key ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(key)}
+                    >
+                        {label}
+                        {badge ? <em className="phone-tabs__badge">{badge}</em> : null}
+                    </button>
+                ))}
+            </div>
+
+            {/* Phase 26D + 29K: team color, thẻ Thể lực / Phong độ, sửa đội hình */}
+            <div className="squad-top phone-tab--team">
+                <div className="home-card team-color-card">
+                    <TeamColorPanel info={teamColorOf(team?.players || [])} title="TEAM COLOR · STARTING XI" />
+                    {onEditLineup && (
+                        <button type="button" className="btn btn--primary squad-top__edit" onClick={() => guard(onEditLineup)}>
+                            ✎ EDIT LINEUP
+                        </button>
+                    )}
+                </div>
+                {squadItems && <SquadCardsBox team={team} items={squadItems} />}
             </div>
 
             <div className="dev-body">
-                <div className="home-card dev-list">
+                <div className="home-card dev-list phone-tab--players">
                     {players.map((player) => {
                         const item = progressOf(player)
 
@@ -177,14 +240,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                                 key={player.id}
                                 type="button"
                                 className={`dev-row${player.id === selected.id ? ' is-active' : ''}`}
-                                onClick={() => {
-                                    if (player.id === saved.id) return
-
-                                    guard(() => {
-                                        setSelectedId(player.id)
-                                        setFeedback(null)
-                                    })
-                                }}
+                                onClick={() => selectPlayer(player)}
                             >
                                 <span className="lineup__number">{player.number}</span>
                                 <span className="dev-row__name" title={player.name}>
@@ -200,11 +256,23 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                     })}
                 </div>
 
-                <div className="home-card dev-detail">
+                <div className="home-card dev-detail phone-tab--training">
+                    {/* Phase 29A4b: điều hướng trên điện thoại */}
+                    <div className="dev-phone-nav">
+                        <button type="button" className="link-btn" onClick={() => guard(() => setPhoneTab('players'))}>← PLAYERS</button>
+                        <span>{selectedIndex + 1} / {players.length}</span>
+                        <button type="button" className="btn btn--small btn--ghost" onClick={() => stepPlayer(-1)} aria-label="Previous player">‹</button>
+                        <button type="button" className="btn btn--small btn--ghost" onClick={() => stepPlayer(1)} aria-label="Next player">›</button>
+                    </div>
                     <div className="dev-detail__head">
                         <div>
                             <div className="home-hero__eyebrow">#{selected.number} · {selected.position}</div>
-                            <h2>{selected.name}</h2>
+                            <h2>
+                                {selected.name}{' '}
+                                <button type="button" className="link-btn dev-detail__card" onClick={() => setInfoOpen(true)} title="Player card, club, nation and team color">
+                                    ⓘ CARD
+                                </button>
+                            </h2>
                             <div className="dev-detail__level">
                                 Level <b>{progress.level}</b>
                                 {progress.level < MAX_LEVEL
@@ -293,6 +361,12 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                     </div>
                 </div>
             </div>
+            <PlayerInfoModal
+                player={infoOpen ? saved : null}
+                onClose={() => setInfoOpen(false)}
+                xi={team?.players || []}
+                zone={team?.players?.some((player) => player.id === saved?.id) ? 'pitch' : team?.substitutes?.some((player) => player.id === saved?.id) ? 'bench' : 'reserves'}
+            />
         </section>
     )
 }

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { getTeamById } from '../services/leagueService'
 import { isUserClub } from '../services/career'
 import {
@@ -48,8 +48,36 @@ function TieCard({ tie }) {
     )
 }
 
+// Phase 29A4c: trên điện thoại cúp chia 3 phần (trận của bạn / bảng đấu /
+// loại trực tiếp); máy tính vẫn hiện cả ba. Dùng chung cho C1, C2, World Cup.
+export function CupPartTabs({ part, onChange, hasMatches }) {
+    const parts = [
+        ...(hasMatches ? [['matches', 'MY MATCHES']] : []),
+        ['groups', 'GROUPS'],
+        ['ko', 'KNOCKOUT'],
+    ]
+
+    return (
+        <div className="cup-part-tabs" role="tablist" aria-label="Cup sections">
+            {parts.map(([key, label]) => (
+                <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={part === key}
+                    className={part === key ? 'is-active' : ''}
+                    onClick={() => onChange(key)}
+                >
+                    {label}
+                </button>
+            ))}
+        </div>
+    )
+}
+
 export default function CupPanel({ league, cupId, onStartFixture, nextFixture }) {
     const view = useMemo(() => currentCupView(league, cupId), [league, cupId])
+    const [partChoice, setPartChoice] = useState(null)
     const cup = CUPS[cupId]
     const userCup = userCupOf(league)
     const done = cupMatchdaysDone(league)
@@ -74,8 +102,11 @@ export default function CupPanel({ league, cupId, onStartFixture, nextFixture })
             ? `${STAGE_LABELS[nextEntry.stage]}${nextEntry.matchday ? ` · matchday ${nextEntry.matchday}/6` : nextEntry.leg && nextEntry.stage !== 'final' ? ` · leg ${nextEntry.leg}` : ''} · after league round ${nextEntry.afterRound}`
             : ''
 
+    const hasMatches = userCup === cupId && userFixtures.length > 0
+    const part = partChoice && (partChoice !== 'matches' || hasMatches) ? partChoice : hasMatches ? 'matches' : 'groups'
+
     return (
-        <section className="cup-panel">
+        <section className="cup-panel" data-part={part}>
             <div className="cup-panel__head">
                 <div>
                     <div className="league-section-title">{cup.name.toUpperCase()} ({cup.short}) · SEASON {league.cups.season}</div>
@@ -95,8 +126,10 @@ export default function CupPanel({ league, cupId, onStartFixture, nextFixture })
                 )}
             </div>
 
-            {userCup === cupId && userFixtures.length > 0 && (
-                <>
+            <CupPartTabs part={part} onChange={setPartChoice} hasMatches={hasMatches} />
+
+            {hasMatches && (
+                <div className="cup-part cup-part--matches">
                     <div className="league-section-title league-section-title--spaced">YOUR CUP MATCHES</div>
                     <div className="league-fixture-list league-fixture-list--compact">
                         {userFixtures.map((fixture) => {
@@ -122,9 +155,10 @@ export default function CupPanel({ league, cupId, onStartFixture, nextFixture })
                             )
                         })}
                     </div>
-                </>
+                </div>
             )}
 
+            <div className="cup-part cup-part--groups">
             <div className="league-section-title league-section-title--spaced">GROUP STAGE · TOP 2 GO THROUGH</div>
             <div className="cup-groups">
                 {view.groups.map((group) => (
@@ -147,6 +181,9 @@ export default function CupPanel({ league, cupId, onStartFixture, nextFixture })
                 ))}
             </div>
 
+            </div>
+
+            <div className="cup-part cup-part--ko">
             <div className="league-section-title league-section-title--spaced">KNOCKOUT · TWO LEGS (AGGREGATE → AWAY GOALS → PENALTIES) · ONE-MATCH FINAL</div>
             <div className="cup-bracket">
                 {['r16', 'qf', 'sf', 'final'].map((stage) => (
@@ -159,6 +196,7 @@ export default function CupPanel({ league, cupId, onStartFixture, nextFixture })
                         )}
                     </div>
                 ))}
+            </div>
             </div>
         </section>
     )

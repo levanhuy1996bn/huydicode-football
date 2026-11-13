@@ -25,6 +25,7 @@ import {
     isShielding,
     pokeBallLoose,
 } from './duels'
+import { touchDirection } from './touchInput'
 
 // Thủ môn đi bộ khi ôm bóng (m/s), trong vòng cấm nhà.
 const KEEPER_WALK_SPEED = 3.2
@@ -100,6 +101,11 @@ export function kickVariant(action, modifierKey) {
 // Hướng phím mũi tên đang bấm (đã chuẩn hóa) hoặc null.
 // Camera nhìn từ cạnh sân (+X), nên phím lên = đi về -X.
 export function inputDirection(keys) {
+    // Phase 29A2: cần điều khiển ảo trên điện thoại — hướng analog 360°.
+    const touch = touchDirection()
+
+    if (touch) return new THREE.Vector3(touch.x, 0, touch.z)
+
     const pressed = keys.current
     const direction = new THREE.Vector3()
 

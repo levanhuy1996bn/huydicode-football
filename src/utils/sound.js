@@ -24,6 +24,35 @@ export function audioContext() {
     return audio()
 }
 
+// Phase 29A1: iPhone / Android chỉ cho phát âm thanh sau một thao tác của
+// người dùng. Lần chạm / bấm phím đầu tiên: tạo + "đánh thức" AudioContext
+// bằng một mẫu im lặng (nếu không, còi và tiếng khán giả không kêu).
+export function installAudioUnlock() {
+    if (typeof window === 'undefined') return
+
+    const events = ['pointerdown', 'touchend', 'keydown']
+    const unlock = () => {
+        const ctx = audio()
+
+        if (!ctx) return
+
+        try {
+            const buffer = ctx.createBuffer(1, 1, 22050)
+            const source = ctx.createBufferSource()
+
+            source.buffer = buffer
+            source.connect(ctx.destination)
+            source.start(0)
+        } catch {
+            // bỏ qua
+        }
+
+        if (ctx.state === 'running') events.forEach((name) => window.removeEventListener(name, unlock, true))
+    }
+
+    events.forEach((name) => window.addEventListener(name, unlock, true))
+}
+
 function audio() {
     if (isMuted() || typeof window === 'undefined') return null
 

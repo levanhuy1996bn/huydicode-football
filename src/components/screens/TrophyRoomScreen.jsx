@@ -59,21 +59,39 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
     const summary = useMemo(() => careerSummary(world, liveRow), [world, liveRow])
     const latest = [...(world?.trophies || [])].sort((a, b) => b.season - a.season)[0]
     const [selectedId, setSelectedId] = useState(latest?.competitionId || 'c1')
+    // Phase 29A4c: điện thoại — tab SHELF / CAREER, bấm cúp mở bảng chi tiết.
+    const [phoneTab, setPhoneTab] = useState('shelf')
+    const [detailOpen, setDetailOpen] = useState(false)
     const selected = cabinet.find((entry) => entry.id === selectedId) || cabinet[0]
     const rows = [...(liveRow ? [liveRow] : []), ...[...(world?.career || [])].reverse()]
 
     return (
-        <section className="screen trophy-screen">
+        <section className="screen trophy-screen" data-phone-tab={phoneTab}>
             <div className="prematch-header">
                 <button type="button" className="link-btn" onClick={onBack}>← HOME</button>
                 <div>
                     <div className="home-hero__eyebrow">CAREER · ALL CLUBS</div>
                     <h1 className="prematch-title">TROPHY ROOM</h1>
-                    <p>Titles belong to you as a manager: they stay on the shelf when you change club.</p>
+                    <p className="trophy-intro">Titles belong to you as a manager: they stay on the shelf when you change club.</p>
                 </div>
             </div>
 
-            <div className="trophy-stats">
+            <div className="phone-tabs" role="tablist" aria-label="Trophy room">
+                {[['shelf', 'SHELF'], ['career', 'CAREER']].map(([key, label]) => (
+                    <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === key}
+                        className={phoneTab === key ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(key)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="trophy-stats phone-tab--career">
                 {[
                     ['TROPHIES', summary.trophies],
                     ['LEAGUE TITLES', summary.leagueTitles],
@@ -91,7 +109,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                 ))}
             </div>
 
-            <div className="trophy-layout">
+            <div className="trophy-layout phone-tab--shelf">
                 <div className="trophy-shelves">
                     {SHELVES.map(([title, test]) => (
                         <div key={title} className="home-card trophy-shelf">
@@ -105,7 +123,10 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                                         key={entry.id}
                                         type="button"
                                         className={`trophy-tile${entry.count ? ' is-won' : ''}${selected?.id === entry.id ? ' is-selected' : ''}`}
-                                        onClick={() => setSelectedId(entry.id)}
+                                        onClick={() => {
+                                            setSelectedId(entry.id)
+                                            setDetailOpen(true)
+                                        }}
                                         title={`${entry.name} · ${entry.subtitle}`}
                                     >
                                         <TrophyIcon
@@ -124,7 +145,10 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                 </div>
 
                 {selected && (
-                    <aside className="home-card trophy-detail">
+                    <aside className={`home-card trophy-detail${detailOpen ? ' is-open' : ''}`}>
+                        <button type="button" className="link-btn trophy-detail__close" onClick={() => setDetailOpen(false)}>
+                            ← ALL TROPHIES
+                        </button>
                         <div className="trophy-detail__icon">
                             {/* Phase 29B: cúp 3D xoay (SVG khi chưa giành được / đồ hoạ LOW). */}
                             <Trophy3D trophy={selected} won={selected.count > 0} star={selected.bestStar} size={130} quality={quality} />
@@ -163,7 +187,7 @@ export default function TrophyRoomScreen({ world, league, onBack, quality = 'hig
                 )}
             </div>
 
-            <div className="home-card career-card">
+            <div className="home-card career-card phone-tab--career">
                 <div className="home-card__head"><span>CAREER</span><small>Season by season</small></div>
                 <div className="career-table-wrap">
                     <table className="career-table">

@@ -16,6 +16,8 @@ import { DIFFICULTIES } from '../../services/difficulty'
 import { FormArrow, UpgradeBadge } from '../CardBits'
 import { MATCH_LENGTHS } from '../SettingsRows'
 import { withForm } from '../../systems/form'
+import SquadCardsBox from '../SquadCardsBox'
+import { PlayerInfoModal } from '../PlayerInfoPanel'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
 export function KitIcon({ kit }) {
@@ -111,7 +113,7 @@ export function DifficultyPicker({ difficulty, locked, onChange }) {
     )
 }
 
-function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false, onEdit = null }) {
+function Lineup({ title, color, players, align, showCondition = false, showUpgrade = false, onEdit = null, onOpenPlayer = null, children = null, className = '' }) {
     // Phase 26D: OVR hiển thị đã cộng team color (mũi tên xanh, rê chuột xem gốc).
     const teamColor = teamColorOf(players)
     // Sau Phase 27: đá trái vị trí → OVR hiển thị giảm (chỉ số thật không đổi).
@@ -124,26 +126,39 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
     })
 
     return (
-        <div className={`lineup lineup--${align}`}>
+        <div className={`lineup lineup--${align} ${className}`.trim()}>
             <div className="lineup__head" style={{ '--team': color }}>
                 <span>{title}</span>
                 <span className="lineup__head-side">
                     <b>{average(shown)} <small>AVG</small></b>
-                    {onEdit && (
-                        <button
-                            type="button"
-                            className="btn btn--small lineup__edit"
-                            onClick={onEdit}
-                            title="Drag & drop the lineup. Changes before kick-off do not use substitutions. The % next to each player is his condition: players who played recently start tired, so rotate the squad."
-                        >
-                            EDIT ✎
-                        </button>
-                    )}
                 </span>
             </div>
-            <ol className="lineup__list">
-                {shown.map((player) => (
-                    <li key={player.id}>
+            {/* Phase 29K: nút sửa đội hình rõ ràng (trước đây là nút EDIT ✎ nhỏ trên tiêu đề). */}
+            {onEdit && (
+                <button
+                    type="button"
+                    className="btn btn--primary lineup__edit-main"
+                    onClick={onEdit}
+                    title="Drag & drop the lineup. Changes before kick-off do not use substitutions. The % next to each player is his condition: players who played recently start tired, so rotate the squad."
+                >
+                    ✎ EDIT LINEUP
+                </button>
+            )}
+            <ol className={`lineup__list${onOpenPlayer ? ' is-clickable' : ''}`}>
+                {shown.map((player, index) => (
+                    <li
+                        key={player.id}
+                        role={onOpenPlayer ? 'button' : undefined}
+                        tabIndex={onOpenPlayer ? 0 : undefined}
+                        title={onOpenPlayer ? `${player.name} — click for details` : undefined}
+                        onClick={onOpenPlayer ? () => onOpenPlayer(players[index]) : undefined}
+                        onKeyDown={onOpenPlayer ? (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                onOpenPlayer(players[index])
+                            }
+                        } : undefined}
+                    >
                         <span className="lineup__number" style={{ '--team': color }}>
                             {player.number}
                         </span>
@@ -171,6 +186,7 @@ function Lineup({ title, color, players, align, showCondition = false, showUpgra
                 ))}
             </ol>
             <TeamColorPanel info={teamColor} compact />
+            {children}
         </div>
     )
 }
@@ -316,6 +332,11 @@ export default function PreMatchScreen({
     // Phase 29I: dùng nhanh thẻ Thể lực / Phong độ (null = ẩn, vd. World Cup).
     squadItems = null,
 }) {
+    // Phase 29K: bảng thông tin cầu thủ ({ player, side }).
+    const [info, setInfo] = useState(null)
+    // Phase 29A4a: trên điện thoại hiện từng phần theo tab.
+    const [phoneTab, setPhoneTab] = useState('team')
+
     if (!fixture || !blueTeam || !opponentTeam) {
         return (
             <section className="screen prematch-screen">
@@ -381,20 +402,6 @@ export default function PreMatchScreen({
                     <button type="button" className="btn btn--primary btn--large" onClick={onKickOff}>
                         ▶ KICK OFF
                     </button>
-                    {squadItems && (squadItems.fitness > 0 || squadItems.form > 0) && (
-                        <div className="prematch-items">
-                            {squadItems.fitness > 0 && (
-                                <button type="button" className="btn btn--small" onClick={squadItems.onUseFitness} title="Whole squad back to fitness 100">
-                                    ♥ FITNESS ×{squadItems.fitness} · USE
-                                </button>
-                            )}
-                            {squadItems.form > 0 && (
-                                <button type="button" className="btn btn--small" onClick={squadItems.onUseForm} title="Whole squad to top form ⬆ (+3)">
-                                    ⬆ FORM ×{squadItems.form} · USE
-                                </button>
-                            )}
-                        </div>
-                    )}
                     {onMatchDurationChange && (
                         <div className="prematch-length" title="Match length (real time for 90 minutes)">
                             <span>LENGTH</span>
@@ -415,7 +422,22 @@ export default function PreMatchScreen({
                 </div>
             </div>
 
-            <div className="prematch-body">
+            <div className="phone-tabs" role="tablist" aria-label="Pre-match sections">
+                {[['team', 'MY TEAM'], ['setup', 'SETUP'], ['opponent', 'OPPONENT']].map(([id, label]) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={phoneTab === id}
+                        className={phoneTab === id ? 'is-active' : ''}
+                        onClick={() => setPhoneTab(id)}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="prematch-body" data-phone-tab={phoneTab}>
                 <Lineup
                     title={userTeam().name}
                     color={blueColor}
@@ -423,9 +445,18 @@ export default function PreMatchScreen({
                     align="left"
                     showCondition
                     onEdit={onEditLineup}
-                />
+                    onOpenPlayer={(player) => setInfo({ player, side: 'blue' })}
+                    className="phone-tab--team"
+                >
+                    {/* Phase 29K (điện thoại): dải thẻ Thể lực / Phong độ ngay dưới đội hình */}
+                    {squadItems && (
+                        <div className="squad-cards-phone">
+                            <SquadCardsBox team={blueTeam} items={squadItems} compact showWarnings />
+                        </div>
+                    )}
+                </Lineup>
 
-                <div className="prematch-setup">
+                <div className="prematch-setup phone-tab--setup">
                     <SetupCard
                         summary={summary}
                         formationKey={blueTeam.formationKey}
@@ -440,6 +471,13 @@ export default function PreMatchScreen({
                         difficultyLocked={difficultyLocked}
                         onDifficultyChange={onDifficultyChange}
                     />
+
+                    {/* Phase 29K: thẻ Thể lực / Phong độ ngay dưới TEAM SETUP (máy tính) */}
+                    {squadItems && (
+                        <div className="squad-cards-desktop">
+                            <SquadCardsBox team={blueTeam} items={squadItems} showWarnings />
+                        </div>
+                    )}
                 </div>
 
                 <Lineup
@@ -448,8 +486,32 @@ export default function PreMatchScreen({
                     players={opponentTeam.players}
                     align="right"
                     showUpgrade
+                    onOpenPlayer={(player) => setInfo({ player, side: 'red' })}
+                    className="phone-tab--opponent"
                 />
             </div>
+
+            <PlayerInfoModal
+                player={info?.player || null}
+                onClose={() => setInfo(null)}
+                xi={info?.side === 'blue' ? blueTeam.players : opponentTeam.players}
+                zone={info?.side === 'blue' ? 'pitch' : null}
+                readOnly={info?.side === 'red'}
+                portraitClubId={info?.side === 'red' ? opponentInfo?.id : null}
+            >
+                {info?.side === 'blue' && onEditLineup && (
+                    <button
+                        type="button"
+                        className="btn btn--primary btn--small"
+                        onClick={() => {
+                            setInfo(null)
+                            onEditLineup()
+                        }}
+                    >
+                        ✎ EDIT LINEUP
+                    </button>
+                )}
+            </PlayerInfoModal>
         </section>
     )
 }
