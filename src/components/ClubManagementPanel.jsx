@@ -15,6 +15,7 @@ import { userTeam } from '../services/career'
 import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
 import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
 import { StatNum, UpgradeBadge } from './CardBits'
+import PlayerInfoPanel from './PlayerInfoPanel'
 import { physiqueOf } from '../systems/physique'
 
 const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
@@ -154,6 +155,9 @@ export default function ClubManagementPanel({
     )
 
     const [selectedPlayer, setSelectedPlayer] = useState(null)
+    // Phase 29A4b: trên điện thoại các bộ lọc thu gọn sau nút FILTERS.
+    const [filtersOpen, setFiltersOpen] = useState(false)
+    const activeFilters = [positionFilter, rarityFilter, countryFilter, leagueFilter, clubFilter].filter((value) => value !== 'ALL').length
     // Phase 22: thông báo dạng toast (trước đây chỉ đổi chữ ở chân panel 3 giây).
     const [toast, setToast] = useState(null)
 
@@ -414,11 +418,12 @@ export default function ClubManagementPanel({
     const weeklyWages = getWeeklyWages(roster, club)
     const squadValue = getSquadValue(roster)
 
+    // [key, nhãn máy tính, nhãn điện thoại]
     const tabs = [
-        ['market', 'TRANSFER MARKET'],
-        ['squad', 'SQUAD & SALES'],
-        ['contracts', 'CONTRACTS'],
-        ['overview', 'OVERVIEW'],
+        ['market', 'TRANSFER MARKET', 'MARKET'],
+        ['squad', 'SQUAD & SALES', 'SALES'],
+        ['contracts', 'CONTRACTS', 'CONTRACTS'],
+        ['overview', 'OVERVIEW', 'OVERVIEW'],
     ]
 
     return (
@@ -442,6 +447,7 @@ export default function ClubManagementPanel({
 
             {isOpen && (
                 <div
+                    className="club-panel-overlay"
                     style={{
                         position: 'absolute',
                         inset: 0,
@@ -456,6 +462,7 @@ export default function ClubManagementPanel({
                     }}
                 >
                     <div
+                        className="club-panel"
                         style={{
                             width: 'min(900px, 94%)',
                             height: 'min(620px, 88%)',
@@ -473,6 +480,7 @@ export default function ClubManagementPanel({
                     >
                         {/* HEADER */}
                         <div
+                            className="club-panel__head"
                             style={{
                                 flexShrink: 0,
                                 padding: '12px 16px',
@@ -496,6 +504,7 @@ export default function ClubManagementPanel({
                                 </div>
 
                                 <div
+                                    className="club-panel__title"
                                     style={{
                                         fontSize: 20,
                                         fontWeight: 900,
@@ -524,6 +533,7 @@ export default function ClubManagementPanel({
 
                         {/* TABS */}
                         <div
+                            className="club-panel__tabs"
                             style={{
                                 flexShrink: 0,
                                 display: 'flex',
@@ -533,9 +543,11 @@ export default function ClubManagementPanel({
                                 overflowX: 'auto',
                             }}
                         >
-                            {tabs.map(([key, label]) => (
+                            {tabs.map(([key, label, phoneLabel]) => (
                                 <button
                                     key={key}
+                                    type="button"
+                                    className={tab === key ? 'is-active' : ''}
                                     onClick={() => {
                                         setTab(key)
                                         setSelectedPlayer(null)
@@ -553,13 +565,15 @@ export default function ClubManagementPanel({
                                                 : '#355642',
                                     }}
                                 >
-                                    {label}
+                                    <span className="dt-only">{label}</span>
+                                    <span className="ph-only">{phoneLabel}</span>
                                 </button>
                             ))}
                         </div>
 
                         {/* CONTENT */}
                         <div
+                            className="club-panel__content"
                             style={{
                                 flex: 1,
                                 minHeight: 0,
@@ -661,8 +675,21 @@ export default function ClubManagementPanel({
                             )}
 
                             {tab === 'market' && (
-                                <div>
+                                <div className={`market-filter-box${filtersOpen ? ' is-open' : ''}`}>
+                                    {/* Phase 29A4b: thanh lọc gọn trên điện thoại */}
+                                    <div className="market-phone-bar">
+                                        <span>{availablePlayers.length.toLocaleString()} players</span>
+                                        <button
+                                            type="button"
+                                            className={`btn btn--small${activeFilters ? ' btn--primary' : ''}`}
+                                            onClick={() => setFiltersOpen((open) => !open)}
+                                            aria-expanded={filtersOpen}
+                                        >
+                                            FILTERS{activeFilters ? ` · ${activeFilters}` : ''} {filtersOpen ? '▲' : '▼'}
+                                        </button>
+                                    </div>
                                     <div
+                                        className="market-filters"
                                         style={{
                                             display: 'grid',
                                             gridTemplateColumns:
@@ -777,6 +804,7 @@ export default function ClubManagementPanel({
                                     </div>
 
                                     <div
+                                        className="market-grid"
                                         style={{
                                             display: 'grid',
                                             gridTemplateColumns:
@@ -787,6 +815,7 @@ export default function ClubManagementPanel({
                                         {availablePlayers.slice(0, marketLimit).map((player) => (
                                             <div
                                                 key={player.id}
+                                                className="market-card"
                                                 style={{
                                                     padding: 11,
                                                     borderRadius: 8,
@@ -860,6 +889,7 @@ export default function ClubManagementPanel({
                                                 </div>
 
                                                 <div
+                                                    className="market-card__money"
                                                     style={{
                                                         display: 'flex',
                                                         justifyContent: 'space-between',
@@ -874,6 +904,7 @@ export default function ClubManagementPanel({
                                                 </div>
 
                                                 <div
+                                                    className="market-card__money"
                                                     style={{
                                                         display: 'flex',
                                                         justifyContent: 'space-between',
@@ -888,6 +919,7 @@ export default function ClubManagementPanel({
                                                 </div>
 
                                                 <button
+                                                    className="market-card__btn"
                                                     onClick={() => setSelectedPlayer(player)}
                                                     style={{
                                                         ...buttonStyle,
@@ -928,6 +960,7 @@ export default function ClubManagementPanel({
 
                             {tab === 'squad' && (
                                 <div
+                                    className="market-grid"
                                     style={{
                                         display: 'grid',
                                         gridTemplateColumns:
@@ -943,6 +976,7 @@ export default function ClubManagementPanel({
                                         return (
                                             <div
                                                 key={player.id}
+                                                className="market-card"
                                                 style={{
                                                     padding: 11,
                                                     borderRadius: 8,
@@ -1002,6 +1036,7 @@ export default function ClubManagementPanel({
                                                 </div>
 
                                                 <div
+                                                    className="market-card__money"
                                                     style={{
                                                         display: 'flex',
                                                         justifyContent: 'space-between',
@@ -1016,6 +1051,7 @@ export default function ClubManagementPanel({
                                                 </div>
 
                                                 <button
+                                                    className="market-card__btn"
                                                     disabled={isStarter}
                                                     onClick={() => requestSell(player)}
                                                     style={{
@@ -1092,13 +1128,14 @@ export default function ClubManagementPanel({
                             })()}
 
                             {tab === 'contracts' && (
-                                <div style={{ display: 'grid', gap: 8 }}>
+                                <div className="contract-list" style={{ display: 'grid', gap: 8 }}>
                                     {squad.map((player) => {
                                         const contract = getContract(club, player)
 
                                         return (
                                             <div
                                                 key={player.id}
+                                                className="contract-row"
                                                 style={{
                                                     display: 'grid',
                                                     gridTemplateColumns:
@@ -1198,6 +1235,7 @@ export default function ClubManagementPanel({
 
                         {/* FOOTER */}
                         <div
+                            className="club-panel__foot"
                             style={{
                                 flexShrink: 0,
                                 padding: '8px 14px',
@@ -1246,9 +1284,11 @@ export default function ClubManagementPanel({
                         </div>
                     )}
 
-                    {/* PLAYER DETAIL MODAL */}
+                    {/* PLAYER DETAIL MODAL — Phase 29A4b: thẻ lớn + thông tin như bảng 29K */}
                     {selectedPlayer && (
                         <div
+                            className="market-detail-overlay"
+                            role="presentation"
                             style={{
                                 position: 'absolute',
                                 inset: 0,
@@ -1263,146 +1303,36 @@ export default function ClubManagementPanel({
                             onClick={() => setSelectedPlayer(null)}
                         >
                             <div
+                                className="market-detail"
+                                role="dialog"
+                                aria-label={`${selectedPlayer.name} details`}
                                 onClick={(event) => event.stopPropagation()}
-                                style={{
-                                    width: 'min(380px, 100%)',
-                                    maxHeight: '90%',
-                                    overflowY: 'auto',
-                                    boxSizing: 'border-box',
-                                    padding: 16,
-                                    borderRadius: 10,
-                                    background: '#14291e',
-                                    border: '1px solid #547565',
-                                    color: '#fff',
-                                }}
                             >
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        gap: 10,
-                                    }}
-                                >
+                                <button type="button" className="player-info-modal__close" onClick={() => setSelectedPlayer(null)} aria-label="Close">✕</button>
+                                <PlayerInfoPanel player={selectedPlayer} readOnly />
+
+                                <dl className="market-detail__money">
+                                    <div><dt>Transfer fee</dt><dd>{formatMoney(selectedPlayer.value)}</dd></div>
+                                    <div><dt>Weekly wage</dt><dd>{formatMoney(selectedPlayer.wage)}</dd></div>
                                     <div>
-                                        <div
-                                            style={{
-                                                fontSize: 19,
-                                                fontWeight: 900,
-                                            }}
-                                        >
-                                            {selectedPlayer.name}
-                                        </div>
-
-                                        <div
-                                            style={{
-                                                color: '#a9c4b2',
-                                                marginTop: 4,
-                                                fontSize: 11,
-                                            }}
-                                        >
-                                            {[selectedPlayer.position, `${physiqueOf(selectedPlayer).height} cm · ${physiqueOf(selectedPlayer).weight} kg`, selectedPlayer.nationality, selectedPlayer.club].filter(Boolean).join(' · ')}
-                                        </div>
+                                        <dt>Budget after</dt>
+                                        <dd className={(club.budget || 0) < selectedPlayer.value ? 'is-down' : ''}>
+                                            {formatMoney((club.budget || 0) - selectedPlayer.value)}
+                                        </dd>
                                     </div>
+                                    {ownedCounts.get(selectedPlayer.playerId) > 0 && (
+                                        <div><dt>Owned</dt><dd>×{ownedCounts.get(selectedPlayer.playerId)} (a copy can upgrade the card)</dd></div>
+                                    )}
+                                </dl>
 
-                                    <div
-                                        style={{
-                                            fontSize: 25,
-                                            fontWeight: 900,
-                                            color: '#e3bd62',
-                                        }}
-                                    >
-                                        {selectedPlayer.overall}
-                                    </div>
+                                <div className="market-detail__actions">
+                                    <button type="button" className="btn" onClick={() => setSelectedPlayer(null)}>
+                                        BACK
+                                    </button>
+                                    <button type="button" className="btn btn--primary" onClick={() => buyPlayer(selectedPlayer)}>
+                                        SIGN PLAYER
+                                    </button>
                                 </div>
-
-                                <div
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: '1fr 1fr',
-                                        gap: 8,
-                                        marginTop: 14,
-                                    }}
-                                >
-                                    {[
-                                        ['PACE', selectedPlayer.pace],
-                                        ['SHOOTING', selectedPlayer.shooting],
-                                        ['PASSING', selectedPlayer.passing],
-                                        ['DEFENDING', selectedPlayer.defending],
-                                        ['PHYSICAL', selectedPlayer.physical],
-                                    ].map(([label, value]) => (
-                                        <div
-                                            key={label}
-                                            style={{
-                                                background: '#203b30',
-                                                padding: 9,
-                                                borderRadius: 7,
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    fontSize: 9,
-                                                    color: '#a9c4b2',
-                                                }}
-                                            >
-                                                {label}
-                                            </div>
-
-                                            <strong>{value}</strong>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div
-                                    style={{
-                                        marginTop: 14,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        fontSize: 12,
-                                    }}
-                                >
-                                    <span>Transfer fee</span>
-                                    <strong>
-                                        {formatMoney(selectedPlayer.value)}
-                                    </strong>
-                                </div>
-
-                                <div
-                                    style={{
-                                        marginTop: 7,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        fontSize: 12,
-                                    }}
-                                >
-                                    <span>Weekly wage</span>
-                                    <strong>
-                                        {formatMoney(selectedPlayer.wage)}
-                                    </strong>
-                                </div>
-
-                                <button
-                                    onClick={() => buyPlayer(selectedPlayer)}
-                                    style={{
-                                        ...buttonStyle,
-                                        width: '100%',
-                                        marginTop: 16,
-                                        padding: 10,
-                                        background: '#28613e',
-                                    }}
-                                >
-                                    SIGN PLAYER
-                                </button>
-
-                                <button
-                                    onClick={() => setSelectedPlayer(null)}
-                                    style={{
-                                        ...buttonStyle,
-                                        width: '100%',
-                                        marginTop: 7,
-                                    }}
-                                >
-                                    BACK
-                                </button>
                             </div>
                         </div>
                     )}

@@ -3011,7 +3011,7 @@ export default function GameScene() {
             )}
 
             {isClubOpen && screen !== 'match' && (
-                <div className="modal-host">
+                <div className="modal-host modal-host--screen">
                     <ClubManagementPanel
                         roster={roster}
                         world={world}
