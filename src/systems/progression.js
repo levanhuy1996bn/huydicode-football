@@ -1,5 +1,4 @@
 import { ATTRIBUTE_GROUPS, GOALKEEPING_GROUP, getAttributes } from './attributes'
-import { upgradeBonus } from '../services/upgrade'
 
 // ---- Phase 19B: lên cấp cầu thủ, cộng điểm chỉ số theo vị trí ----
 //
@@ -13,8 +12,8 @@ import { upgradeBonus } from '../services/upgrade'
 // cứu thua, giữ sạch lưới, cầu thủ xuất sắc nhất, kết quả; cầu thủ không ra sân
 // nhận XP tập luyện. Mỗi cấp +3 điểm. Giá mỗi điểm theo vị trí:
 // chỉ số chính 1 điểm, chỉ số phụ 2 điểm, chỉ số khác 3 điểm.
-// OVR tính lại theo trọng số vị trí (chỉ số chính nặng nhất) và không vượt
-// quá tiềm năng; mỗi chỉ số tối đa 99.
+// OVR tính lại theo trọng số vị trí (chỉ số chính nặng nhất). Sau Phase 33:
+// không còn giới hạn tiềm năng (Phase 25 đã bỏ mức trần 99 của chỉ số).
 
 // Phase 25: cấp tối đa 100 (trước là 30). 3 điểm mỗi cấp tới cấp 30, sau đó
 // 1 điểm mỗi cấp (tổng 157 điểm ở cấp 100).
@@ -193,11 +192,9 @@ export function upgradeAttribute(player, key) {
 
     const overall = computeOverall(next)
 
-    // Tiềm năng chỉ giới hạn phần OVR từ tập luyện; phần cộng của thẻ +N
-    // (Phase 25) nằm ngoài giới hạn này.
-    if (overall - upgradeBonus(player.upgrade) > progress.potential + 0.49) {
-        return { player, ok: false, reason: `Reached potential (${progress.potential})` }
-    }
+    // Sau Phase 33: bỏ giới hạn tiềm năng — tập luyện cộng điểm không giới hạn
+    // OVR (chỉ giới hạn bởi số điểm có được: tối đa 157 điểm ở cấp 100).
+    // Trường potential vẫn giữ trong bản lưu nhưng không còn dùng để chặn.
 
     next.unspentPoints = progress.unspentPoints - cost
     next.level = progress.level
