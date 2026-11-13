@@ -3333,32 +3333,40 @@ html.in-match body:has(.match-compact) { overflow: hidden; }
   position: absolute;
   right: calc(14px + env(safe-area-inset-right));
   bottom: calc(14px + env(safe-area-inset-bottom));
-  width: 230px;
+  width: 200px;
   height: 200px;
   pointer-events: none;
 }
 .touch-btn {
   position: absolute;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  background: rgba(7, 19, 15, 0.55);
+  border: 3px solid var(--rim, rgba(255, 255, 255, 0.5));
+  background: rgba(30, 38, 34, 0.62);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25), inset 0 2px 8px rgba(255, 255, 255, 0.08);
   color: #fff;
   font: 800 10px Inter, sans-serif;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  line-height: 1.15;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.touch-btn.is-pressed { background: rgba(199, 250, 124, 0.55); color: #0d1f16; transform: scale(0.94); }
-.touch-btn--big { right: 0; bottom: 0; width: 92px; height: 92px; font-size: 13px; border-color: #ffd166; background: rgba(120, 70, 0, 0.5); }
-.touch-btn--big.is-defend { border-color: #ff8a7a; background: rgba(120, 30, 20, 0.5); }
-.touch-btn--pass { right: 104px; bottom: 6px; width: 70px; height: 70px; }
-.touch-btn--through { right: 24px; bottom: 104px; width: 70px; height: 70px; }
-.touch-btn--sprint { right: 112px; bottom: 96px; width: 58px; height: 58px; font-size: 9px; border-color: #7cc4ff; }
+.touch-btn.is-pressed { background: color-mix(in srgb, var(--rim) 45%, rgba(20, 28, 24, 0.7)); transform: scale(0.94); }
+/* Bố cục FC Mobile: chuyền dưới trái, chọc khe trên trái, sút / xoạc trên phải,
+   bứt tốc to dưới phải. */
+.touch-btn--pass { --rim: #4aa3ff; right: 118px; bottom: 6px; width: 72px; height: 72px; }
+.touch-btn--through { --rim: #f2c94c; right: 104px; bottom: 104px; width: 72px; height: 72px; }
+.touch-btn--top { --rim: #ff6b3d; right: 6px; bottom: 120px; width: 74px; height: 74px; }
+.touch-btn--top.is-defend { --rim: #ff5a4f; }
+.touch-btn--big { --rim: #2ee59d; right: 0; bottom: 0; width: 104px; height: 104px; font-size: 11px; }
+.touch-btn--big.is-defend { --rim: #2ee59d; }
 @media (max-height: 440px) {
   .touch-buttons { transform: scale(0.86); transform-origin: bottom right; }
   .touch-joy-zone { height: 76%; }
@@ -3396,3 +3404,5 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
   z-index: 12 !important;
 }
 .app-shell.match-compact .hud-controls.is-menu.is-open button { min-height: 36px; text-align: left; }
+/* Điện thoại: dòng AUTO PLAY ngắn gọn (không che nút). */
+.app-shell.match-compact .autopilot-badge span { display: none; }

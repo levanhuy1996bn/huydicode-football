@@ -8,8 +8,7 @@ import { clearTouchVector, setTouchVector } from '../systems/touchInput'
 //   mũi tên giả lập (8 hướng) cho những chỗ engine đọc mũi tên.
 // - Bên phải: 4 nút tròn. Mỗi nút gửi phím bàn phím giả lập (keydown khi chạm,
 //   keyup khi nhấc tay) nên engine không phải đổi gì: giữ để lấy lực như phím.
-//     có bóng:   CHUYỀN (S) · CHỌC KHE (W) · SÚT (D, nút to) · CHẠY (E, giữ)
-//     phòng ngự: ĐỔI NGƯỜI (S) · ÉP (W, gọi đồng đội áp sát) · TẮC (Space) · CHẠY (E)
+//     (bố cục FC Mobile — xem BUTTONS bên dưới)
 // - Phím giả lập đi qua window → useKeyboard + MatchWorld nhận như bàn phím
 //   thật (bấm bất kỳ: lấy lại quyền điều khiển khi máy đang đá thay).
 
@@ -18,7 +17,7 @@ const DEAD_ZONE = 0.22
 const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
 
 const KEY_NAMES = {
-    KeyS: 's', KeyW: 'w', KeyD: 'd', KeyE: 'e', Space: ' ',
+    KeyS: 's', KeyW: 'w', KeyD: 'd', KeyE: 'e', KeyA: 'a', Space: ' ',
     ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight',
 }
 
@@ -49,20 +48,28 @@ function arrowsFor(sx, sy) {
     return new Set(map[octant] || [])
 }
 
+// Sau 29A2 (theo ảnh FC Mobile anh gửi): 4 nút xếp như FC Mobile.
+//   có bóng:   CHUYỀN (dưới trái, viền xanh dương) · CHỌC KHE (trên trái, vàng)
+//              · SÚT (trên phải, đỏ) · BỨT TỐC & KỸ NĂNG (to, dưới phải, xanh lá)
+//   không bóng: ĐỔI NGƯỜI · HỖ TRỢ (gọi đồng đội áp sát) · XOẠC BÓNG
+//              · BỨT TỐC & TẮC BÓNG (giữ = chạy nhanh, chạm nhanh = tắc bóng)
 const BUTTONS = {
     attack: [
-        { id: 'sprint', code: 'KeyE', label: 'SPRINT', className: 'touch-btn--sprint' },
         { id: 'pass', code: 'KeyS', label: 'PASS', className: 'touch-btn--pass' },
         { id: 'through', code: 'KeyW', label: 'THROUGH', className: 'touch-btn--through' },
-        { id: 'big', code: 'KeyD', label: 'SHOOT', className: 'touch-btn--big' },
+        { id: 'top', code: 'KeyD', label: 'SHOOT', className: 'touch-btn--top' },
+        { id: 'big', code: 'KeyE', label: 'SPRINT\n& SKILL', className: 'touch-btn--big' },
     ],
     defend: [
-        { id: 'sprint', code: 'KeyE', label: 'SPRINT', className: 'touch-btn--sprint' },
         { id: 'pass', code: 'KeyS', label: 'SWITCH', className: 'touch-btn--pass' },
-        { id: 'through', code: 'KeyW', label: 'PRESS', className: 'touch-btn--through' },
-        { id: 'big', code: 'Space', label: 'TACKLE', className: 'touch-btn--big is-defend' },
+        { id: 'through', code: 'KeyW', label: 'SUPPORT', className: 'touch-btn--through' },
+        { id: 'top', code: 'KeyA', label: 'SLIDE', className: 'touch-btn--top is-defend' },
+        // Giữ = chạy nhanh (E); chạm nhanh (< 220 ms) = tắc bóng (Space).
+        { id: 'big', code: 'KeyE', tapCode: 'Space', label: 'SPRINT\n& TACKLE', className: 'touch-btn--big is-defend' },
     ],
 }
+
+const TAP_TIME = 220
 
 export default function TouchControls({ statsRef, blueIds }) {
     const [joy, setJoy] = useState(null) // { x, y } gốc cần điều khiển (px trong vùng)
@@ -72,6 +79,7 @@ export default function TouchControls({ statsRef, blueIds }) {
     const joyPointer = useRef(null)
     const heldArrows = useRef(new Set())
     const buttonCodes = useRef(new Map()) // pointerId → code đang giữ
+    const tapInfo = useRef(new Map()) // pointerId → { tapCode, at }
 
     // Có bóng hay đang phòng ngự → nhãn / phím của các nút.
     useEffect(() => {
@@ -176,6 +184,7 @@ export default function TouchControls({ statsRef, blueIds }) {
         event.preventDefault()
         event.currentTarget.setPointerCapture?.(event.pointerId)
         buttonCodes.current.set(event.pointerId, button.code)
+        tapInfo.current.set(event.pointerId, { tapCode: button.tapCode || null, at: performance.now() })
         setPressed((value) => ({ ...value, [button.id]: true }))
         sendKey('keydown', button.code)
         navigator.vibrate?.(8)
@@ -189,6 +198,16 @@ export default function TouchControls({ statsRef, blueIds }) {
         buttonCodes.current.delete(event.pointerId)
         setPressed((value) => ({ ...value, [button.id]: false }))
         sendKey('keyup', code)
+
+        // Chạm nhanh trên nút "BỨT TỐC & TẮC BÓNG" = tắc bóng.
+        const tap = tapInfo.current.get(event.pointerId)
+
+        tapInfo.current.delete(event.pointerId)
+
+        if (tap?.tapCode && event.type === 'pointerup' && performance.now() - tap.at < TAP_TIME) {
+            sendKey('keydown', tap.tapCode)
+            sendKey('keyup', tap.tapCode)
+        }
     }
 
     const buttons = BUTTONS[attacking ? 'attack' : 'defend']
@@ -224,7 +243,7 @@ export default function TouchControls({ statsRef, blueIds }) {
                         onPointerCancel={onButtonUp(button)}
                         aria-label={button.label}
                     >
-                        {button.label}
+                        {button.label.split('\n').map((line) => <span key={line}>{line}</span>)}
                     </button>
                 ))}
             </div>

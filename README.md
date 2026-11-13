@@ -1344,7 +1344,7 @@ Split on 2026-11-12 into **29A** (mobile), **29B** (graphics, sound, performance
     | PASS | Short pass (S) | Up: lofted pass / cross (A) | Switch player (S) |
     | THROUGH | Through ball (W) | Up: lobbed through ball (Q+W) | Call teammate press (W) |
     | SHOOT (largest) | Shot (D) | Up: chip (Q+D); sideways: finesse (Z+D) / trivela (C+D) | Contain / press (D) |
-    | SPRINT & SKILL | Sprint (E) | Long hold: shield (C) | Tackle / slide |
+    | SPRINT & SKILL | Sprint (E) | Long hold: shield (C) | Sprint & tackle (tap) — slide on the red button |
 
   - Touch buttons write into the same `keys.current` input the engine already reads, so the engine needs almost no change.
 - **Testing:** emulated iPhone / Android in the browser (screen sizes, touch, swipes); the real feel has to be checked on a phone — open the game with `npm run dev -- --host` on the Mac and the Mac's IP address on a phone in the same Wi-Fi, or publish it (see *Publish online*).
@@ -1354,16 +1354,16 @@ Split on 2026-11-12 into **29A** (mobile), **29B** (graphics, sound, performance
 Code: `src/components/TouchControls.jsx`, `src/systems/touchInput.js` (both new), `inputDirection` in `control.js`, ☰ menu in `GameScene.jsx`, CSS at the end of `styles.css`. Shown on touch devices while the match is being played (also in a penalty shoot-out); hidden when paused, at half time and full time.
 
 - **Floating joystick** on the left ~40 % of the screen (below the top HUD): it appears where the thumb touches (a faint hint shows its usual place), drag to run. Movement is **analog 360°** (`touchInput` → `inputDirection`), and the joystick also sends the arrow keys (8 directions) for everything that reads arrows (aiming penalties, keeper dive, the receiver nudge…). Holding a direction re-sends the key every second so auto play does not think you left.
-- **Four round buttons** bottom right, hold to charge exactly like the keys (the power bar appears):
+- **Four round buttons** bottom right, in the **FC Mobile layout** (rearranged on 2026-11-13 after the user's FC Mobile screenshots), hold to charge exactly like the keys (the power bar appears):
 
-  | Button | With the ball | Defending |
+  | Position (rim colour) | With the ball | Without the ball |
   | --- | --- | --- |
-  | Big (yellow / red) | **SHOOT** (D) | **TACKLE** (Space) |
-  | PASS | Short pass (S) | **SWITCH** player (S) |
-  | THROUGH | Through ball (W) | **PRESS** — call a teammate to press (W, hold) |
-  | SPRINT | Sprint (E, hold) | Sprint (E, hold) |
+  | Bottom left (blue) | **PASS** — short pass (S) | **SWITCH** player (S) |
+  | Top left (yellow) | **THROUGH** — through ball (W) | **SUPPORT** — call a teammate to press (W, hold) |
+  | Top right (red) | **SHOOT** (D) | **SLIDE** tackle (A) |
+  | Bottom right, big (green) | **SPRINT & SKILL** — sprint (E, hold); skills come in 29A3 | **SPRINT & TACKLE** — hold = sprint (E), quick tap (< 0.22 s) = standing tackle (Space) |
 
-  Labels change automatically with possession (checked 6–7 times a second). Lofted passes / crosses, chips, finesse shots and slide tackles come with the swipe gestures of 29A3; until then throw-ins and corners use PASS (short).
+  Labels change automatically with possession (checked 6–7 times a second). Lofted passes / crosses, chips and finesse shots come with the swipe gestures of 29A3; until then throw-ins and corners use PASS (short).
 - The buttons send the same keyboard events as a real keyboard (`KeyboardEvent` on `window`), so the engine is unchanged and touching any button takes control back from auto play. Joystick and buttons work at the same time (multi-touch, pointer capture); a short vibration on Android when a button is pressed.
 - **☰ menu** (top right on phones): LEAGUE, PAUSE, STATS, SUBS, CONTROLS, QUIT (and ⛶ full screen where supported) in one list instead of a row of small buttons; it closes after a choice.
 - Desktop / laptop without touch: nothing changes.
