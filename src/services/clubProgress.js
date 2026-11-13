@@ -1,5 +1,5 @@
 // Phase 23: cấp độ CLB, XP, tiền thưởng (EP) sau trận và thưởng lên cấp.
-import { epCard, playerPack, protectionCard } from './cards'
+import { boostCard, epCard, fitnessCard, formCard, playerPack, protectionCard, randomBoostPercent } from './cards'
 
 // XP CLB nhận sau mỗi trận giải đấu (trận bỏ cuộc không tính).
 export const CLUB_XP = {
@@ -23,6 +23,11 @@ export function levelRewards(level) {
         pack: milestone ? 'premium' : 'standard',
         // Phase 29C: cấp 5, 10, 15… tặng thêm 1 thẻ bảo vệ.
         protection: milestone ? 1 : 0,
+        // Phase 29I: mỗi cấp 1 thẻ Thể lực; cấp 5, 10, 15… thêm thẻ Phong độ +
+        // thẻ tăng tỉ lệ đập (+3–5%).
+        fitness: 1,
+        form: milestone ? 1 : 0,
+        boost: milestone ? 1 : 0,
     }
 }
 
@@ -76,6 +81,9 @@ export function addClubXp(club, amount) {
         inventory.push(epCard(rewards.ep, `Level ${level} reward`))
         inventory.push(playerPack(rewards.pack, `Level ${level} reward`))
         if (rewards.protection) inventory.push(protectionCard(`Level ${level} reward`))
+        if (rewards.fitness) inventory.push(fitnessCard(`Level ${level} reward`))
+        if (rewards.form) inventory.push(formCard(`Level ${level} reward`))
+        if (rewards.boost) inventory.push(boostCard(randomBoostPercent(), `Level ${level} reward`))
         levelsGained.push({ level, ...rewards })
     }
 

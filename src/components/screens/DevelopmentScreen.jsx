@@ -14,7 +14,7 @@ import {
     xpToNext,
 } from '../../systems/progression'
 import { shortPlayerName } from '../../utils/names'
-import { UpgradeBadge, statClass } from '../CardBits'
+import { FormArrow, UpgradeBadge, statClass } from '../CardBits'
 
 // Phase 19B: màn phát triển cầu thủ — cấp độ, XP, điểm chưa dùng, tiềm năng
 // và cộng điểm chỉ số (giá theo vị trí), có nút tự cộng theo vị trí.
@@ -192,6 +192,7 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack }) {
                                     <em>{player.position}</em>
                                 </span>
                                 <LevelBadge player={player} />
+                                <FormArrow player={player} />
                                 <b>{player.overall}</b>
                                 <small>/{item.potential}</small>
                             </button>

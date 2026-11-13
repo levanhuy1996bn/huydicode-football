@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { formatMoney } from '../../services/clubService'
 import {
+    FITNESS_PRICE,
+    FORM_PRICE,
     PACK_TYPES,
     PROTECTION_PRICE,
     cardFromCatalog,
+    fitnessCard,
+    formCard,
     drawFromPack,
     freeShirtNumber,
     playerIdOf,
@@ -12,6 +16,7 @@ import { CLUB_XP, clubXpToNext, levelRewards } from '../../services/clubProgress
 import { SQUAD_LIMITS, squadOf } from '../../systems/roster'
 import { PlayerCardView } from '../CardBits'
 import UpgradePanel from '../UpgradePanel'
+import { maxSquadForm, restoreSquadFitness } from '../../systems/form'
 
 // Phase 23: tab CARDS — kho phần thưởng (gói cầu thủ, thẻ EP), mở lúc nào
 // cũng được. Cầu thủ mở ra là thẻ +1 và vào đội hình ngoài. Đội đủ 50 người
@@ -22,7 +27,20 @@ export { PlayerCardView }
 function itemTitle(item) {
     if (item.type === 'ep') return `${formatMoney(item.amount)} card`
     if (item.type === 'protection') return 'Upgrade Protection'
+    if (item.type === 'fitness') return 'Fitness card'
+    if (item.type === 'form') return 'Form card'
+    if (item.type === 'boost') return `Upgrade Boost +${item.percent || 3}%`
     return PACK_TYPES[item.pack]?.label || 'Player Pack'
+}
+
+// Phase 29I: biểu tượng + mô tả vật phẩm.
+const ITEM_ICON = { ep: 'EP', protection: '⛨', fitness: '♥', form: '⬆', boost: '▲' }
+const ITEM_TEXT = {
+    protection: 'A failed upgrade from +5 keeps its level · used in UPGRADE CARDS',
+    fitness: 'Whole squad (starters, bench, reserves) back to fitness 100',
+    form: 'Whole squad to the best form ⬆ (+3 on all main stats)',
+    boost: 'Raises the upgrade success rate · up to 5 per try · used in UPGRADE CARDS',
+    ep: 'Adds EP to the transfer budget',
 }
 
 export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers }) {
@@ -74,7 +92,36 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         setNotice(null)
     }
 
-    const openItem = (item) => (item.type === 'ep' ? openEp(item) : openPack(item))
+    // Phase 29I: dùng thẻ Thể lực / Phong độ cho cả đội.
+    const applySquadItem = (item) => {
+        onRosterChange((current) => (item.type === 'fitness' ? restoreSquadFitness(current) : maxSquadForm(current)))
+        onClubChange((current) => removeItem(current, item.id))
+        setNotice({
+            tone: 'ok',
+            text: item.type === 'fitness'
+                ? `Fitness card used: all ${squad.length} players are back to fitness 100.`
+                : `Form card used: all ${squad.length} players are in top form ⬆ (+3).`,
+        })
+    }
+
+    const buyItem = (type) => {
+        const price = type === 'fitness' ? FITNESS_PRICE : FORM_PRICE
+
+        if ((club.budget || 0) < price) return
+
+        onClubChange((current) => ({
+            ...current,
+            budget: (current.budget || 0) - price,
+            inventory: [...(current.inventory || []), type === 'fitness' ? fitnessCard('Bought with EP') : formCard('Bought with EP')],
+        }))
+        setNotice({ tone: 'ok', text: `${type === 'fitness' ? 'Fitness' : 'Form'} card bought for ${formatMoney(price)} — use it below.` })
+    }
+
+    const openItem = (item) => {
+        if (item.type === 'fitness' || item.type === 'form') applySquadItem(item)
+        else if (item.type === 'ep') openEp(item)
+        else openPack(item)
+    }
 
     const epTotal = inventory.filter((item) => item.type === 'ep').reduce((sum, item) => sum + item.amount, 0)
 
@@ -104,6 +151,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                             <span>
                                 Next: {formatMoney(nextReward.ep)} + {PACK_TYPES[nextReward.pack].label}
                                 {nextReward.protection ? ' + Upgrade Protection' : ''}
+                                {nextReward.fitness ? ' + Fitness card' : ''}
+                                {nextReward.form ? ' + Form card' : ''}
+                                {nextReward.boost ? ' + Upgrade Boost' : ''}
                             </span>
                         </div>
                         <div className="xp-bar xp-bar--large">
@@ -143,7 +193,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
             {tab === 'rewards' && notice && (
                 <div className={`cards-notice cards-notice--${notice.tone}`} role="alert">
                     {notice.text}
-                    {squadFull && (
+                    {squadFull && notice.tone === 'error' && (
                         <button type="button" className="link-btn" onClick={onOpenTransfers}>
                             GO TO TRANSFERS →
                         </button>
@@ -172,7 +222,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         <div className="cards-inventory">
                             {[...inventory].reverse().map((item) => {
                                 const blocked = item.type === 'pack' && squadFull
-                                const protection = item.type === 'protection'
+                                // Thẻ dùng ở UPGRADE CARDS (bảo vệ, tăng tỉ lệ).
+                                const protection = item.type === 'protection' || item.type === 'boost'
+                                const squadItem = item.type === 'fitness' || item.type === 'form'
 
                                 return (
                                     <div
@@ -180,16 +232,14 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                                         className={`inventory-item inventory-item--${item.type === 'pack' ? item.pack : item.type}`}
                                     >
                                         <div className="inventory-item__icon" aria-hidden="true">
-                                            {item.type === 'ep' ? 'EP' : protection ? '⛨' : item.pack === 'premium' ? '★' : '♦'}
+                                            {ITEM_ICON[item.type] || (item.pack === 'premium' ? '★' : '♦')}
                                         </div>
                                         <div className="inventory-item__body">
                                             <strong>{itemTitle(item)}</strong>
                                             <small>
                                                 {item.type === 'pack'
                                                     ? PACK_TYPES[item.pack]?.description
-                                                    : protection
-                                                        ? 'A failed upgrade from +5 keeps its level · used in UPGRADE CARDS'
-                                                        : 'Adds EP to the transfer budget'}
+                                                    : ITEM_TEXT[item.type]}
                                                 {item.source ? ` · ${item.source}` : ''}
                                             </small>
                                         </div>
@@ -202,9 +252,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                                                 type="button"
                                                 className={`btn btn--small${blocked ? '' : ' btn--primary'}`}
                                                 onClick={() => openItem(item)}
-                                                title={blocked ? 'Squad is full (50/50)' : 'Open'}
+                                                title={blocked ? 'Squad is full (50/50)' : squadItem ? 'Use on the whole squad' : 'Open'}
                                             >
-                                                {blocked ? 'SQUAD FULL' : 'OPEN'}
+                                                {blocked ? 'SQUAD FULL' : squadItem ? 'USE' : 'OPEN'}
                                             </button>
                                         )}
                                     </div>
@@ -212,6 +262,31 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                             })}
                         </div>
                     )}
+                </div>
+
+                {/* Phase 29I: mua thẻ Thể lực / Phong độ */}
+                <div className="home-card cards-shop">
+                    <div className="home-card__head"><span>SHOP</span><small>budget {formatMoney(club.budget)}</small></div>
+                    {[
+                        ['fitness', '♥ Fitness card', FITNESS_PRICE, 'Whole squad back to fitness 100'],
+                        ['form', '⬆ Form card', FORM_PRICE, 'Whole squad to top form (+3 on all main stats)'],
+                    ].map(([type, label, price, text]) => (
+                        <div key={type} className="cards-shop__row">
+                            <span>
+                                <b>{label}</b>
+                                <small>{text}</small>
+                            </span>
+                            <button
+                                type="button"
+                                className="btn btn--small"
+                                onClick={() => buyItem(type)}
+                                disabled={(club.budget || 0) < price}
+                                title={(club.budget || 0) < price ? 'Not enough EP' : 'Buy one (goes to UNOPENED)'}
+                            >
+                                BUY · {formatMoney(price)}
+                            </button>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="home-card">
@@ -229,6 +304,10 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         <li>
                             <b>Upgrade Protection</b> (a failed upgrade from +5 keeps its level): club levels 5, 10, 15…,
                             league titles, C1 / C2 titles, or buy one for <b>{formatMoney(PROTECTION_PRICE)}</b> in UPGRADE CARDS.
+                        </li>
+                        <li>
+                            <b>Fitness card</b>: every club level. <b>Form card</b>: levels 5, 10, 15… and cup / World Cup titles.
+                            <b> Upgrade Boost</b> (+3–5% each, up to 5 per upgrade): levels 5, 10, 15….
                         </li>
                     </ul>
                 </div>

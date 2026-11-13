@@ -3,6 +3,7 @@ import TrophyRoomScreen from './screens/TrophyRoomScreen'
 import NewTrophyPopup from './NewTrophyPopup'
 import { awardTrophies } from '../services/trophyService'
 import { crowdStart, crowdStop, prepareCrowdSounds, roar, setCrowdVolume, whistle } from '../utils/matchSound'
+import { applyFormAfterMatch, maxSquadForm, restoreSquadFitness } from '../systems/form'
 import FpsMeter from './FpsMeter'
 import SettingsDialog from './SettingsDialog'
 import ShootoutPanel from './ShootoutPanel'
@@ -23,7 +24,7 @@ import {
     cupShootoutNeeded,
     userCalendar,
 } from '../services/cupService'
-import { epCard, playerPack, protectionCard } from '../services/cards'
+import { epCard, formCard, itemCount, playerPack, protectionCard, spendItem } from '../services/cards'
 import ClubCrest from './ClubCrest'
 import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
@@ -230,6 +231,7 @@ export default function GameScene() {
     const conditionAppliedRef = useRef(null)
     // XP / lên cấp của trận vừa xong (hiện ở màn sau trận).
     const progressionReportRef = useRef([])
+    const formChangesRef = useRef([])
 
     // Cài đặt người chơi (lưu trên trình duyệt).
     const [settings, setSettings] = useState(loadSettings)
@@ -390,7 +392,7 @@ export default function GameScene() {
 
     // Đội hình 3D của đối thủ theo đúng đội trong vòng đấu.
     const matchRoster = useMemo(
-        () => applyKits(buildMatchRoster(roster, opponentTeam, matchOptions), matchKits, opponentTeam?.id || 'red'),
+        () => applyKits(buildMatchRoster(roster, opponentTeam, { ...matchOptions, formSeed: activeFixture?.id }), matchKits, opponentTeam?.id || 'red'),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [roster, opponentTeam, activeFixture?.id, kitChoice, league.difficulty, league.season],
     )
@@ -802,9 +804,12 @@ export default function GameScene() {
                     forfeit,
                 },
             )
-            const updatedById = new Map(progressed.map((player) => [player.id, player]))
+            // Phase 29I: phong độ đổi theo điểm trận (bỏ trận: giữ nguyên).
+            const formed = forfeit ? { players: progressed, changes: [] } : applyFormAfterMatch(progressed, summary.ratings, fractions)
+            const updatedById = new Map(formed.players.map((player) => [player.id, player]))
 
             progressionReportRef.current = reports
+            formChangesRef.current = formed.changes
             clubReportRef.current = null
 
             // Phase 22: thống kê cầu thủ cả mùa (cả hai đội) cho trận giải đấu.
@@ -888,7 +893,7 @@ export default function GameScene() {
                     if (prize > 0) {
                         const items = [epCard(prize, label)]
 
-                        if (wcAfter.finalStanding === 'champion') items.push(playerPack('premium', label), protectionCard(label))
+                        if (wcAfter.finalStanding === 'champion') items.push(playerPack('premium', label), protectionCard(label), formCard(label))
 
                         nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
                         cupReward = { amount: prize, label, pack: wcAfter.finalStanding === 'champion' }
@@ -906,7 +911,7 @@ export default function GameScene() {
                             : `${cupInfo.cupName} · ${STAGE_LABELS[cupInfo.stage]} passed`
                         const items = [epCard(prize, label)]
 
-                        if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label), protectionCard(label))
+                        if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label), protectionCard(label), formCard(label))
 
                         nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
                         cupReward = { amount: prize, label, pack: cupInfo.outcome === 'champion' }
@@ -964,6 +969,7 @@ export default function GameScene() {
             subEvents,
             shots: [...(statsRef.current?.stats?.shots || [])],
             progression: progressionReportRef.current || [],
+            formChanges: formChangesRef.current || [],
             clubReport: clubReportRef.current,
             cupInfo: cupInfoRef.current,
         })
@@ -1047,6 +1053,15 @@ export default function GameScene() {
         setIsQuitOpen(false)
         setMatchStatus('fulltime')
         setActionMessage(isLeagueMatch ? 'MATCH FORFEITED' : 'MATCH ABANDONED')
+    }
+
+    // Phase 29I: dùng thẻ Thể lực / Phong độ cho cả đội CLB (màn trước trận).
+    const applySquadItem = (type) => {
+        if (wcSessionRef.current || itemCount(club, type) <= 0) return
+
+        setRoster((current) => (type === 'fitness' ? restoreSquadFitness(current) : maxSquadForm(current)))
+        setClub((current) => spendItem(current, type) || current)
+        setActionMessage(type === 'fitness' ? 'FITNESS CARD USED · SQUAD AT 100%' : 'FORM CARD USED · SQUAD IN TOP FORM ⬆')
     }
 
     // Phase 29G: mở cài đặt giữa trận thì tạm dừng, đóng lại thì đá tiếp.
@@ -1916,7 +1931,7 @@ export default function GameScene() {
     const prematchRoster = useMemo(
         () =>
             prematchOpponent
-                ? applyKits(buildMatchRoster(roster, prematchOpponent, matchOptions), prematchKits, prematchOpponent.id)
+                ? applyKits(buildMatchRoster(roster, prematchOpponent, { ...matchOptions, formSeed: prematchFixture?.id }), prematchKits, prematchOpponent.id)
                 : roster,
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [roster, prematchOpponent, prematchFixture?.id, kitChoice, league.difficulty, league.season],
@@ -1942,7 +1957,7 @@ export default function GameScene() {
         const opponentClubId = isUserClub(fixture.homeTeamId) ? fixture.awayTeamId : fixture.homeTeamId
         const opponent = getTeamById(opponentClubId)
         const simRoster = applyKits(
-            buildMatchRoster(roster, opponent, matchOptions),
+            buildMatchRoster(roster, opponent, { ...matchOptions, formSeed: fixture.id }),
             kitsForFixture(fixture),
             opponentClubId,
         )
@@ -1998,7 +2013,9 @@ export default function GameScene() {
             forfeit: null,
             xpFactor: SIM_REWARD_FACTOR,
         })
-        const updatedById = new Map(progressed.map((player) => [player.id, player]))
+        // Phase 29I: phong độ sau trận mô phỏng.
+        const formed = applyFormAfterMatch(progressed, summary.ratings, fractions)
+        const updatedById = new Map(formed.players.map((player) => [player.id, player]))
 
         // 4. Thưởng ×0.7 (× độ khó, × hệ số cúp); dùng 1 lượt mô phỏng.
         const rewardFactor = difficulty.reward * SIM_REWARD_FACTOR * (isCup ? CUP_MATCH_FACTOR[fixture.competition] : 1)
@@ -2026,7 +2043,7 @@ export default function GameScene() {
                     : `${cupInfo.cupName} · ${STAGE_LABELS[cupInfo.stage]} passed`
                 const items = [epCard(prize, label)]
 
-                if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label), protectionCard(label))
+                if (cupInfo.outcome === 'champion') items.push(playerPack('premium', label), protectionCard(label), formCard(label))
 
                 nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
                 cupReward = { amount: prize, label, pack: cupInfo.outcome === 'champion' }
@@ -2063,6 +2080,7 @@ export default function GameScene() {
             subEvents: [],
             shots: sim.stats.shots,
             progression: reports,
+            formChanges: formed.changes,
             clubReport: { ...rewarded.report, seasonReward, cupReward, budget: nextClub.budget, simulated: true },
             cupInfo,
             simulated: true,
@@ -2187,6 +2205,12 @@ export default function GameScene() {
                     onBack={goHome}
                     matchDuration={settings.matchDuration}
                     onMatchDurationChange={(value) => updateSettings({ matchDuration: value })}
+                    squadItems={wcSession ? null : {
+                        fitness: itemCount(club, 'fitness'),
+                        form: itemCount(club, 'form'),
+                        onUseFitness: () => applySquadItem('fitness'),
+                        onUseForm: () => applySquadItem('form'),
+                    }}
                 />
             )}
 

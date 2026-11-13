@@ -14,6 +14,8 @@ import { effectiveStat } from '../systems/attributes'
 import { getRole } from '../systems/roster'
 import { createMatchStats } from '../systems/matchStats'
 import { applyTeamColor } from './teamColor'
+// Phase 29I: phong độ cộng vào chỉ số khi mô phỏng.
+import { withForm } from '../systems/form'
 
 export const SIM_DAILY_LIMIT = 5
 export const SIM_REWARD_FACTOR = 0.7
@@ -109,8 +111,8 @@ const lastName = (name) => String(name || '').split(' ').slice(-1)[0]
 // venue: 'blue' | 'red' | 'neutral' — đội đá sân nhà.
 export function simulateQuickMatch({ bluePlayers, redPlayers, venue = 'blue', random = Math.random }) {
     const sides = {
-        blue: applyTeamColor(bluePlayers).players,
-        red: applyTeamColor(redPlayers).players,
+        blue: applyTeamColor(bluePlayers).players.map(withForm),
+        red: applyTeamColor(redPlayers).players.map(withForm),
     }
     const ratings = { blue: teamRatings(sides.blue), red: teamRatings(sides.red) }
     const homeEdge = (team) => (venue === 'neutral' ? 0 : venue === team ? 0.11 : -0.04)

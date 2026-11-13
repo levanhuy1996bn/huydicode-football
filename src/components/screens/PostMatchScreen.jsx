@@ -5,6 +5,7 @@ import { shortPlayerName } from '../../utils/names'
 import { MatchTimeline, ShotMap, StatComparison, TopPerformers } from '../MatchStatsPanel'
 import { formatMoney } from '../../services/clubService'
 import { PACK_TYPES } from '../../services/cards'
+import { FormArrow } from '../CardBits'
 
 // Phase 23: XP CLB, tiền thưởng, lên cấp và phần thưởng của trận vừa đá.
 function ClubRewardCard({ report, onOpenCards }) {
@@ -297,6 +298,21 @@ export default function PostMatchScreen({
             )}
 
             <ClubRewardCard report={summary.clubReport} onOpenCards={onOpenCards} />
+
+            {/* Phase 29I: phong độ thay đổi sau trận */}
+            {summary.formChanges?.length > 0 && (
+                <div className="home-card form-changes">
+                    <div className="home-card__head"><span>FORM CHANGES</span><small>by match rating</small></div>
+                    <div className="form-changes__list">
+                        {summary.formChanges.map((row) => (
+                            <span key={row.id} className={`form-change${row.to > row.from ? ' is-up' : ' is-down'}`}>
+                                <b>{shortPlayerName(row.name, 14)}</b>
+                                <FormArrow value={row.from} />→<FormArrow value={row.to} />
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {summary.progression?.length > 0 && (
                 <div className="home-card progression-card">

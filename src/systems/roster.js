@@ -5,6 +5,7 @@ import { nationalSquad } from '../services/nationalTeams'
 import { applyUpgradeLevel } from '../services/upgrade'
 import { aiUpgradeFor, difficultyOf } from '../services/difficulty'
 import { ensureCardFields, playerIdOf } from '../services/cards'
+import { randomForm } from './form'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
 const GENERIC_NAME = /^(Blue|Red) [A-Z]{2,3} \d+$/
@@ -167,7 +168,8 @@ export function getOpponentColor(teamId) {
 // Phase 26C: { difficulty, season } → mỗi cầu thủ đối thủ thành thẻ +N theo độ
 // khó (applyUpgradeLevel cộng điểm như thẻ người chơi), đội có aiSpeed (AI
 // quyết định nhanh / chậm hơn). Không truyền difficulty = thẻ +1 như cũ.
-export function buildMatchRoster(roster, opponent, { difficulty = null, season = 0 } = {}) {
+// Phase 29I: formSeed (id trận) → phong độ ngẫu nhiên cố định cho cầu thủ AI.
+export function buildMatchRoster(roster, opponent, { difficulty = null, season = 0, formSeed = null } = {}) {
     if (!opponent || opponent.id === 'red') return roster
 
     // Phase 29E: đối thủ là đội tuyển quốc gia → 22 người được gọi lên tuyển.
@@ -202,6 +204,7 @@ export function buildMatchRoster(roster, opponent, { difficulty = null, season =
         // Phase 29E: quốc tịch → team color quốc tịch của đội AI.
         nationality: player.nationality || null,
         condition: 100,
+        form: formSeed ? randomForm(`${formSeed}:${player.id}`) : 0,
     })
 
     return roster.map((team) => {

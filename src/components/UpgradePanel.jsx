@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PlayerCardView, StatNum, UpgradeBadge } from './CardBits'
 import UpgradeAnimation from './UpgradeAnimation'
-import { PROTECTION_PRICE, playerIdOf, protectionCard, protectionCount, spendProtection } from '../services/cards'
+import { BOOST_LIMIT, PROTECTION_PRICE, boostCards, playerIdOf, protectionCard, protectionCount, spendItemsById, spendProtection } from '../services/cards'
 import { formatMoney } from '../services/clubService'
 import {
     EXTRA_LIMIT,
@@ -52,6 +52,11 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
     const [message, setMessage] = useState(null)
     const [protect, setProtect] = useState(false)
     const protections = protectionCount(club)
+    // Phase 29I: thẻ tăng tỉ lệ đập (dùng các thẻ mạnh nhất trước, tối đa 5).
+    const [boostWanted, setBoostWanted] = useState(0)
+    const availableBoosts = boostCards(club)
+    const boostUsed = availableBoosts.slice(0, Math.min(boostWanted, BOOST_LIMIT, availableBoosts.length))
+    const boostTotal = boostUsed.reduce((sum, item) => sum + (item.percent || 0), 0) / 100
     const budget = club?.budget || 0
 
     const squad = useMemo(() => squadOf(team), [team])
@@ -96,7 +101,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mainId, materialKey])
-    const breakdown = rateBreakdown(main, material, extras)
+    const breakdown = rateBreakdown(main, material, extras, boostTotal)
     const rate = breakdown.total
     const canProtect = protectionUseful(main)
     const protecting = protect && canProtect && protections > 0
@@ -151,7 +156,8 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
     const upgrade = () => {
         if (!main || !material || atMax) return
 
-        const outcome = rollUpgrade(main, material, extras, Math.random, { protect: protecting })
+        const outcome = rollUpgrade(main, material, extras, Math.random, { protect: protecting, boost: boostTotal })
+        const boostIds = boostUsed.map((item) => item.id)
         const consumed = new Set([material.id, ...extras.map((card) => card.id)])
 
         onRosterChange((current) =>
@@ -177,7 +183,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
 
             consumed.forEach((id) => delete contracts[id])
 
-            const next = { ...current, contracts }
+            const next = spendItemsById({ ...current, contracts }, boostIds)
 
             return protecting ? spendProtection(next) || next : next
         })
@@ -190,6 +196,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
         })
         setMaterialId(null)
         setExtraIds([])
+        setBoostWanted(0)
     }
 
     const closeAnim = (again) => {
@@ -271,11 +278,49 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
                                     <span>SUCCESS</span>
                                     <b>{material && !atMax ? pct(rate) : '–'}</b>
                                 </div>
-                                {material && !atMax && breakdown.insurance > 0 && (
+                                {material && !atMax && (breakdown.insurance > 0 || breakdown.boost > 0) && (
                                     <p className="upgrade-insurance">
-                                        Base {pct(breakdown.base)} + <b>insurance {pct(breakdown.insurance)}</b>
-                                        {breakdown.insurance >= INSURANCE_MAX ? ' (max)' : ''}
+                                        Base {pct(breakdown.base)}
+                                        {breakdown.insurance > 0 && (
+                                            <> + <b>insurance {pct(breakdown.insurance)}</b>{breakdown.insurance >= INSURANCE_MAX ? ' (max)' : ''}</>
+                                        )}
+                                        {breakdown.boost > 0 && <> + <b className="upgrade-boost__pct">boost {pct(breakdown.boost)}</b></>}
                                     </p>
+                                )}
+                                {/* Phase 29I: thẻ tăng tỉ lệ đập */}
+                                {!atMax && (
+                                    <div className={`upgrade-boost${boostUsed.length ? ' is-on' : ''}`}>
+                                        <span>
+                                            <b>▲ UPGRADE BOOST</b>
+                                            <small>
+                                                {availableBoosts.length
+                                                    ? `${availableBoosts.length} in stock · max ${BOOST_LIMIT} per try · used up either way`
+                                                    : 'None in stock · club levels 5, 10, 15…'}
+                                            </small>
+                                        </span>
+                                        <div className="upgrade-boost__stepper">
+                                            <button
+                                                type="button"
+                                                className="btn btn--small"
+                                                onClick={() => setBoostWanted((value) => Math.max(0, Math.min(value, availableBoosts.length) - 1))}
+                                                disabled={boostUsed.length === 0}
+                                                aria-label="Use one boost card less"
+                                            >
+                                                −
+                                            </button>
+                                            <b>{boostUsed.length}</b>
+                                            <button
+                                                type="button"
+                                                className="btn btn--small"
+                                                onClick={() => setBoostWanted((value) => Math.min(BOOST_LIMIT, availableBoosts.length, Math.min(value, availableBoosts.length) + 1))}
+                                                disabled={boostUsed.length >= Math.min(BOOST_LIMIT, availableBoosts.length)}
+                                                aria-label="Use one more boost card"
+                                            >
+                                                +
+                                            </button>
+                                            <em>+{Math.round(boostTotal * 100)}%</em>
+                                        </div>
+                                    </div>
                                 )}
                                 {canProtect && (
                                     <div className={`upgrade-protect${protecting ? ' is-on' : ''}`}>

@@ -3150,3 +3150,35 @@ b.is-off-position::after {
 .home-wc-strip span { flex: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .home-wc-strip em { color: #c7fa7c; font-style: normal; font-weight: 800; font-size: 11px; white-space: nowrap; }
 .topbar nav button { white-space: nowrap; }
+
+/* ---- Phase 29I: phong độ, thẻ thể lực / phong độ, thẻ tăng tỉ lệ ---- */
+.form-arrow { display: inline-block; min-width: 1em; font-weight: 900; font-size: 1em; line-height: 1; text-align: center; }
+.player-card__form { margin-top: 2px; font-size: 18px; }
+.lineup__list .form-arrow { font-size: 13px; }
+.dev-row .form-arrow { font-size: 13px; }
+.cards-notice--ok { background: rgba(46, 229, 157, 0.12); border: 1px solid #2e9d6e; color: #c9f7df; }
+.cards-shop__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #1f3529; }
+.cards-shop__row span { display: flex; flex-direction: column; gap: 2px; }
+.cards-shop__row small { color: #82998e; font-size: 11px; }
+.inventory-item--fitness .inventory-item__icon { color: #ff7a8a; }
+.inventory-item--form .inventory-item__icon { color: #2ee59d; }
+.inventory-item--boost .inventory-item__icon { color: #7cc4ff; }
+.upgrade-boost { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; padding: 8px 10px; border: 1px solid #2c4a3a; border-radius: 8px; }
+.upgrade-boost.is-on { border-color: #7cc4ff; background: rgba(124, 196, 255, .08); }
+.upgrade-boost > span { display: flex; flex-direction: column; gap: 2px; }
+.upgrade-boost b { color: #7cc4ff; font-size: 12px; letter-spacing: .5px; }
+.upgrade-boost small { color: #82998e; font-size: 10px; }
+.upgrade-boost__stepper { display: flex; align-items: center; gap: 6px; }
+.upgrade-boost__stepper > b { min-width: 16px; text-align: center; color: #fff; font-size: 14px; }
+.upgrade-boost__stepper em { font-style: normal; color: #7cc4ff; font-weight: 800; min-width: 42px; text-align: right; }
+.upgrade-boost__pct { color: #7cc4ff; }
+.prematch-items { flex-basis: 100%; display: flex; justify-content: flex-end; gap: 8px; }
+.form-changes__list { display: flex; flex-wrap: wrap; gap: 8px; }
+.form-change { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; background: #12261c; font-size: 12px; }
+.form-change.is-up { border: 1px solid #2e9d6e; }
+.form-change.is-down { border: 1px solid #a5583a; }
+/* Phase 29I: cột mũi tên phong độ trong đội hình trước trận */
+.lineup--left .lineup__list li { grid-template-columns: 28px 1fr 40px 42px 18px 38px; }
+.lineup--right .lineup__list li { grid-template-columns: 28px 1fr 40px 18px 32px 38px; }
+.lineup__list li .form-arrow { justify-self: center; }
+.dev-row { grid-template-columns: 28px 1fr auto 16px 28px 30px; }
