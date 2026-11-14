@@ -26,6 +26,8 @@ const DIVE_PUSH_TIME = 0.32    // thời gian bật người (s)
 const SLOW_BALL = 12           // bóng chậm hơn thế thì bắt gọn kiểu thường
 
 const DIVE_DURATION = 1.15
+// Vòng cấm địa: sâu 16.5m, rộng 40.3m.
+const PENALTY_AREA = { depth: 16.5, halfWidth: 20.15 }
 
 function keeperOf(ctx, teamId) {
     const item = teamPlayers(ctx, teamId).find((player) => player.role === 'GK')
@@ -49,6 +51,37 @@ function keeperCatch(ctx, keeper, keeperItem) {
         ctx.onSelect(keeperItem.id)
         ctx.selectedId = keeperItem.id
     }
+}
+
+// Phase 38: thủ môn được bắt bóng bằng tay không? Trong vòng cấm nhà, bóng
+// không cao quá tầm, và không phải đồng đội chủ động đá về (Phase 34; đánh đầu
+// về và bóng chạm chân hậu vệ bật ra thì vẫn được).
+export function keeperMayHandle(ctx, keeperItem, ballPosition) {
+    const { state } = ctx
+    const goalSign = ownGoalSign(state, keeperItem.teamId)
+    const inBox =
+        ballPosition.z * goalSign > FIELD.lineZ - PENALTY_AREA.depth &&
+        Math.abs(ballPosition.x) < PENALTY_AREA.halfWidth
+
+    if (!inBox || ballPosition.y > 2.6 || state.restart || state.keeperHands || state.shootout) return false
+
+    const kick = state.lastKick?.kickId === state.kickId ? state.lastKick : null
+
+    if (kick?.action === 'header' || kick?.action === 'block') return true
+    if (isBackPass(state, keeperItem.teamId)) return false
+
+    return state.lastTouchTeam !== keeperItem.teamId
+}
+
+// Ôm bóng (cúi hốt bóng thấp / bắt bóng ngang người).
+export function keeperClaim(ctx, keeperItem) {
+    const keeper = ctx.objects[keeperItem.id]
+    const ball = ctx.ballRef.current
+
+    if (!keeper || !ball) return
+
+    setPlayerAction(ctx.state, keeperItem.id, ball.translation().y < 0.6 ? 'scoop' : 'catch', 0.6)
+    keeperCatch(ctx, keeper, keeperItem)
 }
 
 // Dự đoán và lập kế hoạch cho cú đá hiện tại.
@@ -95,32 +128,43 @@ function planSave(ctx, teamId, keeper, keeperItem) {
     // Bóng phải đang bay về phía khung thành nhà.
     if (velocity.z * goalSign < 4) return null
 
-    const timeToKeeper = (keeper.position.z - position.z) / velocity.z
-    const timeToGoal = (goalSign * FIELD.lineZ - position.z) / velocity.z
+    // Phase 38: dự đoán có lực cản không khí (bóng linearDamping 0.25 mọi
+    // trục). Trước đây tính như bay trong chân không: bóng thật chậm hơn nên
+    // tới muộn hơn và rơi THẤP hơn dự đoán → cú sút "vọt xà" theo dự đoán lại
+    // cụp vào lưới trong khi thủ môn đứng nhìn ('leave').
+    const timeToKeeper = dragTime(velocity.z, keeper.position.z - position.z)
+    const timeToGoal = dragTime(velocity.z, goalSign * FIELD.lineZ - position.z)
+
+    // Bóng dừng trước khi tới thủ môn: để phần bắt bóng chậm xử lý.
+    if (timeToKeeper === null) return null
 
     if (timeToKeeper <= 0 || timeToKeeper > 2.5) return null
 
     // Bóng xoáy (ZD / CD): cộng độ cong còn lại vào điểm dự đoán.
     const curl = state.curl && state.curl.kickId === state.kickId ? state.curl : null
     const horizontalSpeed = Math.hypot(velocity.x, velocity.z)
-    // Độ lệch thêm so với đường thẳng theo vận tốc hiện tại.
-    const bendAt = (t) => (curl ? curlOffset(curl, curl.travelled || 0, horizontalSpeed * t) : 0)
+    // Độ lệch thêm so với đường thẳng theo quãng đường bóng đã đi.
+    const bendAt = (t) => (curl ? curlOffset(curl, curl.travelled || 0, travel(horizontalSpeed, t)) : 0)
 
-    const crossX = position.x + velocity.x * timeToKeeper + bendAt(timeToKeeper)
-    const crossY = Math.max(
-        0.2,
-        position.y + velocity.y * timeToKeeper - 4.9 * timeToKeeper * timeToKeeper,
-    )
-    const goalX = position.x + velocity.x * timeToGoal + bendAt(timeToGoal)
-    const goalY = position.y + velocity.y * timeToGoal - 4.9 * timeToGoal * timeToGoal
+    const crossX = position.x + travel(velocity.x, timeToKeeper) + bendAt(timeToKeeper)
+    const crossY = Math.max(0.2, heightAt(position, velocity, timeToKeeper))
+    const goalX = timeToGoal === null ? crossX : position.x + travel(velocity.x, timeToGoal) + bendAt(timeToGoal)
+    const goalY = timeToGoal === null ? crossY : heightAt(position, velocity, timeToGoal)
+    // Bóng chạm đất rồi nảy vẫn có thể vào (goalY âm = đã chạm đất trước vạch).
     const onTarget =
-        Math.abs(goalX) <= FIELD.goalHalfWidth + 0.2 && goalY < FIELD.goalHeight + 0.1
+        timeToGoal !== null && Math.abs(goalX) <= FIELD.goalHalfWidth + 0.2 && goalY < FIELD.goalHeight + 0.1
 
     const lateral = crossX - keeper.position.x
     const distance = Math.abs(lateral)
 
-    // Bóng đi ra ngoài và cách xa thủ môn: để bóng đi.
-    if (!onTarget && distance > STAND_REACH) {
+    // Bóng đi ra ngoài và cách xa thủ môn: để bóng đi. Phase 38: bóng đi sát
+    // cột / sát xà (lệch < 1.2m) thì thủ môn vẫn bay người như thật.
+    const nearMiss =
+        timeToGoal !== null &&
+        Math.abs(goalX) <= FIELD.goalHalfWidth + 1.2 &&
+        goalY < FIELD.goalHeight + 0.8
+
+    if (!onTarget && !nearMiss && distance > STAND_REACH) {
         return { kickId: state.kickId, type: 'leave', resolved: true }
     }
 
@@ -276,8 +320,10 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         onTarget,
         speed,
         crossY,
-        // Cứu thua thất bại: phản xạ chậm hơn một nhịp (bay người muộn).
-        startAt: success ? reaction : reaction + 0.12,
+        // Cứu thua thất bại: phản xạ chậm hơn một nhịp (bay người muộn) — nhưng
+        // Phase 38: luôn kịp bật người trước khi bóng tới (trước đây cú sút
+        // gần, nhanh tới trước lúc phản xạ xong → thủ môn đứng im nhìn bóng).
+        startAt: success ? reaction : Math.min(reaction + 0.12, Math.max(0.03, timeToKeeper - 0.12)),
         reachable,
         elapsed: 0,
         expires: timeToKeeper + 0.8,
@@ -294,6 +340,19 @@ const BACKPEDAL_SPEED = 5
 // bắt được. null nếu không kịp.
 // Lực cản của bóng (khớp linearDamping = 0.25 của Ball trong MatchWorld).
 const BALL_DAMPING = 0.25
+
+// Phase 38: thời gian để bóng đi được quãng `distance` theo một trục khi có
+// lực cản (v giảm theo e^(−k·t)); null nếu bóng dừng trước khi tới.
+function dragTime(speed, distance) {
+    if (Math.abs(speed) < 1e-3) return null
+
+    const ratio = (BALL_DAMPING * distance) / speed
+
+    if (ratio <= 0) return 0
+    if (ratio >= 0.98) return null
+
+    return -Math.log(1 - ratio) / BALL_DAMPING
+}
 
 const travel = (speed, time) => (speed * (1 - Math.exp(-BALL_DAMPING * time))) / BALL_DAMPING
 
@@ -589,8 +648,36 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         }
     }
 
-    // Không đứng cách vạch vôi quá ~7.5m (lao ra cản phá: ~9.5m).
-    const deepest = rushingOut ? 43 : 45
+    // Phase 38: bóng lỏng, chậm trong vòng cấm mà thủ môn tới trước đối phương
+    // → chủ động ra nhặt (ôm bằng tay nếu được, xem keeperMayHandle) thay vì
+    // đứng chờ bóng lăn tới chân.
+    let collecting = false
+
+    if (!state.possession && !state.restart && !rushingOut) {
+        const looseSpeed = Math.hypot(velocity.x, velocity.z)
+        const inBox =
+            ballPosition.z * goalSign > FIELD.lineZ - PENALTY_AREA.depth &&
+            Math.abs(ballPosition.x) < PENALTY_AREA.halfWidth
+
+        if (inBox && looseSpeed < 9 && ballPosition.y < 1.6) {
+            const mine = distance2D(keeper.position, ballPosition)
+            const theirs = teamPlayers(ctx, enemyTeamId).reduce((best, item) => {
+                const object = objects[item.id]
+
+                return object ? Math.min(best, distance2D(object.position, ballPosition)) : best
+            }, Infinity)
+
+            if (mine < 15 && mine < theirs * 1.2 + 0.5) {
+                collecting = true
+                targetX = ballPosition.x + velocity.x * 0.25
+                targetZ = ballPosition.z + velocity.z * 0.25
+            }
+        }
+    }
+
+    // Không đứng cách vạch vôi quá ~7.5m (lao ra cản phá: ~9.5m; ra nhặt bóng
+    // trong vòng cấm: tới mép vòng cấm).
+    const deepest = collecting ? FIELD.lineZ - PENALTY_AREA.depth : rushingOut ? 43 : 45
     targetZ = goalSign > 0 ? clamp(targetZ, deepest, 51) : clamp(targetZ, -51, -deepest)
 
     keeper.rotation.y = facingFor(state, teamId)
@@ -599,7 +686,7 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         ctx,
         keeperItem,
         { x: targetX, z: targetZ },
-        movingTowardGoal || rushingOut ? 2.1 : 1.35,
+        collecting ? 2.4 : movingTowardGoal || rushingOut ? 2.1 : 1.35,
         dt,
     )
 
@@ -631,10 +718,10 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         distanceToBall < 2 &&
         ballSpeed < SLOW_BALL &&
         // Phase 37: đồng đội đánh đầu về thì được bắt (chỉ cấm chuyền về bằng chân).
-        (state.lastTouchTeam === enemyTeamId || (state.lastKick?.kickId === state.kickId && state.lastKick.action === 'header'))
+        // Phase 38: dùng chung luật với keeperMayHandle (bóng chạm chân hậu vệ bật ra cũng được).
+        keeperMayHandle(ctx, keeperItem, current)
     ) {
-        setPlayerAction(state, keeperItem.id, current.y < 0.6 ? 'scoop' : 'catch', 0.6)
-        keeperCatch(ctx, keeper, keeperItem)
+        keeperClaim(ctx, keeperItem)
     }
 }
 

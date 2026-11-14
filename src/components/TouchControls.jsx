@@ -69,6 +69,10 @@ const BUTTONS = {
             code: 'KeyD',
             label: 'SHOOT',
             className: 'touch-btn--top',
+            // Phase 38: nút sút cần vuốt dài hơn mới đổi kiểu sút — ngón cái
+            // trượt nhẹ lúc giữ lấy lực từng biến cú sút thường thành sút lốp
+            // (bóng bổng, nhẹ, rơi ngay trước thủ môn).
+            swipeDistance: 44,
             swipes: {
                 up: { modifier: 'KeyQ', label: 'CHIP' },
                 left: { modifier: 'KeyZ', label: 'FINESSE' },
@@ -94,8 +98,8 @@ const BUTTONS = {
 
 const ARROW_GLYPH = { up: '▲', down: '▼', left: '◀', right: '▶' }
 
-function swipeDirection(dx, dy) {
-    if (Math.hypot(dx, dy) < SWIPE_DISTANCE) return null
+function swipeDirection(dx, dy, minDistance = SWIPE_DISTANCE) {
+    if (Math.hypot(dx, dy) < minDistance) return null
 
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
 }
@@ -294,7 +298,7 @@ export default function TouchControls({
 
         if (!press || press.swiped || !button.swipes) return
 
-        const direction = swipeDirection(event.clientX - press.x, event.clientY - press.y)
+        const direction = swipeDirection(event.clientX - press.x, event.clientY - press.y, button.swipeDistance)
         const swipe = direction && button.swipes[direction]
 
         if (!swipe) return

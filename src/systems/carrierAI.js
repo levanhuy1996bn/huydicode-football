@@ -505,7 +505,10 @@ function shootWithVariant(ctx, ownerId, ownerItem, owner) {
 
     let variant = null
 
-    if (keeperOffLine > 5.5 && distance > 12 && distance < 28 && roll < 0.35 + technique * 0.25) {
+    // Phase 38: chỉ sút lốp khi thủ môn đã lao ra hẳn (trước đây > 5.5m — thủ
+    // môn đứng chọn vị trí bình thường cũng tính, nên máy lốp rất nhiều quả
+    // bổng, nhẹ rơi ngay trước mặt thủ môn).
+    if (keeperOffLine > 7.8 && distance > 12 && distance < 26 && roll < 0.3 + technique * 0.25) {
         variant = 'chip'
     } else if (distance > 13 && distance < 27 && Math.abs(owner.position.x) > 3 && roll < 0.25 + technique * 0.2) {
         variant = 'finesse'
@@ -520,19 +523,28 @@ function shootWithVariant(ctx, ownerId, ownerItem, owner) {
 
 // Thủ môn AI phát bóng sau khi bắt được: ném tay cho đồng đội trống ở
 // khoảng 8–30m, không có thì phát bóng dài bằng chân.
+// Phase 38: ưu tiên phát bóng ngắn — tìm trong mọi lựa chọn (không chỉ người
+// đứng đầu danh sách) một đồng đội trống ở 6–35m; chưa ai trống thì ôm bóng
+// chờ thêm (tối đa ~3s) cho đồng đội dạt ra, hết giờ mới phát bóng dài.
+const KEEPER_WAIT = 3
+
 function distributeFromHands(ctx, keeperId) {
     const { state } = ctx
-    const target = listPassCandidates(ctx, keeperId, 'pass')[0]
-    const open =
-        target &&
-        target.item.role !== 'GK' &&
-        target.distance >= 8 &&
-        target.distance <= 30 &&
-        target.nearestOpponent > 4 &&
-        target.laneSlack > 0.3
+    const candidates = listPassCandidates(ctx, keeperId, 'pass')
+        .filter((entry) => entry.item.role !== 'GK' && entry.distance >= 6 && entry.distance <= 35 && entry.laneSlack > 0.3)
+    const holding = state.keeperHoldTime || 0
+    const need = holding < KEEPER_WAIT ? 5 : 3.2
+    const open = candidates
+        .filter((entry) => entry.nearestOpponent > need)
+        .sort((a, b) => b.nearestOpponent - a.nearestOpponent + (a.distance - b.distance) * 0.05)[0]
+
+    if (!open && holding < KEEPER_WAIT) {
+        state.timers.aiDecisionCooldown = 0.35
+        return
+    }
 
     const kicked = kickFromPlayer(ctx, keeperId, open ? 'pass' : 'lob', true, {
-        receiverId: open ? target.item.id : null,
+        receiverId: open ? open.item.id : null,
     })
 
     state.timers.aiDecisionCooldown = kicked ? 1.5 : 0.5

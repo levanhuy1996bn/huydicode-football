@@ -24,6 +24,7 @@ import { attr, over99, skill01 } from './attributes'
 import { fatiguePenalty } from './stamina'
 import { topSpeedOf } from './movement'
 import { tryHeader } from './headers'
+import { keeperClaim, keeperMayHandle } from './goalkeeper'
 import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
@@ -1232,7 +1233,7 @@ function releaseKick(ctx, windup) {
     state.kickId += 1
     // Phase 23: nhớ cú đá vừa rồi là gì (sút / chuyền) để xử lý bóng bật ra
     // khi cú sút trúng cầu thủ đối phương (updateShotBlock).
-    state.lastKick = { kickId: state.kickId, action, teamId, playerId, throwIn: Boolean(isThrowIn) }
+    state.lastKick = { kickId: state.kickId, action, teamId, playerId, throwIn: Boolean(isThrowIn), variant: windup.lowShot ? 'low' : windup.variant || null, user: !isAI }
     // Phase 29B: tiếng chạm bóng (to theo lực đá; ném biên không có tiếng).
     if (!isThrowIn) ctx.onSound?.('kick', { power: Math.min(1, power / 26), action })
     state.lastUserKick = !isAI
@@ -1519,6 +1520,13 @@ export function updateLooseBallPickup(ctx) {
 
     // Phase 20: người đang việt vị chạm bóng → thổi phạt.
     if (checkOffside(ctx, best.item)) return
+
+    // Phase 38: thủ môn chạm bóng trong vòng cấm nhà (bóng của đối phương,
+    // bóng chậm / bật ra) → ôm bằng tay, không hãm bằng chân rồi phá lên.
+    if (best.item.role === 'GK' && ballSpeed < 22 && keeperMayHandle(ctx, best.item, ballPosition)) {
+        keeperClaim(ctx, best.item)
+        return
+    }
 
     // Người được chuyền tới (hoặc đồng đội của người chuyền) khống chế được
     // ngay đường chuyền có tốc độ vừa phải. Đối phương chặn bóng nhanh thì
