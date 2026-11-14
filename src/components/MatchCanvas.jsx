@@ -150,7 +150,7 @@ function AdaptiveResolution({ levels, onLevel, canDowngrade, onDowngrade, paused
     return null
 }
 
-export default function MatchCanvas({ graphics = 'high', autoGraphics = false, paused = false, ...worldProps }) {
+export default function MatchCanvas({ graphics = 'high', autoGraphics = false, paused = false, timeScale = 1, ...worldProps }) {
     // Chất lượng thật trong trận: bắt đầu theo cài đặt, có thể tự hạ (AUTO).
     const [quality, setQuality] = useState(graphics)
     const levels = useMemo(() => resolutionLevels(quality), [quality])
@@ -200,8 +200,9 @@ export default function MatchCanvas({ graphics = 'high', autoGraphics = false, p
                 paused={paused}
             />
             <Suspense fallback={null}>
-                <Physics gravity={[0, -9.81, 0]} timeStep={FIXED_STEP} interpolate={false}>
-                    <MatchWorld {...worldProps} quality={quality} />
+                {/* Phase 43: ×2 → MatchWorld tự gọi step(delta × 2) (cùng bước vật lý cố định). */}
+                <Physics gravity={[0, -9.81, 0]} timeStep={FIXED_STEP} interpolate={false} paused={timeScale !== 1}>
+                    <MatchWorld {...worldProps} timeScale={timeScale} quality={quality} />
                 </Physics>
             </Suspense>
         </Canvas>

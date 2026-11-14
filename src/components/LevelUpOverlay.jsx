@@ -22,9 +22,19 @@ function prefersReducedMotion() {
     }
 }
 
-const ratio = (xp, level) => Math.max(0, Math.min(1, (xp || 0) / clubXpToNext(level)))
+const clubRatio = (xp, level) => Math.max(0, Math.min(1, (xp || 0) / clubXpToNext(level)))
 
-export default function LevelUpOverlay({ from, to, onClose }) {
+// Phase 43: dùng chung cho cấp World Cup — kind 'wc' kèm xpToNext(level) (0 =
+// cấp tối đa), customRewards [{ key, icon, label }] và note.
+export default function LevelUpOverlay({ from, to, onClose, kind = 'club', xpToNext = null, customRewards = null, note = null }) {
+    const ratio = (xp, level) => {
+        if (!xpToNext) return clubRatio(xp, level)
+
+        const need = xpToNext(level)
+
+        return need ? Math.max(0, Math.min(1, (xp || 0) / need)) : 1
+    }
+    const label = kind === 'wc' ? 'WORLD CUP LEVEL' : 'CLUB LEVEL'
     const finalState = useMemo(
         () => ({ level: to.level, p: ratio(to.xp, to.level), instant: false, done: true }),
         [to.level, to.xp],
@@ -34,6 +44,8 @@ export default function LevelUpOverlay({ from, to, onClose }) {
     const timers = useRef([])
 
     const rewards = useMemo(() => {
+        if (customRewards) return customRewards
+
         const list = []
         const total = { ep: 0, protection: 0, fitness: 0, form: 0, boost: 0 }
 
@@ -58,7 +70,7 @@ export default function LevelUpOverlay({ from, to, onClose }) {
             total.form && { key: 'form', icon: '⬆', label: `Form card${total.form > 1 ? ` ×${total.form}` : ''}` },
             total.boost && { key: 'boost', icon: '▲', label: `Upgrade Boost${total.boost > 1 ? ` ×${total.boost}` : ''}` },
         ].filter(Boolean)
-    }, [from.level, to.level])
+    }, [from.level, to.level, customRewards])
 
     const clearTimers = () => {
         timers.current.forEach((id) => clearTimeout(id))
@@ -123,13 +135,13 @@ export default function LevelUpOverlay({ from, to, onClose }) {
 
     return (
         <div
-            className={`levelup-overlay${view.done ? ' is-done' : ''}`}
+            className={`levelup-overlay${kind === 'wc' ? ' levelup-overlay--wc' : ''}${view.done ? ' is-done' : ''}`}
             role="dialog"
             aria-modal="true"
-            aria-label={`Club level ${to.level}`}
+            aria-label={`${label} ${to.level}`}
             onClick={() => !view.done && finish()}
         >
-            <div className="levelup-overlay__title">{view.level > from.level ? 'LEVEL UP!' : 'CLUB XP'}</div>
+            <div className="levelup-overlay__title">{view.level > from.level ? (kind === 'wc' ? 'WORLD CUP LEVEL UP!' : 'LEVEL UP!') : 'XP'}</div>
             <div className="levelup-overlay__stage">
                 {burst > 0 && <div key={`rays-${burst}`} className="levelup-overlay__rays" />}
                 {burst > 0 && <div key={`flash-${burst}`} className="levelup-overlay__flash" />}
@@ -142,7 +154,7 @@ export default function LevelUpOverlay({ from, to, onClose }) {
                 />
             </div>
             <div className="levelup-overlay__sub">
-                CLUB LEVEL {from.level} → <b>{to.level}</b>
+                {label} {from.level} → <b>{to.level}</b>
                 {levels > 1 && <span> · {levels} LEVELS</span>}
             </div>
 
@@ -156,7 +168,9 @@ export default function LevelUpOverlay({ from, to, onClose }) {
                             </li>
                         ))}
                     </ul>
-                    <p className="levelup-overlay__note">Added to CARDS · {to.xp} / {clubXpToNext(to.level)} XP to level {to.level + 1}</p>
+                    <p className="levelup-overlay__note">
+                        {note || `Added to CARDS · ${to.xp} / ${clubXpToNext(to.level)} XP to level ${to.level + 1}`}
+                    </p>
                     <button
                         type="button"
                         className="btn btn--primary"

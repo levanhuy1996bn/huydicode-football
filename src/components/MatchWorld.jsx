@@ -7,6 +7,7 @@ import {
     BallCollider,
     CuboidCollider,
     useBeforePhysicsStep,
+    useRapier,
 } from '@react-three/rapier'
 import * as THREE from 'three'
 
@@ -499,6 +500,9 @@ export default function MatchWorld({
     // Phase 42: tập luyện — lệnh { type: 'start' | 'stop', drill, options, nonce }.
     trainingCommand = null,
     onTrainingResult,
+    // Phase 43: tốc độ trận (1 | 2, chỉ khi AUTO PLAY) + báo máy quá chậm.
+    timeScale = 1,
+    onSpeedTooSlow,
 }) {
     const keys = useKeyboard()
 
@@ -852,6 +856,39 @@ export default function MatchWorld({
 
         return () => clearTimeout(timer)
     }, [trainingCommand, ctx])
+
+    // Phase 43: trận ×2 — Physics bị "paused", ở đây tự bước delta × 2 (vẫn
+    // từng bước FIXED_STEP nên vật lý / AI không đổi, chỉ chạy nhiều bước hơn mỗi
+    // khung hình). Phạt đền, luân lưu, thổi còi, thay người: về 1×. Máy không
+    // kham nổi (FPS < ~22 trong 2s) → báo để GameScene trả về 1×.
+    const { step: stepPhysics } = useRapier()
+    const slowFrames = useRef({ time: 0, slow: 0 })
+
+    useFrame((_, delta) => {
+        if (timeScale === 1) {
+            state.timeScale = 1
+            return
+        }
+
+        const calm = state.whistle || state.shootout || state.subSeq || state.penaltyKick || state.restart?.type === 'penalty'
+        const scale = calm ? 1 : timeScale
+
+        state.timeScale = scale
+        stepPhysics(delta * scale)
+
+        const watch = slowFrames.current
+
+        watch.time += delta
+        if (delta > 1 / 22) watch.slow += delta
+
+        if (watch.time >= 2) {
+            const testOverride = import.meta.env.VITE_E2E && typeof window !== 'undefined' && window.__ufmNoSpeedGuard
+
+            if (watch.slow > 1.4 && !testOverride) onSpeedTooSlow?.()
+            watch.time = 0
+            watch.slow = 0
+        }
+    })
 
     // Vòng lặp chính: chạy 1 bước logic ngay TRƯỚC mỗi bước vật lý của
     // Rapier (Physics timeStep = FIXED_STEP). Logic và vật lý luôn đi cùng

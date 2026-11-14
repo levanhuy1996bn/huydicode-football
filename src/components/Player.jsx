@@ -355,7 +355,9 @@ export default function Player({
             }
         }
 
-        const dt = Math.min(delta, 0.05)
+        // Phase 43: trận ×2 (AUTO PLAY) → động tác cũng nhanh gấp đôi.
+        const scale = matchState?.timeScale || 1
+        const dt = Math.min(delta * scale, 0.05 * scale)
         const p = root.current.position
 
         if (!previous.current) {

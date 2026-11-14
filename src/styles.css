@@ -4552,3 +4552,25 @@ button.level-ring:hover { filter: drop-shadow(0 0 calc(var(--size) * 0.16) rgba(
 .app-shell.match-compact .training-hud__challenge { padding: 4px 6px; font-size: 9px; }
 .app-shell.match-compact .training-hud__actions .btn--small { padding: 4px 8px; font-size: 9px; }
 .app-shell.match-compact .training-screen .action-indicator { right: auto; left: 50%; transform: translateX(-50%); }
+
+/* ---- Phase 43: lên cấp World Cup (vàng) ---- */
+.levelup-overlay--wc .levelup-overlay__title { color: #ffd166; text-shadow: 0 0 18px rgba(255, 209, 102, 0.6); }
+.levelup-overlay--wc .level-ring { --glow: #ffd166; filter: drop-shadow(0 0 calc(var(--size) * 0.09) rgba(255, 209, 102, 0.6)); }
+.levelup-overlay--wc .levelup-overlay__rays { background: repeating-conic-gradient(rgba(255, 209, 102, 0.22) 0 6deg, transparent 6deg 22deg); }
+.levelup-overlay--wc .levelup-overlay__rewards li { background: rgba(255, 209, 102, 0.1); border-color: rgba(255, 209, 102, 0.45); }
+.levelup-overlay--wc .levelup-overlay__rewards li i { color: #ffd166; }
+
+/* ---- Phase 43: ×2 khi AUTO PLAY, FINISH MATCH ---- */
+.autopilot-badge .speed-toggle {
+  pointer-events: auto; cursor: pointer; margin-left: 4px; padding: 4px 9px; border-radius: 5px;
+  border: 1px solid #ffd166; background: transparent; color: #ffd166; font-size: 10px; font-weight: 800; letter-spacing: 0.8px;
+}
+.autopilot-badge .speed-toggle.is-fast { background: #ffd166; color: #10200f; }
+.finish-early {
+  position: absolute; top: 116px; left: 16px; z-index: 11; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  max-width: 330px; padding: 6px 8px; border-radius: 8px; background: rgba(8, 18, 14, 0.9); border: 1px solid #c7fa7c;
+  color: #e6f1e9; font-size: 11px;
+}
+.finish-early__btn { background: transparent; border-color: transparent; color: #c7fa7c; font-weight: 800; letter-spacing: 1px; padding: 2px 4px; }
+.app-shell.match-compact .finish-early { top: calc(84px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); transform: scale(0.8); transform-origin: top left; }
+@media (max-height: 440px) { .app-shell.match-compact .finish-early { top: calc(70px + env(safe-area-inset-top)); transform: scale(0.72); } }

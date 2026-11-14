@@ -33,7 +33,7 @@ import ClubPicker from './ClubPicker'
 import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
 import NationPicker from './NationPicker'
 import { pendingAchievementCount } from '../services/upgradeAchievements'
-import { applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
+import { WC_LEVEL_XP, WC_MAX_LEVEL, applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, wcLevelOf, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
 import { nationStrength, nationalTeamForMatch, suggestedNation } from '../services/nationalTeams'
 import {
     WC_DAILY_LIMIT,
@@ -384,6 +384,8 @@ export default function GameScene() {
     const [subSign, setSubSign] = useState(null)
     const [addedTime, setAddedTime] = useState(0)
     const [autoPilot, setAutoPilot] = useState(false)
+    // Phase 43: tốc độ trận ×2 — chỉ khi máy đang đá thay (AUTO PLAY).
+    const [matchSpeed, setMatchSpeed] = useState(1)
     // Phase 29F: lệnh bật / tắt máy đá thay gửi engine (nút AUTO, màn nghỉ),
     // đếm ngược tự đá hiệp 2 khi máy đang đá thay (giây | null).
     const [autoPilotCommand, setAutoPilotCommand] = useState(null)
@@ -674,24 +676,40 @@ export default function GameScene() {
         setActionMessage('FULL TIME')
     }, [])
 
+    // Phase 43: ×2 chỉ khi AUTO PLAY và đang đá; lấy lại quyền điều khiển,
+    // tạm dừng, nghỉ giữa hiệp, luân lưu… → về 1×.
+    const speed = autoPilot && matchSpeed === 2 && matchStatus === 'playing' && !shootout ? 2 : 1
+
+    useEffect(() => {
+        if (!autoPilot || matchStatus !== 'playing') setMatchSpeed(1)
+    }, [autoPilot, matchStatus])
+
+    const handleSpeedTooSlow = useCallback(() => {
+        setMatchSpeed((current) => {
+            if (current !== 1) setActionMessage('SPEED BACK TO 1× (DEVICE TOO SLOW)')
+            return 1
+        })
+    }, [])
+
     // Đồng hồ trận đấu.
     useEffect(() => {
         if (matchStatus !== 'playing') return undefined
 
+        const tick = 0.25 * speed
         const interval = setInterval(() => {
             // Đang bù giờ: đồng hồ chính dừng ở 45:00 / 90:00, đếm giờ bù.
             if (whistlePending || addedPlan) {
-                setAddedTime((current) => current + 0.25)
+                setAddedTime((current) => current + tick)
                 return
             }
 
             setMatchTime((current) =>
-                Math.min(matchDuration, current + 0.25),
+                Math.min(matchDuration, current + tick),
             )
         }, 250)
 
         return () => clearInterval(interval)
-    }, [matchStatus, whistlePending, addedPlan])
+    }, [matchStatus, whistlePending, addedPlan, speed])
 
     // Hết 90 phút / hết hiệp 1: KHÔNG dừng ngay. Báo cho engine "đã hết giờ",
     // trận đá bù cho tới khi bóng chết (ra ngoài, bàn thắng, thủ môn ôm bóng),
@@ -2637,6 +2655,81 @@ export default function GameScene() {
 
     const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
 
+    // Phase 43: dẫn từ 3 bàn → FINISH MATCH: mô phỏng nốt phần thời gian còn lại
+    // (cùng engine với SIMULATE, chỉ lấy các bàn sau phút hiện tại), rồi hết
+    // trận như thường — thưởng / XP / thể lực đầy đủ như đá hết 90 phút.
+    const [finishConfirm, setFinishConfirm] = useState(false)
+    const [finishRequest, setFinishRequest] = useState(null)
+    const minuteNow = Math.min(90, Math.floor((matchTime / Math.max(1, matchDuration)) * 90))
+    const remainingMinutes = Math.max(0, 90 - minuteNow)
+    const canFinishEarly =
+        screen === 'match' &&
+        (matchStatus === 'playing' || matchStatus === 'paused') &&
+        !shootout &&
+        !whistlePending &&
+        Boolean(activeFixture) &&
+        blueScore - redScore >= 3
+
+    useEffect(() => {
+        if (!canFinishEarly) setFinishConfirm(false)
+    }, [canFinishEarly])
+
+    const finishMatchEarly = () => {
+        setFinishConfirm(false)
+
+        const blueSide = matchRoster.find((team) => team.id === 'blue')
+        const redSide = matchRoster.find((team) => team.id === 'red')
+
+        if (!blueSide || !redSide) return
+
+        const venue = activeFixture?.competition === 'wc' || activeFixture?.stage === 'final' ? 'neutral' : isBlueHome ? 'blue' : 'red'
+        const sim = simulateQuickMatch({
+            bluePlayers: blueSide.players.filter((player) => !sentOffIds.includes(player.id)),
+            redPlayers: redSide.players,
+            venue,
+        })
+        const extra = sim.goalEvents.filter((event) => event.minute > minuteNow)
+        const added = {
+            blue: extra.filter((event) => event.teamId === 'blue').length,
+            red: extra.filter((event) => event.teamId === 'red').length,
+        }
+
+        // Người đang trên sân coi như đá trọn phần còn lại (XP / thể lực đủ trận).
+        const onPitch = statsRef.current?.onPitchTime
+        const rest = Math.max(0, matchDuration - matchTime)
+
+        if (onPitch) {
+            blueSide.players.forEach((player) => {
+                if (!sentOffIds.includes(player.id) && !subbedOffIds.includes(player.id)) onPitch[player.id] = (onPitch[player.id] || 0) + rest
+            })
+        }
+
+        setBlueScore((score) => score + added.blue)
+        setRedScore((score) => score + added.red)
+        setGoalEvents((events) => [
+            ...events,
+            ...extra.map((event) => ({ teamId: event.teamId, name: event.name, ownGoal: false, minute: event.minute, simulated: true })),
+        ])
+        setMatchTime(matchDuration)
+        setAddedTime(0)
+        setAddedPlan(null)
+        setWhistlePending(null)
+        setWhistleForce(false)
+        setMatchStatus('paused')
+        setActionMessage(
+            `MATCH FINISHED · LAST ${remainingMinutes}' SIMULATED${extra.length ? ` · +${added.blue} / +${added.red}` : ' · NO MORE GOALS'}`,
+        )
+        setFinishRequest(Date.now())
+    }
+
+    // Tỉ số đã cập nhật → hết trận (luân lưu cúp vẫn được kiểm tra như thường).
+    useEffect(() => {
+        if (!finishRequest) return
+
+        setFinishRequest(null)
+        handleWhistleDone('full')
+    }, [finishRequest, handleWhistleDone])
+
     // Phase 40: CLB lên cấp (giải, cúp, World Cup, mô phỏng…) → hoạt cảnh, nhưng
     // không giữa trận và không trong màn mô phỏng (chưa lộ kết quả trước replay).
     useEffect(() => {
@@ -2649,6 +2742,36 @@ export default function GameScene() {
         if (level > seen.level) setLevelUp({ from: seen, to: { level, xp } })
         seenLevelRef.current = { level, xp }
     }, [club.level, club.xp, screen, levelUp])
+
+    // Phase 43: lên cấp World Cup cũng có hoạt cảnh (sau hoạt cảnh cấp CLB nếu
+    // cả hai cùng lên). Cấp WC tăng cấp thẻ cả đội tuyển trong World Cup.
+    const [wcLevelUp, setWcLevelUp] = useState(null)
+    const seenWcRef = useRef(worldCupProgress(boot.world))
+
+    useEffect(() => {
+        if (screen === 'match' || screen === 'simulation' || levelUp || wcLevelUp) return
+
+        const now = wcLevelOf(world.wcXp || 0)
+        const seen = seenWcRef.current
+
+        if (now.level > seen.level) {
+            const rewards = [
+                now.upgrade > seen.upgrade && { key: 'upgrade', icon: '+', label: `National team cards +${seen.upgrade} → +${now.upgrade}` },
+                { key: 'all', icon: '★', label: 'The whole national team, every World Cup match' },
+            ].filter(Boolean)
+
+            setWcLevelUp({
+                from: { level: seen.level, xp: seen.xp },
+                to: { level: now.level, xp: now.xp },
+                rewards,
+                note: now.max
+                    ? 'Max World Cup level reached'
+                    : `${now.xp} / ${now.xpForNext} XP to level ${now.level + 1}${now.nextUpgradeLevel ? ` · level ${now.nextUpgradeLevel} → +${now.nextUpgrade}` : ''}`,
+            })
+        }
+
+        seenWcRef.current = now
+    }, [world.wcXp, screen, levelUp, wcLevelUp])
 
     return (
         <main className={`app-shell${(screen === 'match' || screen === 'training') && compactLayout ? ' match-compact' : ''}${screen === 'match' || screen === 'training' ? ' is-match-screen' : ''}`}>
@@ -2872,6 +2995,8 @@ export default function GameScene() {
                             graphics={graphicsQuality}
                             autoGraphics={(settings.graphics || 'auto') === 'auto'}
                             paused={matchStatus === 'paused'}
+                            timeScale={speed}
+                            onSpeedTooSlow={handleSpeedTooSlow}
                             chargeHudRef={chargeHudRef}
                             radarRef={radarRef}
                             statsRef={statsRef}
@@ -3367,6 +3492,37 @@ export default function GameScene() {
                 <div className="autopilot-badge" role="status">
                     <b>AUTO PLAY</b>
                     <span>The AI is playing for you · press any key to take control</span>
+                    {/* Phase 43: tua nhanh ×2 (chỉ khi AUTO PLAY) */}
+                    {!shootout && (
+                        <button
+                            type="button"
+                            className={`speed-toggle${matchSpeed === 2 ? ' is-fast' : ''}`}
+                            onClick={(event) => {
+                                event.currentTarget.blur()
+                                setMatchSpeed((value) => (value === 2 ? 1 : 2))
+                            }}
+                            title="Play the AI match at double speed (back to 1× when you take control)"
+                        >
+                            {matchSpeed === 2 ? '▶▶ 2× · BACK TO 1×' : '▶▶ 2× SPEED'}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Phase 43: dẫn ≥ 3 bàn → kết thúc sớm (mô phỏng nốt thời gian còn lại). */}
+            {canFinishEarly && (
+                <div className="finish-early">
+                    {finishConfirm ? (
+                        <>
+                            <span>Simulate the remaining {remainingMinutes}' · full rewards?</span>
+                            <button type="button" className="btn btn--small btn--primary" onClick={finishMatchEarly}>FINISH</button>
+                            <button type="button" className="btn btn--small" onClick={() => setFinishConfirm(false)}>KEEP PLAYING</button>
+                        </>
+                    ) : (
+                        <button type="button" className="btn btn--small finish-early__btn" onClick={() => setFinishConfirm(true)}>
+                            ⏭ FINISH MATCH
+                        </button>
+                    )}
                 </div>
             )}
         </div>
@@ -3482,6 +3638,18 @@ export default function GameScene() {
 
             {levelUp && (
                 <LevelUpOverlay from={levelUp.from} to={levelUp.to} onClose={() => setLevelUp(null)} />
+            )}
+
+            {!levelUp && wcLevelUp && (
+                <LevelUpOverlay
+                    kind="wc"
+                    from={wcLevelUp.from}
+                    to={wcLevelUp.to}
+                    xpToNext={(level) => (level >= WC_MAX_LEVEL ? 0 : WC_LEVEL_XP[level - 1])}
+                    customRewards={wcLevelUp.rewards}
+                    note={wcLevelUp.note}
+                    onClose={() => setWcLevelUp(null)}
+                />
             )}
 
             {/* Phase 29A1: nhắc xoay ngang khi đang ở màn trận trên điện thoại. */}
