@@ -22,6 +22,7 @@ export const STAT_ROWS = [
     { key: 'tackles', label: 'Tackles won', value: (s, id) => team(s, id).tackles || 0 },
     { key: 'interceptions', label: 'Interceptions', value: (s, id) => team(s, id).interceptions || 0 },
     { key: 'duels', label: 'Duels won', value: (s, id) => team(s, id).duels || 0 },
+    { key: 'headers', label: 'Headers', value: (s, id) => team(s, id).headers || 0 },
     { key: 'saves', label: 'Saves', value: (s, id) => team(s, id).saves || 0 },
     { key: 'corners', label: 'Corners', value: (s, id) => team(s, id).corners || 0 },
     { key: 'fouls', label: 'Fouls', value: (s, id) => team(s, id).fouls || 0, compact: true },

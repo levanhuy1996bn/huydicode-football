@@ -1,6 +1,7 @@
 import { FIELD, clamp } from './constants'
 import { setPlayerAction, updatePlayerStates } from './playerState'
 import { trackVelocities } from './movement'
+import { attackDir } from './matchState'
 
 // ---- Hết hiệp / hết trận (yêu cầu playtest) ----
 //
@@ -25,11 +26,33 @@ export function isDeadBall(state) {
     return Boolean(state.deadBall || state.restart || state.pendingRestart || state.keeperHands)
 }
 
+// Phase 39: hết giờ bù đã báo mà bóng còn lăn — đợt tấn công đang dở được đá
+// nốt, nhưng thổi còi ngay khi đội đó mất bóng hoặc bóng về phần sân nhà
+// của họ (tấn công đã hết). Bóng chết vẫn thổi như cũ (isDeadBall).
+export function attackOver(ctx) {
+    const { state } = ctx
+    const ownerItem = state.possession ? ctx.byId?.get?.(state.possession) || ctx.players?.find((item) => item.id === state.possession) : null
+    const owner = ownerItem?.teamId || null
+    const watch = state.whistleWatch || (state.whistleWatch = { team: owner || state.lastTouchTeam || null })
+
+    if (!watch.team) {
+        watch.team = owner || state.lastTouchTeam || null
+        return false
+    }
+
+    if (owner && owner !== watch.team) return true
+
+    const ball = ctx.ballRef.current?.translation()
+
+    return Boolean(ball && owner === watch.team && ball.z * attackDir(state, watch.team) < -4)
+}
+
 export function startWhistle(ctx, type) {
     const { state } = ctx
     const ball = ctx.ballRef.current
 
     state.whistle = { type, time: 0, celebrated: false, done: false }
+    state.whistleWatch = null
     state.charge = null
     state.windup = null
     state.pendingPass = null

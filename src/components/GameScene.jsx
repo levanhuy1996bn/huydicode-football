@@ -11,7 +11,7 @@ import { fullscreenSupported, isFullscreen, isTouchDevice, setInMatch, toggleFul
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
-import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation } from '../services/quickSim'
+import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation, todayKey } from '../services/quickSim'
 import {
     CUP_MATCH_FACTOR,
     STAGE_LABELS,
@@ -61,6 +61,9 @@ import ControlsPanel from './ControlsPanel'
 import DevelopmentScreen from './screens/DevelopmentScreen'
 import MatchSidePanel from './MatchSidePanel'
 import TopBar from './screens/TopBar'
+import TrainingScreen from './screens/TrainingScreen'
+import { completeTrainingChallenge, trainingOpponent } from '../services/training'
+import LevelUpOverlay from './LevelUpOverlay'
 import HomeScreen from './screens/HomeScreen'
 import PreMatchScreen from './screens/PreMatchScreen'
 import PostMatchScreen from './screens/PostMatchScreen'
@@ -145,7 +148,7 @@ import {
 } from '../systems/roster'
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
-import { registerDevBudget } from '../utils/devTools'
+import { registerDevBudget, registerDevDailyReset } from '../utils/devTools'
 import { applyPreset } from '../services/lineupHelper'
 import MobileTabBar from './MobileTabBar'
 
@@ -190,6 +193,13 @@ function loadSettings() {
         if (saved && !saved.graphicsAuto) {
             if (merged.graphics === 'high') merged.graphics = 'auto'
             merged.graphicsAuto = true
+        }
+
+        // Phase 39: thẻ tên SMART mới (ô vị trí nhỏ + tên người đang có bóng) →
+        // bật SMART một lần cho mọi bản lưu; sau đó ai đổi sang ALL / OFF thì giữ.
+        if (!merged.labelsSmart39) {
+            merged.labelMode = 'smart'
+            merged.labelsSmart39 = true
         }
 
         return merged
@@ -264,6 +274,11 @@ export default function GameScene() {
 
     // Phase 34: bảng DEV (⚙ Settings → mã) ghi ngân sách EP.
     useEffect(() => registerDevBudget((value) => setClub((current) => ({ ...current, budget: value }))), [])
+    // Phase 41: DEV → reset lượt SIMULATE / World Cup trong ngày.
+    useEffect(() => registerDevDailyReset(() => {
+        setClub((current) => ({ ...current, simulations: null }))
+        setWorld((current) => ({ ...current, worldCupDaily: null }))
+    }), [])
     const chargeHudRef = useRef(null)
 
     const [selectedId, setSelectedId] = useState(() => {
@@ -290,6 +305,9 @@ export default function GameScene() {
 
     // Màn hình: 'home' | 'prematch' | 'match' | 'postmatch'
     const [screen, setScreen] = useState('home')
+    // Phase 40: hoạt cảnh lên cấp CLB — so cấp hiện tại với cấp đã thấy lần trước.
+    const [levelUp, setLevelUp] = useState(null)
+    const seenLevelRef = useRef({ level: club.level || 0, xp: club.xp || 0 })
     const [prematchFixtureId, setPrematchFixtureId] = useState(null)
     const [matchSummary, setMatchSummary] = useState(null)
     const [isClubOpen, setIsClubOpen] = useState(false)
@@ -358,6 +376,12 @@ export default function GameScene() {
     // Hết giờ nhưng chờ bóng chết mới thổi còi: 'half' | 'full' | null,
     // số giây bù giờ đã đá, máy đang đá thay người chơi (không bấm 10 giây).
     const [whistlePending, setWhistlePending] = useState(null)
+    // Phase 39: bù giờ được báo trước ({ type, minutes }); chạm trần → thổi ngay.
+    const [addedPlan, setAddedPlan] = useState(null)
+    const [whistleForce, setWhistleForce] = useState(false)
+    // Phase 39: thay người chờ bóng chết (hàng đợi) + bảng số của trọng tài bàn.
+    const [subQueue, setSubQueue] = useState([])
+    const [subSign, setSubSign] = useState(null)
     const [addedTime, setAddedTime] = useState(0)
     const [autoPilot, setAutoPilot] = useState(false)
     // Phase 29F: lệnh bật / tắt máy đá thay gửi engine (nút AUTO, màn nghỉ),
@@ -391,6 +415,10 @@ export default function GameScene() {
         shootoutResultRef.current = null
         setWhistlePending(null)
         setAddedTime(0)
+        setAddedPlan(null)
+        setWhistleForce(false)
+        setSubQueue([])
+        setSubSign(null)
         setAutoPilot(false)
         setHalftimeCountdown(null)
         setHalf(1)
@@ -651,8 +679,8 @@ export default function GameScene() {
         if (matchStatus !== 'playing') return undefined
 
         const interval = setInterval(() => {
-            // Đang bù giờ (chờ bóng chết): đồng hồ chính dừng, đếm giờ bù.
-            if (whistlePending) {
+            // Đang bù giờ: đồng hồ chính dừng ở 45:00 / 90:00, đếm giờ bù.
+            if (whistlePending || addedPlan) {
                 setAddedTime((current) => current + 0.25)
                 return
             }
@@ -663,24 +691,39 @@ export default function GameScene() {
         }, 250)
 
         return () => clearInterval(interval)
-    }, [matchStatus, whistlePending])
+    }, [matchStatus, whistlePending, addedPlan])
 
     // Hết 90 phút / hết hiệp 1: KHÔNG dừng ngay. Báo cho engine "đã hết giờ",
     // trận đá bù cho tới khi bóng chết (ra ngoài, bàn thắng, thủ môn ôm bóng),
     // trọng tài thổi còi, cầu thủ có hoạt cảnh rồi mới hiện bảng
     // (xem systems/whistle.js → handleWhistleDone).
+    //
+    // Phase 39: hết 45' / 90' → trọng tài báo số phút bù giờ (theo bàn thắng,
+    // thẻ phạt, thay người trong hiệp). Hết số phút đó mới bắt đầu chờ còi:
+    // bóng chết, hoặc đội đang tấn công mất bóng / bóng về sân nhà họ. Trần
+    // cứng +5 (hiệp 1) / +10 (hiệp 2): chạm trần là thổi ngay dù bóng đang lăn
+    // (trước đây không có trần → có lúc bù giờ chạy mãi).
     useEffect(() => {
-        if (matchStatus !== 'playing' || whistlePending) return
+        if (matchStatus !== 'playing' || whistlePending || addedPlan) return
 
-        if (half === 1 && matchTime >= matchDuration / 2) {
-            setMatchTime(matchDuration / 2)
-            setAddedTime(0)
-            setWhistlePending('half')
-        } else if (half === 2 && matchTime >= matchDuration) {
-            setAddedTime(0)
-            setWhistlePending('full')
-        }
-    }, [matchTime, matchStatus, half, whistlePending])
+        const type = half === 1 && matchTime >= matchDuration / 2 ? 'half' : half === 2 && matchTime >= matchDuration ? 'full' : null
+
+        if (!type) return
+
+        const inHalf = (minute) => (type === 'half' ? minute <= 45 : minute > 45)
+        const goals = goalEvents.filter((event) => inHalf(event.minute)).length
+        const cards = cardEvents.filter((event) => inHalf(event.minute)).length
+        const subs = subEvents.filter((event) => inHalf(event.minute)).length
+        const base = type === 'half' ? 1 : 2
+        const minutes = Math.round(Math.min(type === 'half' ? 4 : 7, Math.max(base, (
+            base + goals * 0.5 + cards * 0.3 + subs * 0.5 + Math.random() * 1.5
+        ))))
+
+        if (type === 'half') setMatchTime(matchDuration / 2)
+        setAddedTime(0)
+        setAddedPlan({ type, minutes })
+        setActionMessage(`ADDED TIME · +${minutes} MIN`)
+    }, [matchTime, matchStatus, half, whistlePending, addedPlan, goalEvents, cardEvents, subEvents])
 
     // Phase 29B: còi giao bóng + tiếng khán giả nền trong trận.
     const previousStatusRef = useRef(matchStatus)
@@ -772,6 +815,8 @@ export default function GameScene() {
 
     const handleWhistleDone = useCallback((type) => {
         setWhistlePending(null)
+        setAddedPlan(null)
+        setWhistleForce(false)
 
         if (type === 'half') {
             setMatchStatus('halftime')
@@ -1257,7 +1302,7 @@ export default function GameScene() {
 
     // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
     useEffect(() => {
-        setInMatch(screen === 'match')
+        setInMatch(screen === 'match' || screen === 'training')
         return () => setInMatch(false)
     }, [screen])
 
@@ -1427,6 +1472,7 @@ export default function GameScene() {
 
     const startWorldCup = (nationId) => {
         setNationPicker(false)
+        setWcSimResult(null)
 
         if (activeWorldCup || wcStartsLeft <= 0) return
 
@@ -1456,6 +1502,86 @@ export default function GameScene() {
         exitWorldCupSession()
         setWorld((current) => ({ ...current, worldCup: done }))
         setActionMessage(`WORLD CUP ${done.edition} SIMULATED · CHAMPIONS ${getTeamById(done.champion)?.name?.toUpperCase()}`)
+    }
+
+    // Phase 41: World Cup — mô phỏng trận kế tiếp của bạn (như SIMULATE ở giải
+    // VĐQG: dùng 1 lượt mô phỏng trong ngày, XP World Cup / XP CLB / tiền ×0.7).
+    const [wcSimResult, setWcSimResult] = useState(null)
+
+    const simulateNextWorldCup = () => {
+        const fixture = activeWorldCup ? nextWorldCupFixture(activeWorldCup) : null
+
+        if (!fixture || simulationsLeft(club) <= 0) return
+
+        const nationId = activeWorldCup.nationId
+        const isHome = fixture.homeTeamId === nationId
+        const opponentId = isHome ? fixture.awayTeamId : fixture.homeTeamId
+        const clubRoster = wcSessionRef.current ? clubRosterRef.current || roster : roster
+        const clubBlue = clubRoster.find((team) => team.id === 'blue')
+        const nationBlue = nationalTeamForMatch(clubBlue, nationId, { formationKey: clubBlue?.formationKey, upgrade: wcProgress.upgrade })
+        const simRoster = buildMatchRoster(
+            clubRoster.map((team) => (team.id === 'blue' ? nationBlue : team)),
+            getTeamById(opponentId),
+            { ...wcMatchOptions, formSeed: fixture.id },
+        )
+        const blueSide = simRoster.find((team) => team.id === 'blue')
+        const redSide = simRoster.find((team) => team.id === 'red')
+        const sim = simulateQuickMatch({ bluePlayers: blueSide.players, redPlayers: redSide.players, venue: 'neutral' })
+        const goalsFor = sim.blueScore
+        const goalsAgainst = sim.redScore
+        const after = recordWorldCupResult(
+            activeWorldCup,
+            fixture.id,
+            isHome ? goalsFor : goalsAgainst,
+            isHome ? goalsAgainst : goalsFor,
+        )
+        const applied = applyWorldCupMatch(world, after, fixture.id, { difficultyId: wcDifficulty.id, factor: SIM_REWARD_FACTOR })
+        const info = describeWorldCupResult(after, fixture.id)
+        const rewarded = applyMatchToClub(club, {
+            goalsFor,
+            goalsAgainst,
+            opponentStrength: nationStrength(opponentId),
+            rewardFactor: wcDifficulty.reward * (CUP_MATCH_FACTOR.wc || 1) * SIM_REWARD_FACTOR,
+        })
+        let nextClub = spendSimulation(rewarded.club)
+        let prizeLabel = null
+
+        if (after.status === 'done' && !after.skipped) {
+            const prize = Math.round((worldCupPrize(after.finalStanding) * wcDifficulty.reward * SIM_REWARD_FACTOR) / 100000) * 100000
+            const label = `World Cup ${after.edition} · ${WC_STANDING_LABELS[after.finalStanding] || 'finished'}`
+
+            if (prize > 0) {
+                const items = [epCard(prize, label)]
+
+                if (after.finalStanding === 'champion') items.push(playerPack('premium', label), protectionCard(label), formCard(label))
+
+                nextClub = { ...nextClub, inventory: [...(nextClub.inventory || []), ...items] }
+                prizeLabel = `${label} · ${formatMoney(prize)} card`
+            }
+        }
+
+        // Giải đã xong (bị loại / vô địch) → rời chế độ đội tuyển.
+        if (after.status === 'done') exitWorldCupSession()
+
+        setWorld(applied.world)
+        setClub(nextClub)
+        setWcSimResult({
+            id: `${fixture.id}-${Date.now()}`,
+            round: fixture.round,
+            nationId,
+            opponentId,
+            goalsFor,
+            goalsAgainst,
+            shootout: after.results?.[fixture.id]?.shootout || null,
+            isHome,
+            outcome: info?.outcome || null,
+            wcXp: applied.report.xp,
+            wcLevelsGained: applied.report.levelsGained,
+            clubXp: rewarded.report.xp,
+            prize: rewarded.report.prize,
+            finalPrize: prizeLabel,
+            done: after.status === 'done',
+        })
     }
 
     const openChangeClub = useCallback(() => {
@@ -1517,9 +1643,17 @@ export default function GameScene() {
 
     // Bù giờ: quy đổi giây thực ra phút:giây trận đấu (ví dụ "+1:20").
     const addedGameSeconds = Math.floor((addedTime / matchDuration) * 90 * 60)
-    const addedLabel = whistlePending
+    const addedLabel = whistlePending || addedPlan
         ? `+${Math.floor(addedGameSeconds / 60)}:${String(addedGameSeconds % 60).padStart(2, '0')}`
         : null
+
+    // Phase 39: hết số phút bù đã báo → chờ còi; chạm trần → thổi ngay.
+    useEffect(() => {
+        if (!addedPlan || matchStatus !== 'playing') return
+
+        if (!whistlePending && addedGameSeconds >= addedPlan.minutes * 60) setWhistlePending(addedPlan.type)
+        if (!whistleForce && addedGameSeconds >= (addedPlan.type === 'half' ? 5 : 10) * 60) setWhistleForce(true)
+    }, [addedPlan, addedGameSeconds, whistlePending, whistleForce, matchStatus])
 
     // Kiểm thử tự động (chỉ khi build với VITE_E2E=1; bản thường bị loại bỏ).
     if (import.meta.env.VITE_E2E && typeof window !== 'undefined') {
@@ -1599,8 +1733,15 @@ export default function GameScene() {
             return { ok: false, message }
         }
 
-        if (!isPrematch && substitutionCount >= MAX_SUBSTITUTIONS) {
+        // Phase 39: lượt đang chờ (bóng chết mới thay) cũng tính vào giới hạn.
+        const queued = options.fromQueue ? [] : subQueue
+
+        if (!isPrematch && substitutionCount + queued.length >= MAX_SUBSTITUTIONS) {
             return fail('No substitutions remaining.')
+        }
+
+        if (!isPrematch && queued.some((sub) => sub.outId === playerOutId || sub.inId === playerInId)) {
+            return fail('That substitution is already waiting for the next stoppage.')
         }
 
         if (!isPrematch && subbedOffIds.includes(playerInId)) {
@@ -1630,6 +1771,16 @@ export default function GameScene() {
 
         if (outIsKeeper !== inIsKeeper) {
             return fail('A goalkeeper can only be replaced by a goalkeeper.')
+        }
+
+        // Phase 39: trong trận (bóng có thể đang lăn) → xếp hàng, thay ở lần bóng
+        // chết tiếp theo với hoạt cảnh (MatchWorld → systems/substitution.js).
+        // Nghỉ giữa hiệp: thay ngay.
+        if (!isPrematch && !options.fromQueue && ['playing', 'paused', 'goal'].includes(matchStatus)) {
+            setSubQueue((list) => [...list, { outId: playerOutId, inId: playerInId, outName: outgoing.name, inName: incoming.name, outNumber: outgoing.number, inNumber: incoming.number }])
+            setActionMessage(`SUBSTITUTION READY · ${shortPlayerName(incoming.name, 16).toUpperCase()} ON AT THE NEXT STOPPAGE`)
+
+            return { ok: true, message: `${incoming.name} will come on for ${outgoing.name} at the next stoppage.` }
         }
 
         const benchIndex = blueTeam.substitutes.findIndex(
@@ -1917,6 +2068,39 @@ export default function GameScene() {
     }
 
     // Mở bảng thay người: đang đá thì tạm dừng, đóng lại thì đá tiếp.
+    // Phase 39: engine báo các bước thay người (bóng chết → bảng số → người ra
+    // đi tới đường biên → đập tay → người vào chạy vào sân).
+    const subQueueRef = useRef(subQueue)
+    subQueueRef.current = subQueue
+
+    const handleSubStart = useCallback((sub) => {
+        setSubSign({ ...sub, teamName: userTeam().name })
+    }, [])
+
+    const handleSubSwap = (sub) => {
+        const result = substitutePlayer(sub.outId, sub.inId, { fromQueue: true })
+
+        if (!result?.ok) setActionMessage(result?.message?.toUpperCase() || 'SUBSTITUTION CANCELLED')
+    }
+
+    const handleSubDone = useCallback((sub) => {
+        setSubSign(null)
+        setSubQueue((list) => list.filter((item) => !(item.outId === sub.outId && item.inId === sub.inId)))
+    }, [])
+
+    const cancelQueuedSub = (sub) => {
+        setSubQueue((list) => list.filter((item) => item !== sub))
+    }
+
+    // Hết hiệp 1: thay luôn các lượt còn chờ (đang nghỉ giữa hiệp).
+    useEffect(() => {
+        if (matchStatus !== 'halftime' || !subQueue.length) return
+
+        subQueue.forEach((sub) => substitutePlayer(sub.outId, sub.inId, { fromQueue: true }))
+        setSubQueue([])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [matchStatus])
+
     const openSubstitutions = () => {
         setLineupMode('match')
 
@@ -2056,7 +2240,40 @@ export default function GameScene() {
         else if (tab === 'cards') openCards()
         else if (tab === 'trophies') openTrophies()
         else if (tab === 'worldcup') openWorldCupScreen()
+        else if (tab === 'training') openTraining()
     }
+
+    // Phase 42: TẬP LUYỆN — đội của bạn gặp một đội tập (độ khó chọn được).
+    const [trainingLevel, setTrainingLevel] = useState('normal')
+    const trainingSide = useMemo(() => trainingOpponent(trainingLevel), [trainingLevel])
+    const trainingRoster = useMemo(() => {
+        if (screen !== 'training' || !trainingSide.club) return null
+
+        const opponentId = trainingSide.club.id
+
+        return applyKits(
+            buildMatchRoster(roster, trainingSide.club, { difficulty: trainingSide.level.difficulty, season: league.season }),
+            resolveMatchKits(userClubId(), opponentId),
+            opponentId,
+        )
+    }, [screen, roster, trainingSide, league.season])
+
+    const openTraining = () => {
+        exitWorldCupSession()
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        setScreen('training')
+    }
+
+    // Phase 42: người đá phạt (PLAY → TEAM SETUP → SET PIECES, và trong TRAINING).
+    const updateSetPieceTakers = (takers) => {
+        setRoster((current) => current.map((team) => (team.id === 'blue' ? { ...team, setPieceTakers: takers } : team)))
+    }
+
+    const rewardTrainingChallenge = useCallback((amount) => {
+        setClub((current) => completeTrainingChallenge(current, todayKey(), amount))
+    }, [])
 
     // Phase 29H: màn WORLD CUP (tab riêng).
     const openWorldCupScreen = () => {
@@ -2420,8 +2637,21 @@ export default function GameScene() {
 
     const inMatch = screen === 'match' && matchStatus !== 'fulltime' && matchStatus !== 'idle'
 
+    // Phase 40: CLB lên cấp (giải, cúp, World Cup, mô phỏng…) → hoạt cảnh, nhưng
+    // không giữa trận và không trong màn mô phỏng (chưa lộ kết quả trước replay).
+    useEffect(() => {
+        if (screen === 'match' || screen === 'simulation' || levelUp) return
+
+        const level = club.level || 0
+        const xp = club.xp || 0
+        const seen = seenLevelRef.current
+
+        if (level > seen.level) setLevelUp({ from: seen, to: { level, xp } })
+        seenLevelRef.current = { level, xp }
+    }, [club.level, club.xp, screen, levelUp])
+
     return (
-        <main className={`app-shell${screen === 'match' && compactLayout ? ' match-compact' : ''}${screen === 'match' ? ' is-match-screen' : ''}`}>
+        <main className={`app-shell${(screen === 'match' || screen === 'training') && compactLayout ? ' match-compact' : ''}${screen === 'match' || screen === 'training' ? ' is-match-screen' : ''}`}>
             <TopBar
                 screen={screen}
                 inMatch={inMatch}
@@ -2430,6 +2660,7 @@ export default function GameScene() {
                 onNavigate={navigate}
                 cardsCount={(club.inventory || []).length + achievementsPending}
                 clubLevel={club.level || 0}
+                clubXp={club.xp || 0}
                 budget={club.budget || 0}
                 onOpenSettings={openSettings}
             />
@@ -2440,7 +2671,7 @@ export default function GameScene() {
                 onNavigate={navigate}
                 cardsCount={(club.inventory || []).length + achievementsPending}
                 onOpenSettings={openSettings}
-                hidden={screen === 'match'}
+                hidden={screen === 'match' || screen === 'training'}
             />
 
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
@@ -2479,6 +2710,8 @@ export default function GameScene() {
                     onChangeClub={openChangeClub}
                     worldCup={wcHomeInfo}
                     onOpenWorldCup={openWorldCupScreen}
+                    onOpenTraining={openTraining}
+                    trainingDone={club.trainingDaily?.date === todayKey() && club.trainingDaily?.done}
                     simsLeft={simsLeft}
                     onSimulate={() => runQuickSimulation(nextFixture)}
                 />
@@ -2502,6 +2735,7 @@ export default function GameScene() {
                     difficulty={prematchFixture?.competition === 'wc' ? wcDifficulty : difficulty}
                     difficultyLocked={prematchFixture?.competition === 'wc' ? 'wc' : difficultyLocked}
                     onDifficultyChange={changeDifficulty}
+                    onTakersChange={updateSetPieceTakers}
                     simsLeft={simsLeft}
                     onSimulate={prematchFixture?.competition === 'wc' ? null : () => runQuickSimulation(prematchFixture)}
                     onKickOff={kickOff}
@@ -2540,7 +2774,30 @@ export default function GameScene() {
                     onStart={() => setNationPicker(true)}
                     onPlay={() => openPrematch(wcNextFixture)}
                     onSimulateRest={simulateRestWorldCup}
+                    onSimulateNext={simulateNextWorldCup}
+                    simsLeft={simulationsLeft(club)}
+                    simResult={wcSimResult}
                     onBack={goHome}
+                />
+            )}
+
+            {screen === 'training' && trainingRoster && (
+                <TrainingScreen
+                    roster={trainingRoster}
+                    blueTeam={roster.find((team) => team.id === 'blue')}
+                    onTakersChange={updateSetPieceTakers}
+                    level={trainingLevel}
+                    onLevelChange={setTrainingLevel}
+                    opponentName={trainingSide.club?.name || 'TRAINING XI'}
+                    userTeamName={userTeam().name}
+                    graphics={graphicsQuality}
+                    autoGraphics={(settings.graphics || 'auto') === 'auto'}
+                    settings={settings}
+                    touchUI={touchUI}
+                    portrait={portraitTouch}
+                    challengeState={club.trainingDaily}
+                    onChallengeReward={rewardTrainingChallenge}
+                    onExit={goHome}
                 />
             )}
 
@@ -2627,6 +2884,11 @@ export default function GameScene() {
                             tacticKey={tacticKey}
                             matchDuration={matchDuration}
                             whistlePending={whistlePending}
+                            whistleForce={whistleForce}
+                            pendingSub={subQueue[0] || null}
+                            onSubStart={handleSubStart}
+                            onSubSwap={handleSubSwap}
+                            onSubDone={handleSubDone}
                             onWhistleDone={handleWhistleDone}
                             onAutoPilotChange={setAutoPilot}
                             idleLimit={settings.autoPlayDelay || 10}
@@ -2708,6 +2970,8 @@ export default function GameScene() {
                     >
                         {timeLabel}
                         {addedLabel && <span className="added-time">{addedLabel}</span>}
+                        {/* Phase 39: số phút bù giờ trọng tài bàn báo */}
+                        {addedPlan && <span className="added-board" title="Added time announced">+{addedPlan.minutes}'</span>}
                     </div>
 
                     <div
@@ -3173,6 +3437,22 @@ export default function GameScene() {
                 />
             )}
 
+            {/* Phase 39: bảng số thay người của trọng tài bàn */}
+            {screen === 'match' && subSign && (
+                <div className="sub-sign" role="status" aria-live="polite">
+                    <div className="sub-sign__head">SUBSTITUTION · {subSign.teamName}</div>
+                    <div className="sub-sign__board">
+                        <span className="sub-sign__num is-out">{subSign.outNumber}</span>
+                        <span className="sub-sign__arrows">⇄</span>
+                        <span className="sub-sign__num is-in">{subSign.inNumber}</span>
+                    </div>
+                    <div className="sub-sign__names">
+                        <span className="is-out">▼ {shortPlayerName(subSign.outName, 18)}</span>
+                        <span className="is-in">▲ {shortPlayerName(subSign.inName, 18)}</span>
+                    </div>
+                </div>
+            )}
+
             {isSubsOpen && (
                 <div className="modal-host">
                     <SubstitutionBoard
@@ -3185,6 +3465,8 @@ export default function GameScene() {
                         onSubstitute={(outId, inId) =>
                             substitutePlayer(outId, inId, { prematch: lineupMode === 'prematch' })
                         }
+                        pendingSubs={lineupMode === 'prematch' ? [] : subQueue}
+                        onCancelPending={cancelQueuedSub}
                         onSwap={swapStarters}
                         onMoveSquad={moveSquadPlayer}
                         onSetLineup={lineupMode === 'prematch' ? setBlueLineup : null}
@@ -3198,8 +3480,12 @@ export default function GameScene() {
                 </div>
             )}
 
+            {levelUp && (
+                <LevelUpOverlay from={levelUp.from} to={levelUp.to} onClose={() => setLevelUp(null)} />
+            )}
+
             {/* Phase 29A1: nhắc xoay ngang khi đang ở màn trận trên điện thoại. */}
-            {screen === 'match' && portraitTouch && (
+            {(screen === 'match' || screen === 'training') && portraitTouch && (
                 <div className="rotate-prompt" role="alert">
                     <div className="rotate-prompt__phone" aria-hidden="true" />
                     <b>TURN YOUR PHONE SIDEWAYS</b>

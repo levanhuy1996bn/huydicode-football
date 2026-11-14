@@ -12,7 +12,9 @@ import { updatePlayerStates } from './playerState'
 import { recordPossession } from './matchStats'
 import { updateDuels, updateShield } from './duels'
 import { updateStamina } from './stamina'
-import { isDeadBall, startWhistle } from './whistle'
+import { attackOver, isDeadBall, startWhistle } from './whistle'
+import { startSubstitution, stepSubstitution } from './substitution'
+import { judgeTraining, stepTraining } from './training'
 import { stepShootout } from './shootout'
 
 function tickTimers(state, dt) {
@@ -50,6 +52,15 @@ export function stepMatch(ctx, dt) {
         return
     }
 
+    // Phase 42: tập luyện — đặt bóng / chờ đá / xem kết quả.
+    if (state.training) {
+        if (stepTraining(ctx, dt)) return
+
+        stepPlay(ctx, dt)
+        judgeTraining(ctx)
+        return
+    }
+
     // Đã hết giờ và bóng chết: thổi còi (xem whistle.js). Sau bàn thắng /
     // bóng ra ngoài thì chờ hết nhịp ăn mừng / đặt bóng (goalCooldown) trước.
     if (ctx.whistlePending && !state.whistle && isDeadBall(state)) {
@@ -59,6 +70,23 @@ export function stepMatch(ctx, dt) {
         }
 
         startWhistle(ctx, ctx.whistlePending)
+        return
+    }
+
+    // Phase 39: hết giờ bù đã báo, bóng còn lăn → thổi khi đợt tấn công kết thúc;
+    // chạm trần (+5 hiệp 1 / +10 hiệp 2) → thổi ngay.
+    if (ctx.whistlePending && !state.whistle && !state.subSeq && (ctx.whistleForce || attackOver(ctx))) {
+        startWhistle(ctx, ctx.whistlePending)
+        return
+    }
+
+    // Phase 39: thay người chỉ khi bóng chết, có hoạt cảnh (substitution.js).
+    if (state.subSeq) {
+        stepSubstitution(ctx, dt)
+        return
+    }
+
+    if (ctx.pendingSub && !ctx.whistlePending && isDeadBall(state) && startSubstitution(ctx, ctx.pendingSub)) {
         return
     }
 
@@ -215,7 +243,8 @@ function stepPlay(ctx, dt) {
     // 8. Vận tốc + state machine (animation đọc kết quả này).
     trackVelocities(ctx, dt)
     updatePlayerStates(ctx, dt)
-    updateStamina(ctx, dt)
+    // Phase 42: tập luyện không mệt.
+    if (!state.training) updateStamina(ctx, dt)
 
     const finalBall = ball.translation()
     state.ballPosition.x = finalBall.x

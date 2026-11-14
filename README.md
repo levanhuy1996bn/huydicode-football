@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31–36 — all done ✅ (2026-11-14).** Latest: 36 (pass power assist, open-lane choice, throw-in options, thrower steps back in), 35 (AI closes down at 2–3 m, PRESS / E + arrows to charge and shoulder) and 34 (DEV code, World Cup button / player XP / consolation, back-pass rule, shots never backwards). **Next:** 37 headers. Before that 33 (CARDS rewards grouped) and 32 (OVR colour tiers: rows tinted and cards ringed white / green / gold / pink-red / purple / prism by card OVR) and 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). Planned: 37; the backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13). Card seasons and real data are in the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31–42 — all done ✅ (2026-11-14).** Latest: 42 (TRAINING mode: penalties, penalty saves, free kicks, corners and finishing on the 3D pitch, set-piece takers, daily challenge +2M EP), 38 (goalkeepers predict shots with air drag and always dive in time, slow balls in the box taken in the hands and thrown short, far fewer floaty chip shots), 41 (phone SWAP bar, +N on lineups, AUTO points in PLAYERS, buy several cards, DEV daily reset, World Cup SIMULATE NEXT), 40 (club level ring, level-up animation, upgrade screen fixes, +10 cards always fit and in top form), 39 (SMART name tags with positions, yellow card on the tag, announced added time with a +10 cap, substitutions only at a dead ball with the fourth official's board), 37 (headers: jump and head at goal, clear or pass with the head, aerial duels by height / strength, real crosses from corners and wide lobs, jump animation, a header back to the keeper may be handled), 36 (pass power assist, open-lane choice, throw-in options, thrower steps back in), 35 (AI closes down at 2–3 m, PRESS / E + arrows to charge and shoulder) and 34 (DEV code, World Cup button / player XP / consolation, back-pass rule, shots never backwards). **Next:** all planned phases are done — the backlog has individual player skills / traits, card seasons / real data, player wages and two training extras (aim preview line, dribbling cones). Before that 33 (CARDS rewards grouped) and 32 (OVR colour tiers: rows tinted and cards ringed white / green / gold / pink-red / purple / prism by card OVR) and 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). The backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13). Card seasons and real data are in the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -268,6 +268,7 @@ ultimate-football-manager-3d/
     │   ├── teamColor.js      # team color: card level color + club color of the XI (Phase 26D)
     │   ├── cupService.js     # C1 / C2: qualification, draw, groups, knockouts, shoot-outs, calendar (Phase 27)
     │   ├── quickSim.js       # quick simulation: team ratings, instant result, 5 per day (Phase 28)
+    │   ├── training.js       # TRAINING: drill info, training opponent by level, daily challenge (Phase 42)
     │   ├── trophyService.js  # trophies + career: catalog of 39 trophies, awarding, backfill from history (Phase 28B)
     │   ├── nationalTeams.js  # national squads: nationality pools, call-ups, strength (Phase 29E)
     │   ├── worldCupService.js # World Cup: draw, groups, knockouts, simulation, results, prizes (Phase 29E)
@@ -288,6 +289,9 @@ ultimate-football-manager-3d/
     │   ├── tactics.js        # per-team tactics, opponent tactic changes, counter-press
     │   ├── goalkeeper.js     # keeper positioning, save plans, catching
     │   ├── duels.js          # shielding, shoulder duels, poked tackles
+    │   ├── substitution.js   # dead-ball substitution: walk-off, high five, run-on (Phase 39)
+    │   ├── training.js       # TRAINING drills in the engine: set-up, waiting for your kick, judging each try (Phase 42)
+    │   ├── headers.js        # headers: jump reach, aerial duels, header shot / pass / clearance (Phase 37)
     │   ├── attributes.js     # detailed attributes derived from the 6 main stats (+ height / weight, 26C)
     │   ├── physique.js       # height / weight: generation, attribute effects, aerial / keeper reach, body scale (Phase 26C)
     │   ├── touchInput.js     # analog joystick direction shared with control.js (Phase 29A2)
@@ -323,8 +327,12 @@ ultimate-football-manager-3d/
         ├── screens/CardsScreen.jsx # CARDS tab: club level, open packs / EP cards (Phase 23), UPGRADE CARDS (Phase 25)
         ├── UpgradePanel.jsx      # pick main card, material, extra cards, success % (Phase 25)
         ├── UpgradeAnimation.jsx  # FC Online-style upgrade animation (Phase 25)
+        ├── LevelRing.jsx         # level ring: black disc, LV + number, green XP arc (Phase 40)
+        ├── LevelUpOverlay.jsx    # club level-up animation with rewards (Phase 40)
         ├── CardBits.jsx          # PlayerCardView, + badge, coloured stat numbers (Phase 25)
         ├── SubstitutionBoard.jsx
+        ├── SetPieceTakers.jsx    # choose penalty / free-kick / corner takers (Phase 42)
+        ├── screens/TrainingScreen.jsx # TRAINING: 3D pitch + drill panel, scores, daily challenge (Phase 42)
         ├── MatchSidePanel.jsx
         ├── Player.jsx
         ├── Pitch.jsx
@@ -427,7 +435,12 @@ The project currently uses browser LocalStorage for local game progress.
 | 34 | Fixes & tools: DEV code in Settings (set budget, +% upgrade), WORLD CUP button instead of LEAGUE TABLE, World Cup XP for club players + group-stage consolation, keeper can't handle a deliberate back pass, shots never go backwards | ✅ Done (2026-11-13) |
 | 35 | Defending: AI keeps 2–3 m when closing down (fewer scuffles), PRESS button on phones (hold = chase + shoulder), E + arrows / X on desktop = charge in and shoulder | ✅ Done (2026-11-13) |
 | 36 | AI receiving and throw-ins (FIFA / FO4 style): pass power assist, open-lane choice, easier first touch, throw-in options and target range, thrower steps back in, runners start on W | ✅ Done (2026-11-14) |
-| 37 | Headers: jump and head (shot, clearance, header pass), aerial duels by height / strength, jump animation | 🔜 Next |
+| 37 | Headers: jump and head (shot, clearance, header pass), aerial duels by height / strength, jump animation | ✅ Done (2026-11-14) |
+| 38 | Shooting and goalkeepers: keeper predicts with air drag and dives in time, near misses dived at, slow balls in the box caught in the hands, short distribution first, fewer floaty chips (AI and phone swipe) | ✅ Done (2026-11-14) |
+| 39 | On the pitch: SMART name tags (position instead of shirt number), yellow card on the tag, announced added time (+5 / +10 cap, ends when the attack ends), substitutions only at a dead ball with board / walk-off / high five | ✅ Done (2026-11-14) |
+| 40 | Levels: club level ring in the top bar, club level-up animation, player level-up shine, upgrade result hidden until revealed, one CONTINUE button, +10 cards always 100% fit and top form | ✅ Done (2026-11-14) |
+| 42 | TRAINING mode: five drills (penalties, penalty saves, free kicks, corners, finishing) with scores and best streaks, choose set-piece takers, daily challenge (+2M EP once a day) | ✅ Done (2026-11-14) |
+| 41 | Phone & management: SWAP bar at the bottom of the lineup board, +N on lineups, AUTO points in PLAYERS, buy several copies, DEV reset of daily limits, World Cup SIMULATE NEXT (×0.7) | ✅ Done (2026-11-14) |
 | 29B | Graphics quality HIGH / LOW, stadium with crowd, 3D trophy, match sounds, FPS counter, lazy-loaded 3D engine, release preparation | ✅ Done (2026-11-12) |
 | 29C | Card upgrade insurance (bonus after each failure) + protection cards (no level drop), xG counts rebounds and deflections | ✅ Done (2026-11-12) |
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
@@ -435,6 +448,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 29F | AI and ball feel: long shots / long passes by stats, Composure attribute, receivers meet the ball, passes +12 % / shots +10 % faster, new crowd sound + crowd volume, reliable auto play (delay setting, AUTO PLAY button, second half starts by itself) | ✅ Done (2026-11-12) |
 | Backlog | Individual player skills / traits | 💤 Later |
 | Backlog | Card seasons and real player data (was Phase 30, moved to the backlog on 2026-11-12) | 💤 Later |
+| Backlog | Player wages (pay per match, or remove) | 💤 Later |
+| Backlog | Training extras: aim preview line while charging, dribbling cones / skill-move drills | 💤 Later |
 
 ### Status check (2026-11-09)
 
@@ -1763,6 +1778,115 @@ Ten playtest requests on 2026-11-13, analysed and grouped into four phases (smal
 - **36 — AI receiving and throw-ins** (FIFA / FO4 behaviour, from general knowledge — web search is off for this organisation): the receiver starts moving to the predicted meeting point as soon as the ball leaves the passer's foot; the passer prefers passes the receiver can reach (fewer balls out of play); on throw-ins two teammates come short and the thrower steps back onto the pitch; a missed pass is chased by the nearest teammate.
 - **37 — Headers.** Balls above ~1.7 m are ignored today (only feet / chest). New: jump and head — a cross + D = header at goal, defenders clear with the head, S = header pass; aerial duels decided by height, strength and timing; a jump-and-head animation; a header back to the keeper may be handled (only foot back passes are banned, Phase 34).
 
+### Phases 38–41 — plan (agreed 2026-11-14)
+
+Twelve playtest requests on 2026-11-14, grouped into four phases (no tiny phases). Order chosen by the user: lightest first — **40 → 41 → 39**, then **38** (the heaviest) after a playtest. Wages moved to the backlog.
+
+- **38 — Shooting and goalkeepers:** measure your shots first (many floaty, weak shots dropping next to the keeper); firmer quick shots; the keeper's ball prediction ignores air drag today (a shot predicted "over the bar" dips in while he watches) → fix and make him dive at every on-target shot (a failed save is a late / short dive, never standing still); slow balls into the box caught in the hands, not trapped with the feet; short throws / rolls first, long kicks only when nobody is free.
+- **39 — On the pitch:** SMART name tags, yellow card on the tag, announced added time with caps, dead-ball substitutions with animation.
+- **40 — Levels and animations:** level ring, level-up animation, upgrade screen fixes, +10 card perk.
+- **41 — Phone and management:** SWAP placement on phones, +N on lineups, points in PLAYERS without switching tabs, buy quantity, DEV daily reset, World Cup SIMULATE NEXT.
+
+Answers given with the plan: top speed is capped (6.4 + Sprint/80 × 2.2 m/s: Sprint 80 ≈ 31 km/h, 99 ≈ 33 km/h, hard cap 10.5 m/s ≈ 38 km/h; keepers 8 m/s; tired players slower); second-division clubs do not play C1 / C2 (entries come from last season's top-division table — promote, finish high, play the cups the season after); phones keep tap-tap swapping instead of drag and drop.
+
+### Phase 42 — TRAINING mode ✅ (2026-11-14)
+
+Requested on 2026-11-14 (penalty and corner practice, plus ideas); agreed: all five drills, set-piece takers and the daily challenge now; dribbling cones and an aim preview line stay in the backlog. Code: `systems/training.js`, `services/training.js`, `components/screens/TrainingScreen.jsx`, `components/SetPieceTakers.jsx` (all new), `systems/shootout.js` (training mode), `systems/rules.js` (chosen takers), `systems/matchEngine.js`, `systems/movement.js`, `components/MatchWorld.jsx` (`trainingCommand`), `GameScene.jsx`, `HomeScreen.jsx`, `MobileTabBar.jsx`, `PreMatchScreen.jsx`, CSS at the end of `styles.css`.
+
+- **Where:** a **TRAINING** strip on HOME (shows whether today's challenge is done) and **MORE → TRAINING** on phones. Your current XI plays a training side chosen by level: **Easy** (a weak club), **Normal** (an average club), **Hard** (the strongest club in the world with +7 cards).
+- **No clock, no fatigue, nothing recorded:** no match stats, XP, form, fitness or prize money (so it can't be farmed). After every try (goal, save, ball out, cleared, foul, time up) the result shows for ~1.4 s and the ball is set up again.
+- **Five drills:**
+  - **PENALTIES** — the shoot-out engine with the camera behind the taker; ← / → aim, hold D for power. Your chosen penalty taker takes every kick (otherwise your best finishers in turn).
+  - **PENALTY SAVES** — the training side shoots; hold ← / → to dive (↓ stay in the middle).
+  - **FREE KICKS** — spots: central 20 m, left / right ~24 m, wide 30 m (left or right, with the box packed for a cross) or random; wall and keeper; D shoot, Z+D curl, Q+D chip, C+D outside foot, S / A pass or cross.
+  - **CORNERS** — left or right; five of your players in the box (tallest first) taking a step back for a run, four of them marked from behind, the edge-of-the-box player free and a defender on the near post; the defenders react ~0.6 s after the kick. A with no arrow = cross to the best header; Z+A whipped, A,A low; header goals are counted.
+  - **FINISHING** — the ball at your striker's feet at a random spot 14–25 m out, alone against the keeper (option: one defender in front); everyone else stands still; 9 s per chance.
+- **Scores per drill:** successes / tries, rate, current streak and **best streak** (kept on this device), plus header goals for corners. RESET BALL, CLEAR SCORE, PAUSE, EXIT; the panel folds away (folded by default on phones); key hints for the drill at the bottom.
+- **Set-piece takers (FO4 style):** PLAY → TEAM SETUP → **SET PIECES** (also inside TRAINING for the current drill): penalties (Finishing / Composure shown), free kicks (Long shots), corners (Long passing); AUTO = best stat as before. Saved with the squad and used in every match (and first in shoot-outs); a taker who is not on the pitch falls back to AUTO.
+- **Daily challenge:** one per day (same for the day): score 8 of 10 penalties, 3 of 10 free kicks (random spots), 1 of 10 corners, 6 of 10 chances with a defender, or save 3 of 10 penalties. 10 tries, stops early when it can no longer be won; RETRY as often as you like; success pays **2,000,000 EP** once a day.
+- **Tested:** every drill in the browser (penalties scored and missed, saves by diving, free kicks blocked by the wall, corners won and headed at goal by your players, finishing goals / saves), chosen penalty / corner / free-kick takers used in training and in a real match, challenge completed → +2M EP once and HOME shows "done ✓", phone landscape (panel, MORE entry, touch buttons), desktop regression unchanged.
+
+### Phase 38 — Shooting and goalkeepers ✅ (2026-11-14)
+
+Code: `systems/goalkeeper.js` (prediction, late dive, `keeperMayHandle` / `keeperClaim`, collecting loose balls), `systems/ball.js` (keeper pickup in the box = hands; `lastKick.variant` / `user` for tests), `systems/carrierAI.js` (distribution, AI chips), `components/TouchControls.jsx` (longer swipe on SHOOT).
+
+Measured first with new browser tests: your shots from 6–25 m with ↑ / ↓ aim and four hold lengths, AI vs AI matches with every shot logged (speed, height at the keeper, keeper plan and animation, outcome), and slow balls rolled into both boxes. Findings:
+
+- Your normal shots were not weak (31–38 m/s, low). The "floaty, slow ball dropping in front of the keeper" was the **chip**: AI teams chipped in 4–5 of every 10–12 shots (the "keeper off his line" test counted a keeper simply standing at his normal spot), and on phones a small thumb slide up while holding SHOOT (22 px) turned the shot into a chip.
+- The keeper predicted shots **without air drag** (the ball has drag on every axis): a real ball arrives later and lower, so a shot planned as "over the bar" dipped in while he watched — logged once in the baseline (chip planned off target → goal).
+- A close, hard shot could arrive before the keeper's reaction time ended for a planned failed save — the plan was resolved before the dive started, so he did not move at all (baseline: planned dive, keeper idle, goal).
+
+Changes:
+
+- **Keeper prediction with air drag:** time to reach him / the line, the crossing point and the height now use the same drag model as the ball (also for curling shots). A ball that stops before reaching him is left to the loose-ball logic.
+- **Always reacts in time:** a failed save still starts its (late, short) dive at least ~0.1 s before the ball arrives. **Near misses** (within ~1.2 m of a post or the bar) are dived at too, like a real keeper, instead of being watched.
+- **Hands, not feet:** inside his own box a keeper who touches an opponent's ball (shot, cross, rebound, a ball deflected off his own defender, a header back) takes it **in his hands** — before, a slow ball reached by the normal pickup logic was trapped with the feet and booted upfield. Deliberate foot passes back still have to be played with the feet (Phase 34). He also **comes out to collect** slow loose balls in his box when he gets there before the attackers.
+- **Short distribution first:** from his hands the keeper looks through all teammates 6–35 m away for one who is free (no opponent within 5 m) and throws / rolls it; nobody free → he holds the ball up to ~3 s for players to get open, then accepts a slightly tighter option, and only then kicks long.
+- **Fewer floaty chips:** AI chips only when the keeper has really come off his line (> 7.8 m) from 12–26 m. On phones the SHOOT button needs a 44 px swipe (was 22) before it becomes chip / finesse / trivela.
+- **Results** (browser tests, small samples): AI chips 5 of 12 shots → 0 of 12; keeper dives on your aimed shots 8 of 23 → 8 of 15, and every planned dive now actually starts (baseline had a planned dive with the keeper standing still); slow balls rolled into the box: every one the keeper reached was taken in the hands (8 of 8; defenders got the others), back passes played with the feet; distribution after a catch 6 short throws / 1 long kick; penalty shoot-out, AI vs AI (77% passes, throw-ins 4/4) and desktop regression unchanged.
+
+### Phase 39 — On the pitch: name tags, cards, added time, substitutions ✅ (2026-11-14)
+
+Code: `components/Player.jsx` (`NameTag`), `components/MatchWorld.jsx` (`BallScreenTracker`, leaving player kept on screen), `systems/substitution.js` (new), `systems/whistle.js` (`attackOver`), `systems/matchEngine.js`, `components/GameScene.jsx` (added time, substitution queue, board), `components/SubstitutionBoard.jsx`, CSS at the end of `styles.css`.
+
+- **SMART name tags** (now the default; every save is switched to SMART once, ALL / OFF still in ⚙ Settings → Player names and CONTROLS):
+  - The coloured box shows the **position** (GK, CB, CM, ST…) instead of the shirt number.
+  - SMART: the full name only for your selected player, the ball carrier and the intended receiver; everybody else has just a small, slightly transparent position box.
+  - A tag that sits over the ball on screen fades to 15%, so the ball is never hidden behind names.
+- **Yellow card on the tag:** a small yellow card next to the position of every booked player (also in OFF mode, where it is the only thing shown).
+- **Added time like a real match:**
+  - At 45:00 / 90:00 the clock stops and the fourth official's number appears next to it (**+N'**): 1–4 minutes in the first half, 2–7 in the second, from goals, cards and substitutions in that half plus a little random.
+  - The added time counts up (+m:ss). When the announced time is up, the referee whistles at the first dead ball **or** as soon as the attacking team loses the ball / the ball goes back into its own half.
+  - **Hard cap: +5 in the first half, +10 in the second** — the whistle goes even with the ball in play (before, added time had no limit and could run "90+1000").
+- **Substitutions only at a dead ball:**
+  - During the match a substitution is queued ("will come on at the next stoppage"; the board shows NEXT STOPPAGE with ✕ to cancel, and queued changes count toward the 5). At half time they are made at once.
+  - At the next throw-in, corner, goal kick, free kick, keeper's catch or kick-off (not while the player leaving is the one taking it): the **fourth official's board** shows the red number out and green number in, the player walks to the touchline on the main-stand side, the substitute appears next to him, **they high-five**, the substitute runs onto the pitch and the player walks off. Play waits (the clock keeps running, and substitutions add to the added time).
+  - AI teams do not make in-match substitutions (as before).
+- **Tested:** 22 tags (21 small, 1 full name), yellow card shown on the right player, the ball-overlap fade working; a queued substitution executed at a forced throw-in (board 8 ⇄ 16, about 4.5 s, roster changed, SUBS 1/5); added time announced +2' / +3', whistle when the attack ended (+2:30) and within the cap; AI vs AI match unchanged (79% passes, throw-ins kept); desktop regression unchanged.
+
+### Phase 40 — Levels, animations, +10 cards ✅ (2026-11-14)
+
+Code: `components/LevelRing.jsx`, `components/LevelUpOverlay.jsx` (both new), `screens/TopBar.jsx`, `GameScene.jsx`, `screens/PostMatchScreen.jsx`, `UpgradeAnimation.jsx`, `UpgradePanel.jsx`, `systems/form.js`, `systems/stamina.js`, `systems/roster.js`, `services/upgrade.js`, CSS at the end of `styles.css`.
+
+- **Club level ring** in the top bar (phone and desktop): a black disc with a silver rim, small "LV" and the level number, and a glowing green arc around it that fills with the XP to the next level (no % written). Hover shows "Club level N · xp / needed XP"; click opens CARDS (level rewards). Pure CSS (`conic-gradient`), no images.
+- **Club level-up animation:** whenever the club levels up (league, cups, World Cup, simulations — never during a match or before a simulation replay has shown the result): the ring fills to the top, flash and light rays, the number pops to the new level (repeated for several levels), then fills to the new XP; the rewards appear one by one (EP card, player pack, Fitness / Form / Protection / Boost cards). Tap / Space skips, CONTINUE closes.
+- **Player level-ups after a match:** the row shines and the LEVEL UP badge pops in, one row after another.
+- **Card upgrades:**
+  - The screen behind the animation is hidden while it runs (the result is saved when you press UPGRADE, so before you could already see the new +N / colour through the overlay). Saving stays immediate on purpose — otherwise reloading the page during the animation would dodge a failure.
+  - DONE and UPGRADE AGAIN did almost the same thing → one button, **CONTINUE** ("CONTINUE · UPGRADE AGAIN" when another copy exists), which goes back to the card with the best material already picked. Space / Enter = CONTINUE.
+- **+10 cards:** always 100% fitness and top form (⬆, +3) outside matches — after every match, as soon as a card reaches +10, and for old saves on load; in a match they still tire as usual. AI +10 cards get the same form.
+
+### Phase 41 — Phone and management ✅ (2026-11-14)
+
+Code: `SubstitutionBoard.jsx`, `screens/PreMatchScreen.jsx`, `screens/DevelopmentScreen.jsx`, `ClubManagementPanel.jsx`, `utils/devTools.js`, `SettingsRows.jsx`, `GameScene.jsx`, `screens/WorldCupScreen.jsx`, `services/worldCupLevel.js`, CSS at the end of `styles.css`.
+
+- **SWAP on phones:** tapping a player in the lineup board shows a bar in the sticky footer: "Name ⇄ Name · ⇄ SWAP · INFO · ✕" (before, SWAP was inside the info box at the very bottom of the page). INFO scrolls to the player details. Phone hints say "Tap a player, then another one, then SWAP" (no drag and drop on phones).
+- **+N everywhere on lineups:** PLAY → MY TEAM shows the card level of every starter (like the opponent list), and the pitch cards in the lineup board show a small +N badge in the corner on phones.
+- **Spend points without switching tabs:** SQUAD → PLAYERS has **AUTO +N** next to every player with points (recommended for his position, saved at once) and **AUTO ALL · RECOMMENDED**; after CONFIRM in TRAINING a **NEXT · name +N →** button jumps to the next player with points.
+- **Buy several cards:** the market player sheet has − ×N + MAX (up to 10, limited by the budget and the 50-player squad); fee × N shown; each copy is a separate card in the reserves with its own free shirt number.
+- **DEV:** **RESET SIMULATE + WORLD CUP** gives back today's 5 simulations and 2 World Cups.
+- **World Cup SIMULATE NEXT:** replaces SIMULATE REST. Simulates only your next World Cup match and uses one of the day's simulations; World Cup XP, club XP and match money ×0.7 (the end-of-tournament prize too); the result card shows score, round outcome and gains. Skipping the whole tournament moved to a small "Skip tournament…" link with a confirmation (no trophy, prize or XP — that is what SIMULATE REST did, which is why it ended your tournament).
+- **Tested:** 5 World Cup simulations in a row (group → quarter-final, penalties included), counter 5/5 → 0/5, DEV reset back to 5/5; buying ×2 (fee and squad count right); AUTO / AUTO ALL / NEXT on an emulated Pixel 7; SWAP bar swaps two starters.
+
+### Phase 37 — Headers ✅ (2026-11-14)
+
+Code: `systems/headers.js` (new), `systems/ball.js` (cross flight, corner target, header check in the loose-ball step), `systems/carrierAI.js` (AI corners), `systems/teamAI.js` (receivers meet high balls, aerial challenger, ball prediction with air drag), `systems/goalkeeper.js`, `systems/playerState.js`, `animation/clips.js` (new `header` clip), `systems/matchStats.js`, `components/MatchStatsPanel.jsx`.
+
+Before: a ball above ~1.7 m was ignored by every outfield player, and a lob only rose to ~1.5 m, so there were no headers at all — corners dropped at the edge of the box or were picked up after the bounce.
+
+- **Jump and head:** a ball between 1.45 m and ~2.75 m that is still travelling (≥ 4 m/s) can be headed by an outfield player close enough. Jump reach = aerial reach (height, Phase 26C) + 0.45 m + a little from Strength / Agility. Not on restarts, in the keeper's hands, in a shoot-out, or when the keeper has already claimed the ball; offside is checked first.
+- **What the header does:**
+  - **Your selected player:** **D** (or a charged shot) = header at goal, **S / W** = header pass, **A** = clearance. Nothing pressed = the AI choice below.
+  - **AI (and your player without a key):** near goal (< 17 m, central) = header at goal; in his own third = clearance; elsewhere = header pass to a teammate 3–16 m away with an open lane, otherwise a flick-on.
+  - **Header at goal:** aimed at a post (Finishing / Strength decide accuracy), power 10–21 m/s, mostly downward; xG ×0.6 of a foot shot from the same spot.
+  - **Clearance:** high and long (11–18 m/s), upfield and toward the side.
+- **Aerial duels:** when an attacker and a defender reach the ball almost together, the winner is drawn by aerial power (height reach + Strength); the intended receiver of the cross gets a small timing edge. Counted as a duel; the loser plays the jump animation too.
+- **Real crosses:** a lob from a wide area or a corner toward the box now flies on a cross trajectory — it drops at head height (~1.9 m) on the target after 1–1.7 s (air drag included), message **CROSS**. AI corners pick the free teammate in the box (5–15 m from goal, central, furthest from a marker; 20% are short); your corner with **A** and no arrows does the same.
+- **Off the ball:** receivers of a lob run to where the ball comes down at their jump height (ball prediction now includes air drag, also vertically); the nearest defender goes to meet the target attacker goal-side.
+- **Keeper:** a header back to your own keeper may be picked up (only deliberate foot passes are banned, Phase 34). A short throw-in (S) is never headed — the receiver controls it; long throws (A) can be.
+- **Animation and stats:** new jump-and-nod `header` clip; **Headers** row in the match stats; header shots appear in the shot map with their own xG.
+- **Results** (browser tests): 14 forced AI corners → **19 headers, 8 header shots** (xG 0.10–0.25 each; before: 0); your corners → 2 header shots of 6; AI vs AI full matches 3–9 headers per match, pass completion 78–80%, passes out of play 1–2%; throw-ins kept 15/16 (you) and 13/16 (AI); desktop regression unchanged.
+
 ### Phase 36 — AI receiving and throw-ins ✅ (2026-11-14)
 
 Code: `systems/ball.js` (pass power, target choice, first touch, throw-in target), `systems/teamAI.js` (throw-in options, thrower return, early runs), `systems/control.js` (your thrower steps in); E2E-only hooks `window.__ufmCtx` / `window.__ufmRestart` in `MatchWorld.jsx` (not in normal builds).
@@ -1972,6 +2096,8 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 ### Backlog
 
 - **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
+- **Player wages** (moved here on 2026-11-14): pay per match, or remove wages.
+- **Training extras** (from the Phase 42 ideas): a faint predicted ball path while charging (training only), dribbling cones / skill-move drills with a timer.
 - **Card seasons and real player data** (was Phase 30; moved to the backlog on 2026-11-12 because it is hard — mostly the data side):
   - **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
   - **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
@@ -2039,7 +2165,13 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 | Mã DEV trong Settings (đặt budget, +% đập); nút WORLD CUP thay LEAGUE TABLE; XP cầu thủ CLB sau mỗi trận World Cup + thưởng an ủi khi bị loại vòng bảng; thủ môn không bắt bóng đồng đội chủ động chuyền về bằng chân; sút không bao giờ đi lùi | Phase 34 ✅ |
 | Máy áp sát giữ khoảng cách 2–3 m; nút PRESS (điện thoại) / E + mũi tên (máy tính) = lao vào lấy bóng, tì người | Phase 35 ✅ |
 | AI nhận bóng, ném biên kiểu FIFA / FO4 (hỗ trợ lực chuyền, ưu tiên đường chuyền thoáng, người về nhận ném biên) | Phase 36 ✅ |
-| Đánh đầu (dứt điểm, phá bóng, chuyền), tranh chấp bóng bổng | Phase 37 |
+| Đánh đầu (dứt điểm, phá bóng, chuyền), tranh chấp bóng bổng theo chiều cao / sức mạnh, quả tạt thật từ phạt góc, đánh đầu về cho thủ môn được bắt | Phase 37 ✅ |
+| Thủ môn đoán đúng đường bóng (có lực cản), luôn kịp bay người, bóng chậm trong vòng cấm ôm bằng tay rồi phát bóng ngắn; bớt các cú sút lốp bổng nhẹ (máy và vuốt nhầm trên điện thoại) | Phase 38 ✅ |
+| Thẻ tên SMART (vị trí CM / ST thay số áo, chỉ người có bóng hiện tên), thẻ vàng trên đầu, bù giờ báo trước (tối đa +5 / +10, mất bóng là hết giờ), thay người khi bóng chết có bảng số + đập tay | Phase 39 ✅ |
+| Vòng tròn level trên thanh trên, hoạt cảnh lên cấp, đập thẻ không lộ kết quả + một nút CONTINUE, thẻ +10 luôn đầy thể lực và phong độ cao nhất | Phase 40 ✅ |
+| Nút SWAP luôn ở đáy (điện thoại), hiện +N trong đội hình, AUTO cộng điểm ngay tab PLAYERS, mua nhiều thẻ một lần, DEV reset lượt simulate / World Cup, World Cup SIMULATE NEXT | Phase 41 ✅ |
+| Chế độ TẬP LUYỆN: sút phạt đền, bắt phạt đền, đá phạt, phạt góc, dứt điểm; chọn người đá phạt; thử thách hằng ngày +2M EP | Phase 42 ✅ |
+| Lương cầu thủ (trả theo trận hoặc bỏ) | Backlog |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
 | AI sút xa, chuyền dài theo chỉ số; thêm chỉ số Composure (quyết đoán) để tiền đạo dứt điểm thay vì chuyền vòng vo | Phase 29F ✅ |

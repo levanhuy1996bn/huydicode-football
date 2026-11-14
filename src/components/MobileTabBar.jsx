@@ -34,6 +34,8 @@ const MORE_ITEMS = [
     ['worldcup', 'WORLD CUP', 'Play a tournament with a national team'],
     ['trophies', 'TROPHIES', 'Titles you have won as a manager'],
     ['club', 'TRANSFERS', 'Transfer market, contracts and sales'],
+    // Phase 42
+    ['training', 'TRAINING', 'Penalties, free kicks, corners, finishing · daily challenge'],
 ]
 
 export default function MobileTabBar({ active, onNavigate, cardsCount = 0, onOpenSettings, hidden = false }) {

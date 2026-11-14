@@ -30,6 +30,7 @@ import { attachBallToPlayer } from '../systems/ball'
 import { resetPositions, restartAtSpot } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { startShootout, stopShootout } from '../systems/shootout'
+import { startTraining, stopTraining } from '../systems/training'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
 import { noteKeyActivity, noteUserInput, setAutoPilot, stepMatch } from '../systems/matchEngine'
 import { withForm } from '../systems/form'
@@ -163,6 +164,34 @@ function GroundCollider() {
             />
         </RigidBody>
     )
+}
+
+// Phase 39: vị trí quả bóng trên màn hình (px) cho thẻ tên — thẻ nào đè lên
+// bóng thì mờ đi (Player.jsx → NameTag).
+function BallScreenTracker({ ballRef, matchState }) {
+    const { camera, size } = useThree()
+    const center = useMemo(() => new THREE.Vector3(), [])
+    const top = useMemo(() => new THREE.Vector3(), [])
+
+    useFrame(() => {
+        const ball = ballRef.current?.translation()
+
+        if (!ball) return
+
+        center.set(ball.x, ball.y, ball.z).project(camera)
+        top.set(ball.x, ball.y + 0.22, ball.z).project(camera)
+
+        const y = (-center.y * 0.5 + 0.5) * size.height
+
+        matchState.ballScreen = {
+            x: (center.x * 0.5 + 0.5) * size.width,
+            y,
+            r: Math.max(3, Math.abs(y - (-top.y * 0.5 + 0.5) * size.height)),
+            visible: center.z < 1,
+        }
+    })
+
+    return null
 }
 
 function PassTargetMarker({ matchState }) {
@@ -446,6 +475,12 @@ export default function MatchWorld({
     labelMode = 'smart',
     matchDuration,
     whistlePending = null,
+    // Phase 39: chạm trần bù giờ → thổi ngay; thay người chờ bóng chết.
+    whistleForce = false,
+    pendingSub = null,
+    onSubStart,
+    onSubSwap,
+    onSubDone,
     onWhistleDone,
     onAutoPilotChange,
     onCard,
@@ -461,11 +496,16 @@ export default function MatchWorld({
     // máy đá thay từ nút AUTO ({ on, nonce }).
     idleLimit = 10,
     autoPilotCommand = null,
+    // Phase 42: tập luyện — lệnh { type: 'start' | 'stop', drill, options, nonce }.
+    trainingCommand = null,
+    onTrainingResult,
 }) {
     const keys = useKeyboard()
 
     // Phase 20: cầu thủ bị thẻ đỏ (id) — không vẽ, không có trong ctx.
     const [sentOff, setSentOff] = useState([])
+    // Phase 39: người vừa bị thay vẫn được vẽ thêm vài giây (đi ra ngoài sân).
+    const [departing, setDeparting] = useState(null)
 
     const ballRef = useRef(null)
     const playerRefs = useRef({})
@@ -548,6 +588,22 @@ export default function MatchWorld({
         matchDuration,
         // Hết giờ, đang chờ bóng chết để thổi còi ('half' | 'full' | null).
         whistlePending,
+        whistleForce,
+        onTrainingResult,
+        // Phase 42: người đá phạt đã chọn của đội xanh.
+        setPieceTakers: { blue: roster.find((team) => team.id === 'blue')?.setPieceTakers || null },
+        pendingSub,
+        onSubStart,
+        onSubSwap: (sub) => {
+            const leaving = byId.get(sub.outId)
+
+            if (leaving) setDeparting(leaving)
+            onSubSwap?.(sub)
+        },
+        onSubDone: (sub) => {
+            setDeparting(null)
+            onSubDone?.(sub)
+        },
         onWhistleDone,
         onAutoPilotChange,
         isPlaying,
@@ -771,6 +827,32 @@ export default function MatchWorld({
         }
     }, [shootoutCommand, ctx])
 
+    // Phase 42: bắt đầu / đổi / dừng bài tập. Chờ bóng và cầu thủ sẵn sàng.
+    const trainingNonce = useRef(null)
+
+    useEffect(() => {
+        if (!trainingCommand || trainingNonce.current === trainingCommand.nonce) return undefined
+
+        let timer = null
+        const run = () => {
+            const ready = ballRef.current && ctx.players.every((item) => ctx.objects[item.id])
+
+            if (!ready) {
+                timer = setTimeout(run, 150)
+                return
+            }
+
+            trainingNonce.current = trainingCommand.nonce
+
+            if (trainingCommand.type === 'start') startTraining(ctx, trainingCommand.drill, trainingCommand.options || {})
+            else stopTraining(ctx)
+        }
+
+        run()
+
+        return () => clearTimeout(timer)
+    }, [trainingCommand, ctx])
+
     // Vòng lặp chính: chạy 1 bước logic ngay TRƯỚC mỗi bước vật lý của
     // Rapier (Physics timeStep = FIXED_STEP). Logic và vật lý luôn đi cùng
     // nhịp, nên giữa hai bước logic bóng luôn đã di chuyển — kể cả khi FPS thấp.
@@ -839,13 +921,14 @@ export default function MatchWorld({
             <GroundCollider />
             <Ball bodyRef={ballRef} />
             <PassTargetMarker matchState={state} />
+            <BallScreenTracker ballRef={ballRef} matchState={state} />
             <SelectedPlayerIndicator
                 matchState={state}
                 playerRefs={playerRefs}
                 selectedId={selectedId}
             />
 
-            {players.map((player) => {
+            {(departing && !byId.has(departing.id) ? [...players, departing] : players).map((player) => {
                 const team = roster.find((item) => item.id === player.teamId)
 
                 return (

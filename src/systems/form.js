@@ -22,7 +22,18 @@ export const FORM_LEVELS = {
 
 const clampForm = (value) => Math.max(FORM_MIN, Math.min(FORM_MAX, Math.round(value || 0)))
 
-export const formOf = (player) => clampForm(player?.form ?? 0)
+// Phase 40: thẻ +10 luôn ở phong độ cao nhất (kể cả thẻ +10 của AI).
+export const PEAK_UPGRADE = 10
+export const isPeakCard = (player) => (player?.upgrade || 1) >= PEAK_UPGRADE
+
+export const formOf = (player) => (isPeakCard(player) ? FORM_MAX : clampForm(player?.form ?? 0))
+
+// Thẻ +10: ngoài trận luôn thể lực 100% và phong độ cao nhất (trong trận vẫn
+// mệt dần như thường — xem systems/stamina.js).
+export const settlePeakCard = (player) =>
+    isPeakCard(player) && (player.condition !== 100 || player.form !== FORM_MAX)
+        ? { ...player, condition: 100, form: FORM_MAX }
+        : player
 export const formInfo = (player) => FORM_LEVELS[formOf(player)]
 export const formBonus = (player) => formInfo(player).bonus
 
@@ -102,6 +113,8 @@ export function applyFormAfterMatch(players = [], ratings = [], played = {}, ran
 
         to = clampForm(to)
 
+        // Phase 40: thẻ +10 luôn phong độ cao nhất.
+        if (isPeakCard(player)) return player.form === FORM_MAX ? player : { ...player, form: FORM_MAX }
         if (to === from) return player
 
         changes.push({ id: player.id, name: player.name, number: player.number, position: player.position, from, to })

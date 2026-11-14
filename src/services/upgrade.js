@@ -6,6 +6,7 @@
 //   luôn mất. Thất bại từ +5 tụt đúng 1 cấp. Không tốn EP.
 // Không import systems/progression (tránh vòng phụ thuộc).
 import { devUpgradeBonus } from '../utils/devTools'
+import { settlePeakCard } from '../systems/form'
 
 export const MAX_UPGRADE = 10
 
@@ -112,7 +113,8 @@ export function applyUpgradeLevel(player, level) {
     const delta = upgradeBonus(to) - upgradeBonus(from)
     const next = { ...player, upgrade: to }
 
-    if (!delta) return next
+    // Phase 40: lên +10 → thể lực 100%, phong độ cao nhất ngay.
+    if (!delta) return settlePeakCard(next)
 
     MAIN_KEYS.forEach((key) => {
         if (typeof next[key] === 'number') next[key] += delta
@@ -128,7 +130,7 @@ export function applyUpgradeLevel(player, level) {
     if (next.attributes) next.attributes = shift(next.attributes)
     if (next.attributesBase) next.attributesBase = shift(next.attributesBase)
 
-    return next
+    return settlePeakCard(next)
 }
 
 // Thực hiện một lần đập (đã có tỉ lệ). random() < rate → thành công.

@@ -29,10 +29,15 @@ const FLIGHT_LIMIT = 3.2
 const other = (team) => (team === 'blue' ? 'red' : 'blue')
 
 // Thứ tự sút: dứt điểm + lực sút tốt nhất trước, thủ môn cuối cùng.
+// Phase 42: người sút phạt đền đã chọn (SET PIECES) sút quả đầu tiên.
 function takerOrder(ctx, teamId) {
+    const chosen = ctx.setPieceTakers?.[teamId]?.penalty
+
     return ctx.players
         .filter((item) => item.teamId === teamId && ctx.objects[item.id])
         .sort((a, b) => {
+            if (a.id === chosen) return -1
+            if (b.id === chosen) return 1
             if (a.role === 'GK') return 1
             if (b.role === 'GK') return -1
 
@@ -73,12 +78,15 @@ function setupKick(ctx) {
     const { state } = ctx
     const shootout = state.shootout
     const status = shootoutStatus(shootout.kicks, shootout.first)
-    const team = status.next
+    // Phase 42: tập luyện — luôn một đội sút ('take' = bạn sút, 'save' = máy
+    // sút, bạn bay người); người sút phạt đền đã chọn sút mọi quả.
+    const team = shootout.training ? (shootout.training === 'take' ? 'blue' : 'red') : status.next
 
     if (!team) return
 
     const order = shootout.order[team]
-    const takerId = order[shootout.index[team] % order.length]
+    const fixed = shootout.training === 'take' ? ctx.setPieceTakers?.blue?.penalty : null
+    const takerId = fixed && order.includes(fixed) ? fixed : order[shootout.index[team] % order.length]
 
     // Đội sút tấn công về −Z.
     state.sidesSwapped = team === 'red'
@@ -118,7 +126,7 @@ function snapshot(shootout) {
     }
 }
 
-export function startShootout(ctx, { first = 'blue', kicks = [] } = {}) {
+export function startShootout(ctx, { first = 'blue', kicks = [], training = null } = {}) {
     const { state } = ctx
 
     state.whistle = null
@@ -139,6 +147,7 @@ export function startShootout(ctx, { first = 'blue', kicks = [] } = {}) {
         timer: 0,
         current: null,
         savedSides: state.sidesSwapped,
+        training,
     }
 
     setupKick(ctx)
@@ -165,6 +174,20 @@ function finishKick(ctx, scored) {
     shootout.phase = 'result'
     shootout.timer = 0
     shootout.lastScored = scored
+
+    // Phase 42: tập luyện — không bao giờ kết thúc, báo kết quả từng quả.
+    if (shootout.training) {
+        const userTook = shootout.training === 'take'
+
+        ctx.onActionMessage(
+            userTook
+                ? scored ? `GOAL! ${takerName.toUpperCase()}` : 'MISSED / SAVED'
+                : scored ? `${takerName.toUpperCase()} SCORES` : 'SAVED! GREAT DIVE',
+        )
+        ctx.onSound?.(scored ? 'pen-goal' : 'pen-miss', { user: userTook })
+        ctx.onTrainingResult?.({ result: userTook ? (scored ? 'goal' : 'miss') : (scored ? 'conceded' : 'saved') })
+        return
+    }
 
     const status = shootoutStatus(shootout.kicks, shootout.first)
 

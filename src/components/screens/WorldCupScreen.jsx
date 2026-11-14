@@ -11,6 +11,7 @@ import {
 } from '../../services/worldCupService'
 import { formatMoney } from '../../services/clubService'
 import { DIFFICULTIES } from '../../services/difficulty'
+import { SIM_DAILY_LIMIT } from '../../services/quickSim'
 
 // Phase 29H: tab WORLD CUP — bắt đầu giải lúc nào cũng được (2 giải mỗi ngày),
 // đá tiếp giải đang dở, xem bảng / nhánh đấu, lịch sử các kỳ.
@@ -26,6 +27,39 @@ const PRIZE_ROWS = [
 const nationName = (id) => NATION_BY_ID.get(id)?.name || id
 const difficultyLabel = (id) => DIFFICULTIES.find((item) => item.id === id)?.label || id
 
+// Phase 41: kết quả trận vừa mô phỏng.
+const OUTCOME_TEXT = {
+    advanced: 'Through to the next round',
+    eliminated: 'Knocked out',
+    champion: 'WORLD CHAMPIONS!',
+    thirdPlace: 'Third place',
+    fourthPlace: 'Fourth place',
+    toThirdPlace: 'Into the third-place match',
+}
+
+function WcSimResult({ result }) {
+    const verdict = result.goalsFor > result.goalsAgainst ? 'win' : result.goalsFor < result.goalsAgainst ? 'loss' : 'draw'
+
+    return (
+        <div className={`wc-sim-result is-${verdict}`} key={result.id}>
+            <div className="wc-sim-result__score">
+                <small>SIMULATED · {(WC_ROUND_LABELS[result.round] || '').toUpperCase()}</small>
+                <span>
+                    <ClubCrest clubId={result.nationId} size={22} /> <b>{result.goalsFor} – {result.goalsAgainst}</b> <ClubCrest clubId={result.opponentId} size={22} />
+                    {result.shootout && <em> (pens)</em>}
+                </span>
+                {result.outcome && OUTCOME_TEXT[result.outcome] && <i>{OUTCOME_TEXT[result.outcome]}</i>}
+            </div>
+            <div className="wc-sim-result__gains">
+                <span>WC XP <b>+{result.wcXp}</b>{result.wcLevelsGained > 0 && <em> · LEVEL UP</em>}</span>
+                <span>CLUB XP <b>+{result.clubXp}</b></span>
+                <span>EP <b>+{formatMoney(result.prize)}</b></span>
+                {result.finalPrize && <span className="wc-sim-result__prize">{result.finalPrize}</span>}
+            </div>
+        </div>
+    )
+}
+
 export default function WorldCupScreen({
     world,
     nextFixture = null,
@@ -34,6 +68,10 @@ export default function WorldCupScreen({
     onStart,
     onPlay,
     onSimulateRest,
+    // Phase 41: mô phỏng trận kế tiếp (×0.7), dùng lượt SIMULATE trong ngày.
+    onSimulateNext = null,
+    simsLeft = 0,
+    simResult = null,
     onBack,
     // Phase 30C: cấp World Cup + độ khó của giải
     progress = null,
@@ -45,6 +83,8 @@ export default function WorldCupScreen({
     const wc = world?.worldCup || null
     // Phase 29A4c: trên điện thoại chia tab TOURNAMENT / PRIZES.
     const [phoneTab, setPhoneTab] = useState('play')
+    // Phase 41: bỏ giải phải bấm hai lần (xác nhận).
+    const [confirmSkip, setConfirmSkip] = useState(false)
     const active = wc?.status === 'active' ? wc : null
     const last = wc?.status === 'done' ? wc : null
     const history = [
@@ -134,18 +174,42 @@ export default function WorldCupScreen({
                                         PLAY NEXT MATCH
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    className="btn"
-                                    onClick={onSimulateRest}
-                                    title="Simulate the rest of the tournament, your matches included (no trophy or prize)"
-                                >
-                                    SIMULATE REST
-                                </button>
+                                {nextFixture && onSimulateNext && (
+                                    <button
+                                        type="button"
+                                        className="btn"
+                                        onClick={onSimulateNext}
+                                        disabled={simsLeft <= 0}
+                                        title="Simulate only your next match: World Cup XP, club XP and prize money ×0.7 (uses one of today's simulations)"
+                                    >
+                                        SIMULATE NEXT {simsLeft}/{SIM_DAILY_LIMIT}
+                                    </button>
+                                )}
+                            </div>
+                            {simsLeft <= 0 && nextFixture && <span className="wc-limit">No simulations left today · play the match</span>}
+                            {simResult && simResult.nationId === active.nationId && <WcSimResult result={simResult} />}
+                            <div className="wc-skip">
+                                {confirmSkip ? (
+                                    <>
+                                        <span>Skip the whole tournament? Your matches are simulated too — <b>no trophy, prize or XP</b>.</span>
+                                        <button type="button" className="btn btn--small btn--danger" onClick={() => { setConfirmSkip(false); onSimulateRest() }}>
+                                            SKIP TOURNAMENT
+                                        </button>
+                                        <button type="button" className="btn btn--small btn--ghost" onClick={() => setConfirmSkip(false)}>
+                                            KEEP PLAYING
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button type="button" className="link-btn" onClick={() => setConfirmSkip(true)}>
+                                        Skip tournament…
+                                    </button>
+                                )}
                             </div>
                         </>
                     ) : (
                         <>
+                            {/* Phase 41: trận mô phỏng vừa kết thúc giải (bị loại / vô địch) */}
+                            {simResult?.done && last && simResult.nationId === last.nationId && <WcSimResult result={simResult} />}
                             <div className="home-hero__eyebrow">NEW TOURNAMENT · {startsLeft}/{WC_DAILY_LIMIT} LEFT TODAY</div>
                             <div className="home-hero__title">CHOOSE YOUR NATION</div>
                             <p className="home-hero__text">
@@ -198,8 +262,8 @@ export default function WorldCupScreen({
                         ))}
                     </ol>
                     <p className="home-card__empty">
-                        Paid when the tournament ends (× difficulty). Match money and club XP as a C1 match ×1.5. SIMULATE REST: no
-                        prize or trophy.
+                        Paid when the tournament ends (× difficulty). Match money and club XP as a C1 match ×1.5. SIMULATE NEXT:
+                        ×0.7. Skipping the tournament: no prize or trophy.
                     </p>
                     <p className="home-card__empty wc-xp-rules">
                         <b>World Cup XP</b> per match: win 30 · draw 20 · loss 10 · knockout ×1.5 · title +100, all × difficulty.

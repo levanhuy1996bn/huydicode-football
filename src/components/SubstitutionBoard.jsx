@@ -8,6 +8,7 @@ import { shortPlayerName } from '../utils/names'
 import ClubCrest from './ClubCrest'
 import { UpgradeBadge } from './CardBits'
 import PlayerInfoPanel from './PlayerInfoPanel'
+import { isTouchDevice } from '../utils/device'
 import { NATION_BY_NATIONALITY } from '../data/nations'
 import { nationalityOf } from '../data/starNationality'
 import { userClubId } from '../services/career'
@@ -184,6 +185,9 @@ export default function SubstitutionBoard({
     tacticKey = null,
     onTacticChange = null,
     onFormationChange = null,
+    // Phase 39: thay người trong trận chờ bóng chết.
+    pendingSubs = [],
+    onCancelPending = null,
 }) {
     const [picked, setPicked] = useState(null)
     const [compare, setCompare] = useState(null)
@@ -198,7 +202,7 @@ export default function SubstitutionBoard({
 
     if (!team) return null
 
-    const remaining = maxSubstitutions - substitutionCount
+    const remaining = maxSubstitutions - substitutionCount - pendingSubs.length
 
     // Trong trận: thể lực hiện tại; trước trận / dự bị chưa ra sân: phong độ thể lực.
     const staminaOf = (player) =>
@@ -415,11 +419,27 @@ export default function SubstitutionBoard({
                         </div>
                     ) : (
                         <div className={`sub-board__count${remaining <= 0 ? ' is-empty' : ''}`}>
-                            {substitutionCount}/{maxSubstitutions}
-                            <small>USED</small>
+                            {substitutionCount + pendingSubs.length}/{maxSubstitutions}
+                            <small>{pendingSubs.length ? `${pendingSubs.length} WAITING` : 'USED'}</small>
                         </div>
                     )}
                 </div>
+
+                {/* Phase 39: lượt thay đang chờ bóng chết */}
+                {pendingSubs.length > 0 && (
+                    <div className="sub-pending">
+                        <b>NEXT STOPPAGE</b>
+                        {pendingSubs.map((sub) => (
+                            <span key={`${sub.outId}-${sub.inId}`} className="sub-pending__item">
+                                <i className="is-in">▲ {shortPlayerName(sub.inName, 14)}</i>
+                                <i className="is-out">▼ {shortPlayerName(sub.outName, 14)}</i>
+                                {onCancelPending && (
+                                    <button type="button" className="link-btn" onClick={() => onCancelPending(sub)} aria-label="Cancel substitution">✕</button>
+                                )}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 {/* Phase 26D: team color của 11 người đá chính (tính lại khi đổi người) */}
                 <TeamColorPanel info={teamColor} compact />
@@ -618,6 +638,36 @@ export default function SubstitutionBoard({
                 </div>
 
                 <div className="sub-board__footer">
+                    {/* Phase 41: điện thoại — thanh đổi người luôn ở đáy màn hình (trước đây
+                        nút SWAP nằm trong ô thông tin ở cuối trang, phải cuộn xuống tận cùng). */}
+                    {pickedPlayer && (
+                        <div className="sub-quick" role="group" aria-label="Swap players">
+                            <span className="sub-quick__names">
+                                <b>{shortName(pickedPlayer)}</b>
+                                {comparePlayer ? <> ⇄ <b>{shortName(comparePlayer)}</b></> : <small> · tap another player</small>}
+                            </span>
+                            {comparePlayer && (
+                                <button type="button" className="btn btn--primary btn--small" onClick={() => resolve(picked, compare)}>
+                                    ⇄ SWAP
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="btn btn--small btn--ghost"
+                                onClick={() => document.querySelector('.sub-info')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            >
+                                INFO
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn--small btn--ghost"
+                                aria-label="Clear selection"
+                                onClick={() => { setPicked(null); setCompare(null) }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     <div
                         className={`sub-board__feedback${feedback ? (feedback.ok ? ' is-ok' : ' is-error') : ''}`}
                         aria-live="polite"
@@ -626,8 +676,11 @@ export default function SubstitutionBoard({
                             (compare
                                 ? 'Press SWAP (or click the second player again) to swap.'
                                 : picked
-                                ? 'Click another player to compare, or drag onto him to swap.'
-                                : isPrematch
+                                ? (isTouchDevice() ? 'Tap another player to compare and swap.' : 'Click another player to compare, or drag onto him to swap.')
+                                : isTouchDevice()
+                                    // Phase 41: điện thoại không kéo thả — chạm 2 người rồi bấm SWAP.
+                                    ? 'Tap a player, then another one, then SWAP.'
+                                    : isPrematch
                                     ? 'Drag between pitch, bench (max ' + benchLimit + ') and reserves. Only reserves can be sold.'
                                     : 'Drag a bench player onto a starter to substitute. Drag starter onto starter to swap positions.')}
                     </div>

@@ -120,7 +120,11 @@ const clamp = (value, min, max) =>
 // một React root riêng): khi cầu thủ rời sân / đổi đối thủ trong lúc canvas
 // đang chạy, React 19 báo "synchronously unmount a root while rendering" rồi
 // lỗi removeChild khi rời trận. Không còn React root phụ thì không còn lỗi.
-function NameTag({ height, number, name, color, selected, labelRef, staminaRef }) {
+// Phase 39: thẻ tên SMART — ô màu là VỊ TRÍ (CM, ST…) thay cho số áo; chế độ
+// SMART chỉ hiện tên đầy đủ cho người đang điều khiển / cầm bóng / sắp nhận
+// bóng, những người khác chỉ còn ô vị trí nhỏ, mờ. Thẻ nào đè lên quả bóng
+// trên màn hình thì mờ hẳn đi. Ô vàng = đã có thẻ vàng.
+function NameTag({ height, position, name, color, selected, labelRef, staminaRef, matchState }) {
     const anchor = useRef(null)
     const { gl, camera, size } = useThree()
     const point = useMemo(() => new THREE.Vector3(), [])
@@ -129,7 +133,7 @@ function NameTag({ height, number, name, color, selected, labelRef, staminaRef }
 
         wrapper.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:6;will-change:transform'
         wrapper.innerHTML =
-            '<div class="player-tag" style="display:none"><b></b><span></span><i class="player-tag__stamina"><s></s></i></div>'
+            '<div class="player-tag" style="display:none"><b></b><span></span><em class="player-tag__card"></em><i class="player-tag__stamina"><s></s></i></div>'
         return wrapper
     }, [])
 
@@ -150,11 +154,13 @@ function NameTag({ height, number, name, color, selected, labelRef, staminaRef }
     useLayoutEffect(() => {
         const tag = element.firstChild
 
-        tag.className = `player-tag${selected ? ' player-tag--selected' : ''}`
+        tag.classList.toggle('player-tag--selected', Boolean(selected))
         tag.style.setProperty('--tag-color', color)
-        tag.querySelector('b').textContent = number ?? ''
+        tag.querySelector('b').textContent = position ?? ''
         tag.querySelector('span').textContent = name
-    }, [element, selected, color, number, name])
+    }, [element, selected, color, position, name])
+
+    const fade = useRef({ faded: false, width: 40, frame: 0 })
 
     useFrame(() => {
         if (!anchor.current) return
@@ -167,6 +173,25 @@ function NameTag({ height, number, name, color, selected, labelRef, staminaRef }
 
         element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`
         element.style.visibility = point.z < 1 ? '' : 'hidden'
+
+        // Đè lên bóng → mờ (đo bề rộng thẻ thỉnh thoảng thôi, tránh layout mỗi frame).
+        const ballScreen = matchState?.ballScreen
+        const memo = fade.current
+
+        memo.frame = (memo.frame + 1) % 30
+        if (memo.frame === 0) memo.width = element.firstChild?.offsetWidth || memo.width
+
+        const over = Boolean(
+            ballScreen?.visible &&
+            Math.abs(ballScreen.x - x) < memo.width / 2 + ballScreen.r + 3 &&
+            ballScreen.y - y > -(ballScreen.r + 16) &&
+            ballScreen.y - y < ballScreen.r + 8,
+        )
+
+        if (over !== memo.faded) {
+            memo.faded = over
+            element.style.opacity = over ? '0.15' : ''
+        }
     })
 
     return <group ref={anchor} position={[0, height, 0]} />
@@ -292,19 +317,31 @@ export default function Player({
     useFrame((_, delta) => {
         if (!root.current) return
 
-        // Tên trên đầu: 'all' = mọi cầu thủ, 'smart' = người đang điều khiển,
-        // người cầm bóng và người sắp nhận bóng, 'off' = ẩn.
+        // Tên trên đầu (Phase 39): 'all' = tên mọi cầu thủ; 'smart' = tên người
+        // đang điều khiển / cầm bóng / sắp nhận bóng, còn lại chỉ ô vị trí nhỏ;
+        // 'off' = ẩn (chỉ còn ô thẻ vàng nếu có).
         if (labelRef.current) {
-            const show =
-                labelMode === 'all' ||
-                (labelMode === 'smart' &&
-                    (isSelected ||
-                        matchState?.possession === player.id ||
-                        matchState?.pendingPass?.receiverId === player.id))
+            const focus =
+                isSelected ||
+                matchState?.possession === player.id ||
+                matchState?.pendingPass?.receiverId === player.id
+            const booked = (matchState?.cards?.[player.id]?.yellow || 0) > 0
+            const mode = labelMode === 'all'
+                ? 'full'
+                : labelMode === 'off'
+                    ? (booked ? 'card' : 'hidden')
+                    : focus ? 'full' : 'mini'
+            const key = `${mode}|${booked}`
+            const show = mode === 'full'
 
-            if (labelVisible.current !== show) {
-                labelVisible.current = show
-                labelRef.current.style.display = show ? 'flex' : 'none'
+            if (labelVisible.current !== key) {
+                const tag = labelRef.current
+
+                labelVisible.current = key
+                tag.style.display = mode === 'hidden' ? 'none' : 'flex'
+                tag.classList.toggle('is-mini', mode === 'mini')
+                tag.classList.toggle('is-card-only', mode === 'card')
+                tag.classList.toggle('is-booked', booked)
             }
 
             // Thanh thể lực dưới tên (Phase 19): xanh > 60, vàng > 35, đỏ.
@@ -479,12 +516,13 @@ export default function Player({
         >
             <NameTag
                 height={2.25 * body.height}
-                number={player.number}
+                position={String(player.position || (goalkeeper ? 'GK' : '')).toUpperCase()}
                 name={shortPlayerName(player.name, 12)}
                 color={teamColor}
                 selected={isSelected}
                 labelRef={labelRef}
                 staminaRef={staminaRef}
+                matchState={matchState}
             />
 
             {isSelected && (

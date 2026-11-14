@@ -5,7 +5,7 @@ import { userClubId, userTeam } from '../services/career'
 import { isTouchDevice } from '../utils/device'
 import { autoGraphics, clearSlowDevice } from '../utils/performance'
 import { installState, onInstallChange, promptInstall } from '../utils/install'
-import { devState, onDevChange, setDevBudget, setDevUpgradeBonus, unlockDev } from '../utils/devTools'
+import { devState, onDevChange, resetDevDaily, setDevBudget, setDevUpgradeBonus, unlockDev } from '../utils/devTools'
 
 // Phase 29G: các dòng cài đặt dùng chung cho khung SETTINGS ở HOME và bảng
 // ⚙ SETTINGS mở từ header (mọi màn hình). Trận 3 / 6 / 9 phút (10 → 9).
@@ -152,6 +152,16 @@ function DevRows() {
                         />
                         <button type="submit" className="btn btn--small btn--primary">OK</button>
                     </form>
+                    <div className="dev-form">
+                        <label>Daily limits</label>
+                        <button
+                            type="button"
+                            className="btn btn--small btn--primary"
+                            onClick={() => setMessage(resetDevDaily() ? 'Simulations (5) and World Cups (2) reset for today' : 'Not available here')}
+                        >
+                            RESET SIMULATE + WORLD CUP
+                        </button>
+                    </div>
                     {message && <small className="setting-note">{message}</small>}
                 </div>
             )}
