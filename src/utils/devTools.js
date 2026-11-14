@@ -4,6 +4,7 @@
 // lưu localStorage). Bảng DEV:
 // - Set budget: ghi thẳng ngân sách EP vào bản lưu CLB (GameScene đăng ký
 //   hàm ghi qua registerDevBudget).
+// - Reset daily limits (Phase 41): lượt SIMULATE và lượt World Cup hôm nay.
 // - +% đập thẻ: cộng thêm vào tỉ lệ mọi lần đập (services/upgrade.js →
 //   rateBreakdown), tối đa 100%. Cũng chỉ trong phiên.
 
@@ -13,6 +14,7 @@ export const devState = { unlocked: false, upgradeBonus: 0 }
 
 const listeners = new Set()
 let budgetWriter = null
+let dailyResetter = null
 
 const notify = () => listeners.forEach((listener) => listener())
 
@@ -58,4 +60,19 @@ export function setDevBudget(amount) {
 
     budgetWriter(value)
     return value
+}
+
+// Phase 41: đặt lại lượt SIMULATE (5/ngày) và lượt World Cup (2/ngày) của hôm nay.
+export function registerDevDailyReset(resetter) {
+    dailyResetter = resetter
+    return () => {
+        if (dailyResetter === resetter) dailyResetter = null
+    }
+}
+
+export function resetDevDaily() {
+    if (!devState.unlocked || !dailyResetter) return false
+
+    dailyResetter()
+    return true
 }

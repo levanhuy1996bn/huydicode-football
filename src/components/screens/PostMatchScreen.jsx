@@ -408,10 +408,11 @@ export default function PostMatchScreen({
                     <div className="progression-list">
                         {[...summary.progression]
                             .sort((a, b) => b.levelsGained - a.levelsGained || b.gained - a.gained)
-                            .map((row) => (
+                            .map((row, index) => (
                                 <div
                                     className={`progression-row${row.levelsGained ? ' is-levelup' : ''}`}
                                     key={row.id}
+                                    style={{ '--i': index }}
                                 >
                                     <span className="lineup__number">{row.number}</span>
                                     <span className="progression-row__name" title={row.name}>

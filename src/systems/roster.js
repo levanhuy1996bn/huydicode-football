@@ -5,7 +5,7 @@ import { nationalSquad } from '../services/nationalTeams'
 import { applyUpgradeLevel } from '../services/upgrade'
 import { aiUpgradeFor, difficultyOf } from '../services/difficulty'
 import { ensureCardFields, playerIdOf } from '../services/cards'
-import { randomForm } from './form'
+import { randomForm, settlePeakCard } from './form'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
 const GENERIC_NAME = /^(Blue|Red) [A-Z]{2,3} \d+$/
@@ -124,9 +124,10 @@ export function normalizeSquad(team) {
     // Phase 23: mọi cầu thủ là một thẻ (playerId / cardId / upgrade / rarity).
     return {
         ...team,
-        players: (team.players || []).map(ensureCardFields),
-        substitutes: substitutes.map(ensureCardFields),
-        reserves: [...overflow, ...reserves].map(ensureCardFields),
+        // Phase 40: thẻ +10 trong bản lưu cũ → thể lực 100%, phong độ cao nhất.
+        players: (team.players || []).map((player) => settlePeakCard(ensureCardFields(player))),
+        substitutes: substitutes.map((player) => settlePeakCard(ensureCardFields(player))),
+        reserves: [...overflow, ...reserves].map((player) => settlePeakCard(ensureCardFields(player))),
     }
 }
 

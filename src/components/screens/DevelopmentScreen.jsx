@@ -175,6 +175,58 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
         })
     }
 
+    // Phase 41: cộng điểm ngay trong danh sách (không phải sang tab TRAINING):
+    // AUTO = cộng theo vị trí (như RECOMMENDED FOR POSITION) và lưu luôn.
+    const autoSpend = (player) => {
+        guard(() => {
+            const next = autoUpgrade(player)
+            const used = progressOf(player).unspentPoints - progressOf(next).unspentPoints
+
+            if (next === player || !used) {
+                setFeedback('No points to spend')
+                return
+            }
+
+            onUpdatePlayer(next)
+            setFeedback(`Saved: ${used} point${used === 1 ? '' : 's'} (recommended) on ${player.name} · OVR ${player.overall} → ${next.overall}.`)
+        })
+    }
+
+    const autoSpendAll = () => {
+        guard(() => {
+            let count = 0
+            let points = 0
+
+            players.forEach((player) => {
+                const left = progressOf(player).unspentPoints
+
+                if (!left) return
+
+                const next = autoUpgrade(player)
+                const used = left - progressOf(next).unspentPoints
+
+                if (next !== player && used > 0) {
+                    onUpdatePlayer(next)
+                    count += 1
+                    points += used
+                }
+            })
+
+            setFeedback(count ? `Saved: ${points} points (recommended) on ${count} player${count === 1 ? '' : 's'}.` : 'No points to spend')
+        })
+    }
+
+    // Sau CONFIRM: cầu thủ kế tiếp còn điểm (nút NEXT trên tab TRAINING).
+    const nextWithPoints = (() => {
+        for (let step = 1; step <= players.length; step += 1) {
+            const candidate = players[(selectedIndex + step) % players.length]
+
+            if (candidate && candidate.id !== saved.id && progressOf(candidate).unspentPoints > 0) return candidate
+        }
+
+        return null
+    })()
+
     // Trước / sau trong danh sách (tab TRAINING trên điện thoại).
     const stepPlayer = (delta) => {
         const next = players[(selectedIndex + delta + players.length) % players.length]
@@ -233,10 +285,24 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
 
             <div className="dev-body">
                 <div className="home-card dev-list phone-tab--players">
+                    {/* Phase 41: cộng điểm ngay tại danh sách */}
+                    {totalUnspent > 0 && (
+                        <div className="dev-list__auto">
+                            <span><b>{totalUnspent}</b> points waiting</span>
+                            <button type="button" className="btn btn--small btn--primary" onClick={autoSpendAll}>
+                                AUTO ALL · RECOMMENDED
+                            </button>
+                        </div>
+                    )}
+                    {feedback && phoneTab === 'players' && (
+                        <p className={`dev-feedback dev-list__feedback${feedback.startsWith('Saved') ? ' is-ok' : ''}`}>{feedback}</p>
+                    )}
                     {players.map((player) => {
+                        const points = progressOf(player).unspentPoints
+
                         return (
+                            <div className="dev-row-line" key={player.id}>
                             <button
-                                key={player.id}
                                 type="button"
                                 className={`dev-row ovr-row ${ovrTierClass(player)}${player.id === selected.id ? ' is-active' : ''}`}
                                 onClick={() => selectPlayer(player)}
@@ -250,6 +316,17 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
                                 <FormArrow player={player} />
                                 <b className="ovr-num">{player.overall}</b>
                             </button>
+                            {points > 0 && (
+                                <button
+                                    type="button"
+                                    className="dev-row__auto"
+                                    onClick={() => autoSpend(player)}
+                                    title="Spend the points now, recommended for his position"
+                                >
+                                    AUTO <b>+{points}</b>
+                                </button>
+                            )}
+                            </div>
                         )
                     })}
                 </div>
@@ -320,6 +397,12 @@ export default function DevelopmentScreen({ team, onUpdatePlayer, onBack, onEdit
                     )}
 
                     {feedback && <p className={`dev-feedback${feedback.startsWith('Saved') ? ' is-ok' : ''}`}>{feedback}</p>}
+                    {/* Phase 41: lưu xong → sang người tiếp theo còn điểm, không phải quay lại PLAYERS */}
+                    {!pending && nextWithPoints && (
+                        <button type="button" className="btn btn--small dev-next-points" onClick={() => selectPlayer(nextWithPoints)}>
+                            NEXT · {shortPlayerName(nextWithPoints.name, 16)} <b>+{progressOf(nextWithPoints).unspentPoints}</b> →
+                        </button>
+                    )}
 
                     <div className="dev-groups">
                         {groups.map((group) => (

@@ -121,12 +121,14 @@ export const worldCupDifficultyId = (wc, fallback) => wc?.difficulty || fallback
 
 // Ghi kết quả + XP + mở khoá cho một trận World Cup (thuần — dùng chung cho
 // lúc lưu và lúc làm màn tổng kết để hai nơi luôn khớp).
-export function applyWorldCupMatch(world, wcAfter, fixtureId, { difficultyId, forfeit = false } = {}) {
+export function applyWorldCupMatch(world, wcAfter, fixtureId, { difficultyId, forfeit = false, factor = 1 } = {}) {
     let next = { ...world, worldCup: wcAfter }
     const report = { xp: 0, result: null, before: worldCupProgress(world), after: worldCupProgress(world), levelsGained: 0, unlocked: null }
 
     if (!forfeit) {
-        const match = worldCupMatchXp(wcAfter, fixtureId, difficultyId)
+        const raw = worldCupMatchXp(wcAfter, fixtureId, difficultyId)
+        // Phase 41: trận mô phỏng (SIMULATE NEXT) nhận XP × hệ số (0.7).
+        const match = raw && factor !== 1 ? { ...raw, xp: Math.round(raw.xp * factor) } : raw
 
         if (match) {
             const added = addWorldCupXp(next, match.xp)

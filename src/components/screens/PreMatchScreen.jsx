@@ -449,6 +449,7 @@ export default function PreMatchScreen({
                     players={blueTeam.players}
                     align="left"
                     showCondition
+                    showUpgrade
                     onEdit={onEditLineup}
                     onOpenPlayer={(player) => setInfo({ player, side: 'blue' })}
                     className="phone-tab--team"

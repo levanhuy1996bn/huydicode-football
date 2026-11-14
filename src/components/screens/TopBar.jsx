@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import LevelRing from '../LevelRing'
+import { clubXpToNext } from '../../services/clubProgress'
 
 // Thanh điều hướng trên cùng. Trong trận đấu, điều hướng bị khóa
 // (giống FO4: phải đá xong hoặc bỏ trận mới rời được sân).
@@ -65,7 +67,7 @@ function BudgetChip({ budget, disabled, onClick }) {
     )
 }
 
-export default function TopBar({ screen, inMatch, season, record, onNavigate, cardsCount = 0, clubLevel = 0, budget = 0, onOpenSettings }) {
+export default function TopBar({ screen, inMatch, season, record, onNavigate, cardsCount = 0, clubLevel = 0, clubXp = 0, budget = 0, onOpenSettings }) {
     return (
         <header className="topbar">
             <div className="brand">
@@ -100,7 +102,6 @@ export default function TopBar({ screen, inMatch, season, record, onNavigate, ca
             </nav>
 
             <div className="season-label">
-                <span className="season-label__level" title="Club level">CLUB LV <b>{clubLevel}</b></span>
                 SEASON <b>{season}/{String((season + 1) % 100).padStart(2, '0')}</b>
                 {record && (
                     <span className="season-label__record">
@@ -111,6 +112,14 @@ export default function TopBar({ screen, inMatch, season, record, onNavigate, ca
             </div>
 
             <div className="topbar-tools">
+                {/* Phase 40: cấp CLB = vòng tròn, viền xanh chạy theo % XP tới cấp sau. */}
+                <LevelRing
+                    level={clubLevel}
+                    progress={clubXp / clubXpToNext(clubLevel)}
+                    title={`Club level ${clubLevel} · ${clubXp} / ${clubXpToNext(clubLevel)} XP`}
+                    onClick={inMatch ? undefined : () => onNavigate('cards')}
+                    className="topbar-level"
+                />
                 <BudgetChip budget={budget} disabled={inMatch} onClick={() => onNavigate('club')} />
                 {onOpenSettings && (
                     <button

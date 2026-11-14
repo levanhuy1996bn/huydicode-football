@@ -234,7 +234,9 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
     )
 
     return (
-        <div className="upgrade-panel" data-step={main ? 'detail' : 'list'}>
+        // Phase 40: đang chạy hoạt cảnh thì ẩn hẳn màn phía sau (kết quả đã được
+        // lưu lúc bấm đập — không để lộ +N / màu thẻ mới qua lớp phủ).
+        <div className={`upgrade-panel${anim ? ' is-animating' : ''}`} data-step={main ? 'detail' : 'list'}>
             {/* Phase 31: vừa đạt mốc thành tích (hiện sau khi đóng hoạt cảnh) */}
             {achieved && !anim && (
                 <div className="ach-toast" role="status">
@@ -469,8 +471,7 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
                     result={anim.result}
                     materials={anim.materials}
                     canAgain={canAgain}
-                    onAgain={() => closeAnim(true)}
-                    onDone={() => closeAnim(false)}
+                    onDone={() => closeAnim(true)}
                 />
             )}
         </div>

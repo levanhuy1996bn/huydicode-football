@@ -85,7 +85,7 @@ function CountStat({ label, from, to, active }) {
     )
 }
 
-export default function UpgradeAnimation({ before, after, result, materials = [], onDone, onAgain, canAgain }) {
+export default function UpgradeAnimation({ before, after, result, materials = [], onDone, canAgain }) {
     const reduced = useMemo(prefersReducedMotion, [])
     const target = result.from + 1
     const beats = reduced ? 1 : beatsFor(target)
@@ -133,18 +133,20 @@ export default function UpgradeAnimation({ before, after, result, materials = []
         return clearTimers
     }, [beats, reduced, reveal])
 
-    // Space / Enter: bỏ qua tới kết quả (đang ở kết quả thì không làm gì).
+    // Space / Enter: bỏ qua tới kết quả; đang ở kết quả → CONTINUE.
     useEffect(() => {
         const onKey = (event) => {
             if (event.code === 'Space' || event.code === 'Enter') {
                 event.preventDefault()
+                if (event.repeat) return
                 if (phase !== 'reveal') reveal()
+                else onDone?.()
             }
         }
 
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-    }, [phase, reveal])
+    }, [phase, reveal, onDone])
 
     const toggleMute = (event) => {
         event.stopPropagation()
@@ -274,13 +276,10 @@ export default function UpgradeAnimation({ before, after, result, materials = []
 
             {revealed ? (
                 <div className="upgrade-anim__actions" onClick={(event) => event.stopPropagation()}>
-                    {canAgain && (
-                        <button type="button" className="btn btn--primary" onClick={onAgain}>
-                            UPGRADE AGAIN
-                        </button>
-                    )}
-                    <button type="button" className="btn" onClick={onDone}>
-                        DONE
+                    {/* Phase 40: một nút (DONE và UPGRADE AGAIN trước đây gần như giống nhau):
+                        quay lại thẻ, tự chọn sẵn nguyên liệu tốt nhất nếu còn. */}
+                    <button type="button" className="btn btn--primary" onClick={onDone}>
+                        {canAgain ? 'CONTINUE · UPGRADE AGAIN' : 'CONTINUE'}
                     </button>
                 </div>
             ) : (

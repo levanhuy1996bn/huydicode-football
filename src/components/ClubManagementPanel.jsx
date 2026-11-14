@@ -101,6 +101,10 @@ function Stat({ label, value }) {
     )
 }
 
+
+// Phase 41: mua tối đa bao nhiêu thẻ một lần.
+const MAX_BUY_QTY = 10
+
 export default function ClubManagementPanel({
                                                 roster,
                                                 onRosterChange,
@@ -156,6 +160,12 @@ export default function ClubManagementPanel({
     )
 
     const [selectedPlayer, setSelectedPlayer] = useState(null)
+    // Phase 41: mua nhiều thẻ một lần (làm nguyên liệu đập thẻ).
+    const [buyQty, setBuyQty] = useState(1)
+
+    useEffect(() => {
+        setBuyQty(1)
+    }, [selectedPlayer?.playerId])
     // Phase 29A4b: trên điện thoại các bộ lọc thu gọn sau nút FILTERS.
     const [filtersOpen, setFiltersOpen] = useState(false)
     const activeFilters = [positionFilter, rarityFilter, countryFilter, leagueFilter, clubFilter].filter((value) => value !== 'ALL').length
@@ -235,7 +245,16 @@ export default function ClubManagementPanel({
         return () => window.clearTimeout(timer)
     }, [toast])
 
-    const buyPlayer = (player) => {
+    const maxBuy = (player) =>
+        player
+            ? Math.max(0, Math.min(
+                MAX_BUY_QTY,
+                Math.floor((club.budget || 0) / Math.max(1, player.value)),
+                SQUAD_LIMITS.total - squad.length,
+            ))
+            : 0
+
+    const buyPlayer = (player, wanted = 1) => {
         if (!club.transferWindowOpen) {
             showMessage('TRANSFER WINDOW IS CLOSED', 'error', 'Open the transfer window in the Overview tab to sign players.')
             return
@@ -243,18 +262,23 @@ export default function ClubManagementPanel({
 
         if (!blueTeam) return
 
-        if (club.budget < player.value) {
+        const qty = Math.max(1, Math.round(wanted) || 1)
+        const total = player.value * qty
+
+        if (club.budget < total) {
             showMessage(
                 'NOT ENOUGH TRANSFER BUDGET',
                 'error',
-                `${player.name} costs ${formatMoney(player.value)} · budget ${formatMoney(club.budget)}`,
+                `${qty > 1 ? `${qty} × ` : ''}${player.name} costs ${formatMoney(total)} · budget ${formatMoney(club.budget)}`,
             )
             return
         }
 
-        if (squad.length >= SQUAD_LIMITS.total) {
+        if (squad.length + qty > SQUAD_LIMITS.total) {
             showMessage(
-                `SQUAD IS FULL (${squad.length}/${SQUAD_LIMITS.total})`,
+                squad.length >= SQUAD_LIMITS.total
+                    ? `SQUAD IS FULL (${squad.length}/${SQUAD_LIMITS.total})`
+                    : `ONLY ${SQUAD_LIMITS.total - squad.length} FREE SQUAD PLACE${SQUAD_LIMITS.total - squad.length === 1 ? '' : 'S'}`,
                 'error',
                 'Sell a player from the reserves to make room.',
             )
@@ -263,7 +287,12 @@ export default function ClubManagementPanel({
 
         // Phase 22: cầu thủ mới vào đội hình ngoài (không tự vào băng ghế dự bị).
         // Phase 23: mỗi lần mua tạo một thẻ mới (+1) với cardId riêng.
-        const newPlayer = cardFromCatalog(player, { number: freeShirtNumber(squad) })
+        // Phase 41: qty thẻ, mỗi thẻ một số áo trống riêng.
+        const signed = []
+
+        for (let index = 0; index < qty; index += 1) {
+            signed.push(cardFromCatalog(player, { number: freeShirtNumber([...squad, ...signed]) }))
+        }
 
         onRosterChange((current) =>
             current.map((team) => {
@@ -273,7 +302,7 @@ export default function ClubManagementPanel({
                     ...team,
                     reserves: [
                         ...(team.reserves || []),
-                        newPlayer,
+                        ...signed,
                     ],
                 }
             }),
@@ -281,21 +310,18 @@ export default function ClubManagementPanel({
 
         setClub((current) => ({
             ...current,
-            budget: current.budget - player.value,
+            budget: current.budget - total,
             contracts: {
                 ...current.contracts,
-                [newPlayer.id]: {
-                    wage: player.wage,
-                    years: 4,
-                },
+                ...Object.fromEntries(signed.map((card) => [card.id, { wage: player.wage, years: 4 }])),
             },
         }))
 
         setSelectedPlayer(null)
         showMessage(
-            `${player.name.toUpperCase()} SIGNED`,
+            qty > 1 ? `${qty} × ${player.name.toUpperCase()} SIGNED` : `${player.name.toUpperCase()} SIGNED`,
             'success',
-            `Fee ${formatMoney(player.value)} · budget left ${formatMoney(club.budget - player.value)} · joined the reserves (${squad.length + 1}/${SQUAD_LIMITS.total})`,
+            `Fee ${formatMoney(total)} · budget left ${formatMoney(club.budget - total)} · joined the reserves (${squad.length + qty}/${SQUAD_LIMITS.total})`,
         )
     }
 
@@ -1309,12 +1335,12 @@ export default function ClubManagementPanel({
                                 <PlayerInfoPanel player={selectedPlayer} readOnly />
 
                                 <dl className="market-detail__money">
-                                    <div><dt>Transfer fee</dt><dd>{formatMoney(selectedPlayer.value)}</dd></div>
+                                    <div><dt>Transfer fee</dt><dd>{formatMoney(selectedPlayer.value)}{buyQty > 1 && <small> × {buyQty} = {formatMoney(selectedPlayer.value * buyQty)}</small>}</dd></div>
                                     <div><dt>Weekly wage</dt><dd>{formatMoney(selectedPlayer.wage)}</dd></div>
                                     <div>
                                         <dt>Budget after</dt>
-                                        <dd className={(club.budget || 0) < selectedPlayer.value ? 'is-down' : ''}>
-                                            {formatMoney((club.budget || 0) - selectedPlayer.value)}
+                                        <dd className={(club.budget || 0) < selectedPlayer.value * buyQty ? 'is-down' : ''}>
+                                            {formatMoney((club.budget || 0) - selectedPlayer.value * buyQty)}
                                         </dd>
                                     </div>
                                     {ownedCounts.get(selectedPlayer.playerId) > 0 && (
@@ -1326,8 +1352,15 @@ export default function ClubManagementPanel({
                                     <button type="button" className="btn" onClick={() => setSelectedPlayer(null)}>
                                         BACK
                                     </button>
-                                    <button type="button" className="btn btn--primary" onClick={() => buyPlayer(selectedPlayer)}>
-                                        SIGN PLAYER
+                                    {/* Phase 41: số lượng thẻ (giới hạn theo ngân sách và chỗ trong đội 50) */}
+                                    <div className="buy-qty" role="group" aria-label="Quantity">
+                                        <button type="button" className="btn btn--small btn--ghost" disabled={buyQty <= 1} onClick={() => setBuyQty((value) => Math.max(1, value - 1))} aria-label="One less">−</button>
+                                        <b>×{buyQty}</b>
+                                        <button type="button" className="btn btn--small btn--ghost" disabled={buyQty >= maxBuy(selectedPlayer)} onClick={() => setBuyQty((value) => Math.min(maxBuy(selectedPlayer), value + 1))} aria-label="One more">+</button>
+                                        <button type="button" className="btn btn--small btn--ghost" disabled={maxBuy(selectedPlayer) <= 1} onClick={() => setBuyQty(Math.max(1, maxBuy(selectedPlayer)))}>MAX</button>
+                                    </div>
+                                    <button type="button" className="btn btn--primary" onClick={() => buyPlayer(selectedPlayer, buyQty)}>
+                                        {buyQty > 1 ? `SIGN ×${buyQty}` : 'SIGN PLAYER'}
                                     </button>
                                 </div>
                             </div>

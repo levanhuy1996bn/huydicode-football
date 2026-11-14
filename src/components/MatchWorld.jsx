@@ -165,6 +165,34 @@ function GroundCollider() {
     )
 }
 
+// Phase 39: vị trí quả bóng trên màn hình (px) cho thẻ tên — thẻ nào đè lên
+// bóng thì mờ đi (Player.jsx → NameTag).
+function BallScreenTracker({ ballRef, matchState }) {
+    const { camera, size } = useThree()
+    const center = useMemo(() => new THREE.Vector3(), [])
+    const top = useMemo(() => new THREE.Vector3(), [])
+
+    useFrame(() => {
+        const ball = ballRef.current?.translation()
+
+        if (!ball) return
+
+        center.set(ball.x, ball.y, ball.z).project(camera)
+        top.set(ball.x, ball.y + 0.22, ball.z).project(camera)
+
+        const y = (-center.y * 0.5 + 0.5) * size.height
+
+        matchState.ballScreen = {
+            x: (center.x * 0.5 + 0.5) * size.width,
+            y,
+            r: Math.max(3, Math.abs(y - (-top.y * 0.5 + 0.5) * size.height)),
+            visible: center.z < 1,
+        }
+    })
+
+    return null
+}
+
 function PassTargetMarker({ matchState }) {
     const markerRef = useRef(null)
 
@@ -446,6 +474,12 @@ export default function MatchWorld({
     labelMode = 'smart',
     matchDuration,
     whistlePending = null,
+    // Phase 39: chạm trần bù giờ → thổi ngay; thay người chờ bóng chết.
+    whistleForce = false,
+    pendingSub = null,
+    onSubStart,
+    onSubSwap,
+    onSubDone,
     onWhistleDone,
     onAutoPilotChange,
     onCard,
@@ -466,6 +500,8 @@ export default function MatchWorld({
 
     // Phase 20: cầu thủ bị thẻ đỏ (id) — không vẽ, không có trong ctx.
     const [sentOff, setSentOff] = useState([])
+    // Phase 39: người vừa bị thay vẫn được vẽ thêm vài giây (đi ra ngoài sân).
+    const [departing, setDeparting] = useState(null)
 
     const ballRef = useRef(null)
     const playerRefs = useRef({})
@@ -548,6 +584,19 @@ export default function MatchWorld({
         matchDuration,
         // Hết giờ, đang chờ bóng chết để thổi còi ('half' | 'full' | null).
         whistlePending,
+        whistleForce,
+        pendingSub,
+        onSubStart,
+        onSubSwap: (sub) => {
+            const leaving = byId.get(sub.outId)
+
+            if (leaving) setDeparting(leaving)
+            onSubSwap?.(sub)
+        },
+        onSubDone: (sub) => {
+            setDeparting(null)
+            onSubDone?.(sub)
+        },
         onWhistleDone,
         onAutoPilotChange,
         isPlaying,
@@ -839,13 +888,14 @@ export default function MatchWorld({
             <GroundCollider />
             <Ball bodyRef={ballRef} />
             <PassTargetMarker matchState={state} />
+            <BallScreenTracker ballRef={ballRef} matchState={state} />
             <SelectedPlayerIndicator
                 matchState={state}
                 playerRefs={playerRefs}
                 selectedId={selectedId}
             />
 
-            {players.map((player) => {
+            {(departing && !byId.has(departing.id) ? [...players, departing] : players).map((player) => {
                 const team = roster.find((item) => item.id === player.teamId)
 
                 return (

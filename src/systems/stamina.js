@@ -1,4 +1,5 @@
 import { attr } from './attributes'
+import { isPeakCard } from './form'
 
 // ---- Phase 19: thể lực trong trận + phong độ thể lực giữa các trận ----
 //
@@ -54,6 +55,8 @@ const clampValue = (value, min, max) => Math.max(min, Math.min(max, value))
 const staminaFactor = (item) => clampValue(1.35 - attr(item, 'stamina') * 0.007, 0.6, 1.1)
 
 export function startingStamina(item) {
+    if (isPeakCard(item)) return 100
+
     return clampValue(item?.condition ?? 100, CONDITION_FLOOR, 100)
 }
 
@@ -160,6 +163,9 @@ export function updateStamina(ctx, dt) {
 //   minutesFraction: phần trận đã thi đấu (0..1) theo id.
 export function applyMatchCondition(players, minutesFraction) {
     return players.map((player) => {
+        // Phase 40: thẻ +10 hồi đầy thể lực sau mỗi trận.
+        if (isPeakCard(player)) return player.condition === 100 ? player : { ...player, condition: 100 }
+
         const condition = player.condition ?? 100
         const played = minutesFraction[player.id] || 0
         const drain = played * 30 * staminaFactor(player)

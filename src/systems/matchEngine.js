@@ -12,7 +12,8 @@ import { updatePlayerStates } from './playerState'
 import { recordPossession } from './matchStats'
 import { updateDuels, updateShield } from './duels'
 import { updateStamina } from './stamina'
-import { isDeadBall, startWhistle } from './whistle'
+import { attackOver, isDeadBall, startWhistle } from './whistle'
+import { startSubstitution, stepSubstitution } from './substitution'
 import { stepShootout } from './shootout'
 
 function tickTimers(state, dt) {
@@ -59,6 +60,23 @@ export function stepMatch(ctx, dt) {
         }
 
         startWhistle(ctx, ctx.whistlePending)
+        return
+    }
+
+    // Phase 39: hết giờ bù đã báo, bóng còn lăn → thổi khi đợt tấn công kết thúc;
+    // chạm trần (+5 hiệp 1 / +10 hiệp 2) → thổi ngay.
+    if (ctx.whistlePending && !state.whistle && !state.subSeq && (ctx.whistleForce || attackOver(ctx))) {
+        startWhistle(ctx, ctx.whistlePending)
+        return
+    }
+
+    // Phase 39: thay người chỉ khi bóng chết, có hoạt cảnh (substitution.js).
+    if (state.subSeq) {
+        stepSubstitution(ctx, dt)
+        return
+    }
+
+    if (ctx.pendingSub && !ctx.whistlePending && isDeadBall(state) && startSubstitution(ctx, ctx.pendingSub)) {
         return
     }
 
