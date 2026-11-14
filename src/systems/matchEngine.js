@@ -14,6 +14,7 @@ import { updateDuels, updateShield } from './duels'
 import { updateStamina } from './stamina'
 import { attackOver, isDeadBall, startWhistle } from './whistle'
 import { startSubstitution, stepSubstitution } from './substitution'
+import { judgeTraining, stepTraining } from './training'
 import { stepShootout } from './shootout'
 
 function tickTimers(state, dt) {
@@ -48,6 +49,15 @@ export function stepMatch(ctx, dt) {
     // Phase 29D: loạt sút luân lưu chạy vòng lặp riêng.
     if (state.shootout) {
         stepShootout(ctx, dt)
+        return
+    }
+
+    // Phase 42: tập luyện — đặt bóng / chờ đá / xem kết quả.
+    if (state.training) {
+        if (stepTraining(ctx, dt)) return
+
+        stepPlay(ctx, dt)
+        judgeTraining(ctx)
         return
     }
 
@@ -233,7 +243,8 @@ function stepPlay(ctx, dt) {
     // 8. Vận tốc + state machine (animation đọc kết quả này).
     trackVelocities(ctx, dt)
     updatePlayerStates(ctx, dt)
-    updateStamina(ctx, dt)
+    // Phase 42: tập luyện không mệt.
+    if (!state.training) updateStamina(ctx, dt)
 
     const finalBall = ball.translation()
     state.ballPosition.x = finalBall.x

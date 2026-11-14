@@ -30,6 +30,7 @@ import { attachBallToPlayer } from '../systems/ball'
 import { resetPositions, restartAtSpot } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { startShootout, stopShootout } from '../systems/shootout'
+import { startTraining, stopTraining } from '../systems/training'
 import { cancelCharge, handleKeyDown, handleKeyUp } from '../systems/control'
 import { noteKeyActivity, noteUserInput, setAutoPilot, stepMatch } from '../systems/matchEngine'
 import { withForm } from '../systems/form'
@@ -495,6 +496,9 @@ export default function MatchWorld({
     // máy đá thay từ nút AUTO ({ on, nonce }).
     idleLimit = 10,
     autoPilotCommand = null,
+    // Phase 42: tập luyện — lệnh { type: 'start' | 'stop', drill, options, nonce }.
+    trainingCommand = null,
+    onTrainingResult,
 }) {
     const keys = useKeyboard()
 
@@ -585,6 +589,9 @@ export default function MatchWorld({
         // Hết giờ, đang chờ bóng chết để thổi còi ('half' | 'full' | null).
         whistlePending,
         whistleForce,
+        onTrainingResult,
+        // Phase 42: người đá phạt đã chọn của đội xanh.
+        setPieceTakers: { blue: roster.find((team) => team.id === 'blue')?.setPieceTakers || null },
         pendingSub,
         onSubStart,
         onSubSwap: (sub) => {
@@ -819,6 +826,32 @@ export default function MatchWorld({
             stopShootout(ctx)
         }
     }, [shootoutCommand, ctx])
+
+    // Phase 42: bắt đầu / đổi / dừng bài tập. Chờ bóng và cầu thủ sẵn sàng.
+    const trainingNonce = useRef(null)
+
+    useEffect(() => {
+        if (!trainingCommand || trainingNonce.current === trainingCommand.nonce) return undefined
+
+        let timer = null
+        const run = () => {
+            const ready = ballRef.current && ctx.players.every((item) => ctx.objects[item.id])
+
+            if (!ready) {
+                timer = setTimeout(run, 150)
+                return
+            }
+
+            trainingNonce.current = trainingCommand.nonce
+
+            if (trainingCommand.type === 'start') startTraining(ctx, trainingCommand.drill, trainingCommand.options || {})
+            else stopTraining(ctx)
+        }
+
+        run()
+
+        return () => clearTimeout(timer)
+    }, [trainingCommand, ctx])
 
     // Vòng lặp chính: chạy 1 bước logic ngay TRƯỚC mỗi bước vật lý của
     // Rapier (Physics timeStep = FIXED_STEP). Logic và vật lý luôn đi cùng

@@ -14,7 +14,7 @@ import { BOX_DEPTH, BOX_HALF_WIDTH, PENALTY_SPOT } from './referee'
 
 const otherTeam = (teamId) => (teamId === 'blue' ? 'red' : 'blue')
 
-function placeAllAtHome(ctx) {
+export function placeAllAtHome(ctx) {
     const { state, objects } = ctx
 
     ctx.players.forEach((item) => {
@@ -177,21 +177,31 @@ export function restartAtSpot(ctx, teamId, restartType, x, z, extra = {}) {
     let ballX = clamp(x, FIELD.minX + 0.5, FIELD.maxX - 0.5)
     let ballZ = clamp(z, FIELD.minZ + 0.5, FIELD.maxZ - 0.5)
     let kicker = null
+    // Phase 42: người đá phạt do người chơi chọn (TEAM SETUP → SET PIECES /
+    // TRAINING): ctx.setPieceTakers = { blue: { penalty, freeKick, corner } }.
+    const chosen = (key) => {
+        const id = ctx.setPieceTakers?.[teamId]?.[key]
+
+        return id ? teamList.find((item) => item.id === id && objects[item.id]) || null : null
+    }
 
     if (restartType === 'goal-kick') {
         kicker = teamList.find((item) => item.role === 'GK')
     } else if (restartType === 'penalty') {
         // Phase 29D: luân lưu chỉ định người sút (extra.kickerId).
         kicker = (extra.kickerId && teamList.find((item) => item.id === extra.kickerId && objects[item.id])) ||
+            chosen('penalty') ||
             bestTaker(teamList, objects, 'finishing')
         ballX = 0
         ballZ = attackSign * (FIELD.lineZ - PENALTY_SPOT)
     } else if (restartType === 'free-kick') {
         const goalDistance = Math.hypot(ballX, goalZ - ballZ)
 
-        kicker = !extra.indirect && goalDistance < 30
+        kicker = chosen('freeKick') || (!extra.indirect && goalDistance < 30
             ? bestTaker(teamList, objects, 'longShots')
-            : null
+            : null)
+    } else if (restartType === 'corner') {
+        kicker = chosen('corner')
     }
 
     if (!kicker) kicker = nearestTo(teamList, objects, ballX, ballZ)

@@ -18,6 +18,7 @@ import { MATCH_LENGTHS } from '../SettingsRows'
 import { withForm } from '../../systems/form'
 import SquadCardsBox from '../SquadCardsBox'
 import { PlayerInfoModal } from '../PlayerInfoPanel'
+import SetPieceTakers from '../SetPieceTakers'
 import { ovrTierClass } from '../../utils/ovrTier'
 
 // Phase 24: hình áo nhỏ (áo + quần) cho nút chọn bộ áo.
@@ -199,6 +200,8 @@ const SETUP_TABS = [
     ['tactic', 'TACTIC'],
     ['kits', 'KITS'],
     ['difficulty', 'DIFFICULTY'],
+    // Phase 42: người đá phạt
+    ['takers', 'SET PIECES'],
 ]
 
 function SetupCard({
@@ -214,6 +217,8 @@ function SetupCard({
     difficulty,
     difficultyLocked,
     onDifficultyChange,
+    blueTeam = null,
+    onTakersChange = null,
 }) {
     const [tab, setTab] = useState('formation')
 
@@ -289,6 +294,10 @@ function SetupCard({
                     </div>
                 )}
 
+                {tab === 'takers' && (
+                    <SetPieceTakers team={blueTeam} onChange={onTakersChange} />
+                )}
+
                 {tab === 'difficulty' && (
                     difficultyLocked ? (
                         <p className="setup-card__hint">
@@ -327,6 +336,8 @@ export default function PreMatchScreen({
     difficulty = null,
     difficultyLocked = false,
     onDifficultyChange,
+    // Phase 42: người đá phạt (SET PIECES)
+    onTakersChange = null,
     simsLeft = 0,
     onSimulate,
     onKickOff,
@@ -476,6 +487,8 @@ export default function PreMatchScreen({
                         difficulty={difficulty}
                         difficultyLocked={difficultyLocked}
                         onDifficultyChange={onDifficultyChange}
+                        blueTeam={blueTeam}
+                        onTakersChange={onTakersChange}
                     />
 
                     {/* Phase 29K: thẻ Thể lực / Phong độ ngay dưới TEAM SETUP (máy tính) */}

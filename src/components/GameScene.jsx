@@ -11,7 +11,7 @@ import { fullscreenSupported, isFullscreen, isTouchDevice, setInMatch, toggleFul
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
-import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation } from '../services/quickSim'
+import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation, todayKey } from '../services/quickSim'
 import {
     CUP_MATCH_FACTOR,
     STAGE_LABELS,
@@ -61,6 +61,8 @@ import ControlsPanel from './ControlsPanel'
 import DevelopmentScreen from './screens/DevelopmentScreen'
 import MatchSidePanel from './MatchSidePanel'
 import TopBar from './screens/TopBar'
+import TrainingScreen from './screens/TrainingScreen'
+import { completeTrainingChallenge, trainingOpponent } from '../services/training'
 import LevelUpOverlay from './LevelUpOverlay'
 import HomeScreen from './screens/HomeScreen'
 import PreMatchScreen from './screens/PreMatchScreen'
@@ -1300,7 +1302,7 @@ export default function GameScene() {
 
     // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
     useEffect(() => {
-        setInMatch(screen === 'match')
+        setInMatch(screen === 'match' || screen === 'training')
         return () => setInMatch(false)
     }, [screen])
 
@@ -2238,7 +2240,40 @@ export default function GameScene() {
         else if (tab === 'cards') openCards()
         else if (tab === 'trophies') openTrophies()
         else if (tab === 'worldcup') openWorldCupScreen()
+        else if (tab === 'training') openTraining()
     }
+
+    // Phase 42: TẬP LUYỆN — đội của bạn gặp một đội tập (độ khó chọn được).
+    const [trainingLevel, setTrainingLevel] = useState('normal')
+    const trainingSide = useMemo(() => trainingOpponent(trainingLevel), [trainingLevel])
+    const trainingRoster = useMemo(() => {
+        if (screen !== 'training' || !trainingSide.club) return null
+
+        const opponentId = trainingSide.club.id
+
+        return applyKits(
+            buildMatchRoster(roster, trainingSide.club, { difficulty: trainingSide.level.difficulty, season: league.season }),
+            resolveMatchKits(userClubId(), opponentId),
+            opponentId,
+        )
+    }, [screen, roster, trainingSide, league.season])
+
+    const openTraining = () => {
+        exitWorldCupSession()
+        setIsLeagueOpen(false)
+        setIsClubOpen(false)
+        setMatchStatus((status) => (status === 'fulltime' ? 'idle' : status))
+        setScreen('training')
+    }
+
+    // Phase 42: người đá phạt (PLAY → TEAM SETUP → SET PIECES, và trong TRAINING).
+    const updateSetPieceTakers = (takers) => {
+        setRoster((current) => current.map((team) => (team.id === 'blue' ? { ...team, setPieceTakers: takers } : team)))
+    }
+
+    const rewardTrainingChallenge = useCallback((amount) => {
+        setClub((current) => completeTrainingChallenge(current, todayKey(), amount))
+    }, [])
 
     // Phase 29H: màn WORLD CUP (tab riêng).
     const openWorldCupScreen = () => {
@@ -2616,7 +2651,7 @@ export default function GameScene() {
     }, [club.level, club.xp, screen, levelUp])
 
     return (
-        <main className={`app-shell${screen === 'match' && compactLayout ? ' match-compact' : ''}${screen === 'match' ? ' is-match-screen' : ''}`}>
+        <main className={`app-shell${(screen === 'match' || screen === 'training') && compactLayout ? ' match-compact' : ''}${screen === 'match' || screen === 'training' ? ' is-match-screen' : ''}`}>
             <TopBar
                 screen={screen}
                 inMatch={inMatch}
@@ -2636,7 +2671,7 @@ export default function GameScene() {
                 onNavigate={navigate}
                 cardsCount={(club.inventory || []).length + achievementsPending}
                 onOpenSettings={openSettings}
-                hidden={screen === 'match'}
+                hidden={screen === 'match' || screen === 'training'}
             />
 
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
@@ -2675,6 +2710,8 @@ export default function GameScene() {
                     onChangeClub={openChangeClub}
                     worldCup={wcHomeInfo}
                     onOpenWorldCup={openWorldCupScreen}
+                    onOpenTraining={openTraining}
+                    trainingDone={club.trainingDaily?.date === todayKey() && club.trainingDaily?.done}
                     simsLeft={simsLeft}
                     onSimulate={() => runQuickSimulation(nextFixture)}
                 />
@@ -2698,6 +2735,7 @@ export default function GameScene() {
                     difficulty={prematchFixture?.competition === 'wc' ? wcDifficulty : difficulty}
                     difficultyLocked={prematchFixture?.competition === 'wc' ? 'wc' : difficultyLocked}
                     onDifficultyChange={changeDifficulty}
+                    onTakersChange={updateSetPieceTakers}
                     simsLeft={simsLeft}
                     onSimulate={prematchFixture?.competition === 'wc' ? null : () => runQuickSimulation(prematchFixture)}
                     onKickOff={kickOff}
@@ -2740,6 +2778,26 @@ export default function GameScene() {
                     simsLeft={simulationsLeft(club)}
                     simResult={wcSimResult}
                     onBack={goHome}
+                />
+            )}
+
+            {screen === 'training' && trainingRoster && (
+                <TrainingScreen
+                    roster={trainingRoster}
+                    blueTeam={roster.find((team) => team.id === 'blue')}
+                    onTakersChange={updateSetPieceTakers}
+                    level={trainingLevel}
+                    onLevelChange={setTrainingLevel}
+                    opponentName={trainingSide.club?.name || 'TRAINING XI'}
+                    userTeamName={userTeam().name}
+                    graphics={graphicsQuality}
+                    autoGraphics={(settings.graphics || 'auto') === 'auto'}
+                    settings={settings}
+                    touchUI={touchUI}
+                    portrait={portraitTouch}
+                    challengeState={club.trainingDaily}
+                    onChallengeReward={rewardTrainingChallenge}
+                    onExit={goHome}
                 />
             )}
 
@@ -3427,7 +3485,7 @@ export default function GameScene() {
             )}
 
             {/* Phase 29A1: nhắc xoay ngang khi đang ở màn trận trên điện thoại. */}
-            {screen === 'match' && portraitTouch && (
+            {(screen === 'match' || screen === 'training') && portraitTouch && (
                 <div className="rotate-prompt" role="alert">
                     <div className="rotate-prompt__phone" aria-hidden="true" />
                     <b>TURN YOUR PHONE SIDEWAYS</b>

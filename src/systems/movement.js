@@ -59,6 +59,8 @@ export function moveAIPlayer(ctx, item, target, speedScale, dt) {
 
     // Người đang ném biên đứng yên tại vạch.
     if (ctx.state.restart?.playerId === item.id) return
+    // Phase 42: tập luyện — người không tham gia bài tập đứng yên.
+    if (ctx.state.training?.frozen?.has(item.id)) return
 
     // Giao bóng: người đứng cạnh bóng chờ đường chuyền.
     if (ctx.state.restart?.partnerId === item.id) return

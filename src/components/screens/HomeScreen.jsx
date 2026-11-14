@@ -52,6 +52,9 @@ export default function HomeScreen({
     // Phase 29H: dòng World Cup (giải đang đá / số lượt còn hôm nay) → tab WORLD CUP.
     worldCup = null,
     onOpenWorldCup,
+    // Phase 42: tập luyện + thử thách hằng ngày.
+    onOpenTraining = null,
+    trainingDone = false,
 }) {
     const bluePosition = standings.findIndex((team) => isUserClub(team.teamId)) + 1
     const topRows = standings.slice(0, 6)
@@ -122,6 +125,15 @@ export default function HomeScreen({
                     </>
                 )}
             </div>
+
+            {/* Phase 42: TẬP LUYỆN */}
+            {onOpenTraining && (
+                <button type="button" className="home-wc-strip home-training-strip" onClick={onOpenTraining}>
+                    <b>TRAINING</b>
+                    <span>Penalties, free kicks, corners, finishing · daily challenge {trainingDone ? 'done ✓' : '+2M EP'}</span>
+                    <em>OPEN →</em>
+                </button>
+            )}
 
             {/* Phase 29H: World Cup chơi lúc nào cũng được (tab WORLD CUP). */}
             {worldCup && onOpenWorldCup && (
