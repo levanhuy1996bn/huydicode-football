@@ -31,6 +31,8 @@ const ACTION_DURATIONS = {
     fallen: 1.1,
     stumble: 0.45,
     throw: 0.5,
+    // Phase 37: nhảy lên đánh đầu
+    header: 0.6,
     // Phase 16: thủ môn
     diveLow: 1.15,
     diveMid: 1.15,

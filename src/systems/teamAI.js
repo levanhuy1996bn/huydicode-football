@@ -12,6 +12,7 @@ import { recordPlayer, recordTeam } from './matchStats'
 import { CLEAN_TACKLE_RATE, isShielding, pokeBallLoose } from './duels'
 import { isCounterPressing, teamTactic } from './tactics'
 import { attr, skill01 } from './attributes'
+import { jumpReach } from './headers'
 import { fatiguePenalty } from './stamina'
 
 // ---- Phase 18: di chuyển không bóng theo chiến thuật ----
@@ -242,6 +243,24 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
         !ownerItem && state.pendingPass && state.lastTouchTeam !== teamId
             ? findInterceptor(ctx, teamList, isUserControlled, ballPoint, ballSpeed)
             : null
+
+    // Phase 37: đối phương tạt bổng / phất dài → người gần điểm rơi nhất (trong
+    // 14m) ra tranh bóng bổng với người nhận (đánh đầu phá ra).
+    let aerial = null
+
+    if (!ownerItem && state.pendingPass?.action === 'lob' && state.lastTouchTeam !== teamId) {
+        const spot = { x: state.pendingPass.targetX, z: state.pendingPass.targetZ }
+        const rival = objects[state.pendingPass.receiverId]
+        // Kèm sát người nhận (lệch 0.8m về phía khung thành nhà) để tranh chấp
+        // cùng một điểm, thay vì chạy lên trước đón bóng (luôn thắng).
+        const aim = rival ? { x: rival.position.x, z: rival.position.z - direction * 0.8 } : spot
+
+        aerial = outfield
+            .filter((entry) => !isUserControlled(entry.item))
+            .map((entry) => ({ id: entry.item.id, gap: distance2D(entry.object.position, aim), x: aim.x, z: aim.z }))
+            .filter((entry) => entry.gap < 14)
+            .sort((a, b) => a.gap - b.gap)[0] || null
+    }
     // Phase 29F: người được chuyền tới đang ra lấy bóng (looseReceive) thì
     // không cử thêm người chạy theo bóng, nhất là người vừa chuyền.
     const looseJob = state.looseReceive?.teamId === teamId ? state.looseReceive : null
@@ -420,6 +439,10 @@ export function updateTeamAI(ctx, teamId, snapshot, dt) {
             targetX = press.x
             targetA = press.z * direction
             speedScale = press.speed
+        } else if (aerial && aerial.id === item.id) {
+            targetX = aerial.x
+            targetA = aerial.z * direction
+            speedScale = 1.3
         } else if (intercept && intercept.id === item.id) {
             targetX = intercept.x
             targetA = intercept.z * direction
@@ -835,8 +858,15 @@ const MEET_REACH = 0.9           // khống chế được bóng trong tầm nà
 
 // Vị trí bóng (trên mặt đất) sau t giây và độ cao lúc đó.
 function predictBall(ballPosition, ballVelocity, t) {
-    const travel = (1 - Math.exp(-BALL_DECAY * t)) / BALL_DECAY
-    const height = ballPosition.y + ballVelocity.y * t - 4.9 * t * t
+    // Phase 37: bóng còn bay trên không chỉ chịu lực cản không khí (0.25/s),
+    // nhẹ hơn ma sát cỏ (0.32/s) — dự đoán điểm đánh đầu chính xác hơn.
+    const airborne = ballPosition.y > 0.6 || ballVelocity.y > 1
+    const decay = airborne ? 0.25 : BALL_DECAY
+    const travel = (1 - Math.exp(-decay * t)) / decay
+    // Chiều đứng cũng chịu lực cản không khí (Rapier linearDamping 0.25).
+    const height = airborne
+        ? ballPosition.y + (ballVelocity.y + 9.81 / 0.25) * ((1 - Math.exp(-0.25 * t)) / 0.25) - (9.81 * t) / 0.25
+        : ballPosition.y + ballVelocity.y * t - 4.9 * t * t
 
     return {
         x: ballPosition.x + ballVelocity.x * travel,
@@ -845,7 +875,7 @@ function predictBall(ballPosition, ballVelocity, t) {
     }
 }
 
-function meetingPoint(ctx, item, object, ballPosition, ballVelocity) {
+function meetingPoint(ctx, item, object, ballPosition, ballVelocity, maxHeight = 1.5) {
     const speed = topSpeedOf(ctx, item) * 0.95
     let last = null
 
@@ -856,8 +886,9 @@ function meetingPoint(ctx, item, object, ballPosition, ballVelocity) {
 
         last = point
 
-        // Bóng bổng còn cao: chưa khống chế được.
-        if (point.y > 1.5) continue
+        // Bóng bổng còn cao: chưa khống chế được (Phase 37: tạt bổng thì được
+        // đón ở tầm đánh đầu — maxHeight = tầm nhảy).
+        if (point.y > maxHeight) continue
 
         const run = Math.max(0, distance2D(object.position, point) - MEET_REACH)
 
@@ -1004,7 +1035,10 @@ export function updateReceiverRun(ctx, dt) {
         receiverItem.id,
         pendingPass.action === 'through'
             ? throughRunTarget(ctx, receiverItem, receiverObject, ballPosition, ballVelocity, targetPosition)
-            : meetingPoint(ctx, receiverItem, receiverObject, ballPosition, ballVelocity) || targetPosition,
+            : meetingPoint(
+                ctx, receiverItem, receiverObject, ballPosition, ballVelocity,
+                pendingPass.action === 'lob' ? jumpReach(receiverItem) - 0.15 : 1.5,
+            ) || targetPosition,
     )
 
     moveAIPlayer(

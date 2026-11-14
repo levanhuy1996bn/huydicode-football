@@ -24,6 +24,8 @@ export function createMatchStats() {
         longPasses: 0,
         // Phase 30A: trúng cột dọc / xà ngang
         woodwork: 0,
+        // Phase 37: số lần đánh đầu
+        headers: 0,
     })
 
     return {
@@ -55,6 +57,7 @@ function playerEntry(stats, playerId) {
             xg: 0,
             blocks: 0,
             woodwork: 0,
+            headers: 0,
         }
     }
 

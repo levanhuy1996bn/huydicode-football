@@ -630,7 +630,8 @@ export function updateGoalkeeper(ctx, teamId, snapshot, dt) {
         !state.possession &&
         distanceToBall < 2 &&
         ballSpeed < SLOW_BALL &&
-        state.lastTouchTeam === enemyTeamId
+        // Phase 37: đồng đội đánh đầu về thì được bắt (chỉ cấm chuyền về bằng chân).
+        (state.lastTouchTeam === enemyTeamId || (state.lastKick?.kickId === state.kickId && state.lastKick.action === 'header'))
     ) {
         setPlayerAction(state, keeperItem.id, current.y < 0.6 ? 'scoop' : 'catch', 0.6)
         keeperCatch(ctx, keeper, keeperItem)

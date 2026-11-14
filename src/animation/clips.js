@@ -468,6 +468,36 @@ export const CLIPS = {
         },
     ],
 
+    // Phase 37: nhảy đánh đầu — khuỵu gối lấy đà, bật lên (hông cao ~0.45m),
+    // hai tay dang lấy thăng bằng, ngả đầu ra sau rồi gật mạnh vào bóng
+    // (chạm bóng ở ~0.35), tiếp đất nhún gối.
+    header: [
+        { t: 0, pose: {} },
+        {
+            t: 0.12,
+            pose: { rootY: -0.14, lKnee: 0.8, rKnee: 0.8, lHipX: -0.45, rHipX: -0.45, torsoPitch: 0.2, lShoulderX: 0.5, rShoulderX: 0.5 },
+        },
+        {
+            t: 0.3,
+            pose: {
+                rootY: 0.42, lKnee: 0.55, rKnee: 0.25, lHipX: -0.35, rHipX: 0.1, torsoPitch: -0.25, headPitch: -0.45,
+                lShoulderX: -1.3, rShoulderX: -1.3, lShoulderZ: -0.75, rShoulderZ: 0.75, lElbow: -0.9, rElbow: -0.9,
+            },
+        },
+        {
+            t: 0.42,
+            pose: {
+                rootY: 0.45, lKnee: 0.6, rKnee: 0.35, lHipX: -0.2, rHipX: 0.2, torsoPitch: 0.35, headPitch: 0.55,
+                lShoulderX: -0.9, rShoulderX: -0.9, lShoulderZ: -0.9, rShoulderZ: 0.9, lElbow: -0.7, rElbow: -0.7,
+            },
+        },
+        {
+            t: 0.78,
+            pose: { rootY: -0.12, lKnee: 0.75, rKnee: 0.75, lHipX: -0.4, rHipX: -0.4, torsoPitch: 0.25, headPitch: 0.1, lShoulderZ: -0.3, rShoulderZ: 0.3 },
+        },
+        { t: 1, pose: {} },
+    ],
+
     // Hốt bóng sệt: khuỵu gối, cúi người, hai tay úp xuống cỏ rồi ôm lên.
     scoop: [
         { t: 0, pose: {} },

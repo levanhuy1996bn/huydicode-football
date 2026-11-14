@@ -4,6 +4,7 @@ import {
     getPlayer,
     kickFromPlayer,
     listPassCandidates,
+    cornerTarget,
 } from './ball'
 import { moveAIPlayer } from './movement'
 import { isPlayerLocked } from './playerState'
@@ -794,6 +795,11 @@ function takeRestart(ctx, ownerId, ownerItem, owner, restart) {
     if (restart.type === 'corner') {
         // Phần lớn tạt vào vòng cấm, thỉnh thoảng đá ngắn.
         if (Math.random() < 0.2 && attempt('pass')) return
+
+        // Phase 37: tạt vào giữa vòng cấm cho người đánh đầu (ball.js → cornerTarget).
+        const target = cornerTarget(ctx, ownerId)
+
+        if (target && attempt('lob', { receiverId: target.item.id })) return
         if (!attempt('lob')) attempt('pass')
         return
     }

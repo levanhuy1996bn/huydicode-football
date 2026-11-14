@@ -23,6 +23,7 @@ import { closePass, openPass, recordPlayer, recordShot, recordTeam, shotXg } fro
 import { attr, over99, skill01 } from './attributes'
 import { fatiguePenalty } from './stamina'
 import { topSpeedOf } from './movement'
+import { tryHeader } from './headers'
 import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
@@ -38,6 +39,24 @@ export function heldArrows(keys) {
 
 // Góc tối đa (rad) giữa hướng ngắm và đồng đội để vẫn được chọn (~70°).
 const MAX_AIM_ANGLE = 1.22
+
+// Phase 37: người tạt phạt góc tới — đồng đội trong khu 5–15m trước khung
+// thành, lệch ≤ 10m, ít bị kèm nhất.
+export function cornerTarget(ctx, playerId) {
+    const item = getPlayer(ctx, playerId)
+
+    if (!item) return null
+
+    const direction = attackDir(ctx.state, item.teamId)
+
+    return listPassCandidates(ctx, playerId, 'lob')
+        .filter((entry) => {
+            const depth = FIELD.lineZ - entry.targetPosition.z * direction
+
+            return entry.item.role !== 'GK' && depth > 5 && depth < 15 && Math.abs(entry.targetPosition.x) < 10
+        })
+        .sort((a, b) => b.nearestOpponent - a.nearestOpponent)[0] || null
+}
 
 // Lực (0..1) quyết định khoảng cách chuyền mong muốn.
 export function desiredPassDistance(action, power) {
@@ -489,9 +508,17 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
     let passTarget = null
     let spaceReceiver = null
 
+    // Phase 37: phạt góc tạt (A) không bấm hướng → tạt vào giữa vòng cấm cho
+    // người đánh đầu (như máy), không theo hướng mặt.
+    if (restartType === 'corner' && action === 'lob' && !aimInput && !options.receiverId) {
+        const target = cornerTarget(ctx, playerId)
+
+        if (target) options = { ...options, receiverId: target.item.id }
+    }
+
     if (action === 'pass' || action === 'through' || action === 'lob') {
         // Người chơi: ngắm theo phím mũi tên, không bấm thì theo hướng mặt.
-        const aim = isCharged && !kickOffAuto
+        const aim = isCharged && !kickOffAuto && !(restartType === 'corner' && options.receiverId && !aimInput)
             ? {
                 direction: aimInput
                     ? aimInput.clone().normalize()
@@ -863,6 +890,32 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         power = Math.min(power, KICK_POWER.maxPass)
     }
 
+    // Phase 37: tạt bóng (A / phạt góc) vào vòng cấm đối phương: bóng tới chỗ
+    // người nhận ở ~1.9m (tầm đánh đầu) thay vì rơi sớm rồi nảy (lift 4.5 cũ chỉ
+    // bổng ~1.5m). Tạt căng (Z+A) / tạt sệt (A, A) / phá bóng giữ nguyên.
+    if (action === 'lob' && !isThrowIn && !options.clearance && variant !== 'whipped' && item.role !== 'GK') {
+        const spot = passTarget?.targetPosition || spaceReceiver?.spot || {
+            x: player.position.x + direction.x * desiredPassDistance('lob', isCharged ? charge : 0.5),
+            z: player.position.z + direction.z * desiredPassDistance('lob', isCharged ? charge : 0.5),
+        }
+        const depth = FIELD.lineZ - spot.z * attackDirection
+
+        if (depth < 20 && Math.abs(spot.x) < 22) {
+            const distance = Math.hypot(spot.x - player.position.x, spot.z - player.position.z)
+            // Tạt căng như thật: bay 1.0–1.7s (đỉnh ~3–4m), lực ngang đủ để tới
+            // đúng điểm trong thời gian đó (giữ phím lâu thì căng hơn một chút).
+            const flight = clamp(0.9 + distance * 0.022 - (isCharged ? charge * 0.15 : 0), 1, 1.7)
+
+            power = clamp((0.25 * distance) / (1 - Math.exp(-0.25 * flight)), 10, 30)
+            // Độ bổng để tới đúng điểm ở 1.9m, có tính lực cản không khí cả
+            // chiều đứng (k = 0.25): y(t) = y0 + (vy + g/k)·A − g·t/k, A = (1 − e^−kt)/k.
+            const decay = (1 - Math.exp(-0.25 * flight)) / 0.25
+
+            lift = clamp((1.9 - 0.48 + (9.81 * flight) / 0.25) / decay - 9.81 / 0.25, 4.5, 10)
+            message = restartType === 'corner' ? message : 'CROSS'
+        }
+    }
+
     // Phase 25: Shot power trên 99 sút căng hơn rõ (tới +5.4 m/s ở 130),
     // trần 46 m/s. Lốp bóng / phạt đền / đá phạt không cộng.
     if (action === 'shoot') {
@@ -1179,7 +1232,7 @@ function releaseKick(ctx, windup) {
     state.kickId += 1
     // Phase 23: nhớ cú đá vừa rồi là gì (sút / chuyền) để xử lý bóng bật ra
     // khi cú sút trúng cầu thủ đối phương (updateShotBlock).
-    state.lastKick = { kickId: state.kickId, action, teamId, playerId }
+    state.lastKick = { kickId: state.kickId, action, teamId, playerId, throwIn: Boolean(isThrowIn) }
     // Phase 29B: tiếng chạm bóng (to theo lực đá; ném biên không có tiếng).
     if (!isThrowIn) ctx.onSound?.('kick', { power: Math.min(1, power / 26), action })
     state.lastUserKick = !isAI
@@ -1374,6 +1427,9 @@ export function updateLooseBallPickup(ctx) {
     const velocity = ball.linvel()
     const ballSpeed = Math.hypot(velocity.x, velocity.y, velocity.z)
     const horizontalSpeed = Math.hypot(velocity.x, velocity.z)
+
+    // Phase 37: bóng bay ngang tầm đầu → cầu thủ nhảy lên đánh đầu (headers.js).
+    if (tryHeader(ctx, ballPosition, velocity)) return
 
     // Bóng quá cao thì cầu thủ chưa thể khống chế bằng chân. Phase 26C: tầm
     // với theo chiều cao (≈1.45–1.67m), kiểm tra từng người bên dưới.
