@@ -17,17 +17,19 @@ import Stadium from './Stadium'
 import { crowdIntensity, matchSoundEvent } from '../utils/matchSound'
 import Player from './Player'
 
-import { FIXED_STEP, TACTICS, clamp } from '../systems/constants'
+import { FIELD, FIXED_STEP, TACTICS, clamp } from '../systems/constants'
 import { getRole } from '../systems/roster'
 import { halftimeRecovery, resetStamina } from '../systems/stamina'
 import { stepWhistle } from '../systems/whistle'
 import {
+    attackDir,
     createMatchState,
     facingFor,
     homePosition,
     resetMatchProgress,
 } from '../systems/matchState'
 import { attachBallToPlayer } from '../systems/ball'
+import { PREVIEW_POINTS, freeKickZone, predictCharge } from '../systems/kickPreview'
 import { resetPositions, restartAtSpot } from '../systems/rules'
 import { createMatchStats } from '../systems/matchStats'
 import { startShootout, stopShootout } from '../systems/shootout'
@@ -227,6 +229,238 @@ function PassTargetMarker({ matchState }) {
     )
 }
 
+// Phase 44: dấu ngắm phạt đền trong khung thành — theo ← / → (góc) và ↑ / ↓
+// (bổng / sệt) đang giữ, chỉ khi người chơi (BLUE) sút và không AUTO PLAY.
+function PenaltyAimMarker({ matchState, keys }) {
+    const markerRef = useRef(null)
+
+    useFrame(() => {
+        const marker = markerRef.current
+
+        if (!marker) return
+
+        const restart = matchState.restart
+        const show = Boolean(restart && restart.type === 'penalty' && restart.teamId === 'blue' && !matchState.autoPilot)
+
+        marker.visible = show
+        if (!show) return
+
+        const pressed = keys?.current || {}
+        const dir = attackDir(matchState, 'blue')
+        const side = (pressed.ArrowRight ? 1 : 0) - (pressed.ArrowLeft ? 1 : 0)
+        const up = pressed.ArrowUp && !pressed.ArrowDown
+        const down = pressed.ArrowDown && !pressed.ArrowUp
+
+        marker.position.set(side * -dir * 2.85, up ? 2.0 : down ? 0.42 : 1.15, dir * (FIELD.lineZ - 0.5))
+    })
+
+    return (
+        <mesh ref={markerRef} visible={false} renderOrder={10}>
+            <ringGeometry args={[0.3, 0.44, 32]} />
+            <meshBasicMaterial color="#ffd84f" transparent opacity={0.95} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
+        </mesh>
+    )
+}
+
+// Phase 45: đường ngắm dự đoán (chỉ trong TẬP LUYỆN) khi giữ phím lấy lực —
+// nét đứt trắng = đường bóng, vòng vàng = điểm rơi quả tạt / bóng bổng, vòng
+// xanh dưới chân = người nhận. Đá phạt: tính dải lực vượt hàng rào
+// (state.kickZone → thanh lực).
+function KickPreview({ ctx }) {
+    const line = useMemo(() => {
+        const geometry = new THREE.BufferGeometry()
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PREVIEW_POINTS * 3), 3))
+        geometry.setDrawRange(0, 0)
+
+        const material = new THREE.LineDashedMaterial({
+            color: '#ffffff',
+            dashSize: 0.7,
+            gapSize: 0.45,
+            transparent: true,
+            opacity: 0.8,
+            depthTest: false,
+            depthWrite: false,
+        })
+        const object = new THREE.Line(geometry, material)
+
+        object.frustumCulled = false
+        object.renderOrder = 9
+        object.visible = false
+        return object
+    }, [])
+    const landingRef = useRef(null)
+    const receiverRef = useRef(null)
+    const zoneClock = useRef(0)
+
+    useEffect(() => () => {
+        line.geometry.dispose()
+        line.material.dispose()
+    }, [line])
+
+    useFrame((_, delta) => {
+        const state = ctx.state
+        const training = state?.training
+        const active = Boolean(training && training.drill !== 'penalty-save' && state.charge && !state.windup)
+        let result = null
+
+        if (active) {
+            try {
+                result = predictCharge(ctx, line.geometry.attributes.position.array)
+            } catch {
+                result = null
+            }
+        }
+
+        line.visible = Boolean(result && result.count > 1)
+
+        // Lần dự đoán gần nhất (để so với cú đá thật trong test).
+        if (result) {
+            state.previewLast = { goalX: result.goalX, goalY: result.goalY, landing: result.landing, target: result.params.target, action: result.params.action, receiverId: result.params.receiverId }
+            if (import.meta.env.VITE_E2E) state.previewLast.points = Array.from(line.geometry.attributes.position.array.slice(0, result.count * 3))
+        }
+
+        if (line.visible) {
+            line.geometry.setDrawRange(0, result.count)
+            line.geometry.attributes.position.needsUpdate = true
+            line.computeLineDistances()
+        }
+
+        // Bóng bổng / tạt: vòng vàng ở điểm tạt tới người nhận (tầm đánh đầu),
+        // không có người nhận thì ở điểm bóng rơi.
+        const landing = result && result.params.action !== 'shoot' ? result.params.target || result.landing : null
+
+        if (landingRef.current) {
+            landingRef.current.visible = Boolean(landing)
+            if (landing) landingRef.current.position.set(landing.x, 0.06, landing.z)
+        }
+
+        const receiver = result?.params.receiverId ? ctx.objects[result.params.receiverId] : null
+
+        if (receiverRef.current) {
+            receiverRef.current.visible = Boolean(receiver)
+            if (receiver) receiverRef.current.position.set(receiver.position.x, 0.07, receiver.position.z)
+        }
+
+        // Đá phạt: dải lực tốt, tính lại ~6 lần / giây.
+        zoneClock.current += delta
+
+        if (!active) {
+            if (state) state.kickZone = null
+        } else if (zoneClock.current > 0.16) {
+            zoneClock.current = 0
+            try {
+                state.kickZone = freeKickZone(ctx)
+            } catch {
+                state.kickZone = null
+            }
+        }
+    })
+
+    return (
+        <>
+            <primitive object={line} />
+            <mesh ref={landingRef} rotation={[-Math.PI / 2, 0, 0]} visible={false} renderOrder={9}>
+                <ringGeometry args={[0.7, 1.0, 36]} />
+                <meshBasicMaterial color="#ffd84f" transparent opacity={0.9} depthWrite={false} depthTest={false} />
+            </mesh>
+            <mesh ref={receiverRef} rotation={[-Math.PI / 2, 0, 0]} visible={false} renderOrder={9}>
+                <ringGeometry args={[0.85, 1.1, 36]} />
+                <meshBasicMaterial color="#4fd1ff" transparent opacity={0.85} depthWrite={false} depthTest={false} />
+            </mesh>
+        </>
+    )
+}
+
+// Phase 45: cọc bài rê bóng (6 cửa × 2 cọc) + cờ / vạch đích. Cọc đổi màu
+// theo kết quả: cam = chưa qua, xanh = qua đúng cửa, đỏ = bỏ cửa / chạm cọc.
+const CONE_COUNT = 12
+const CONE_COLORS = { idle: '#ff8a1f', ok: '#39ff88', missed: '#ff4d4d' }
+
+function TrainingCourse({ matchState }) {
+    const groupRef = useRef(null)
+    const coneRefs = useRef([])
+    const stripRefs = useRef([])
+    const finishRef = useRef(null)
+
+    useFrame(() => {
+        const group = groupRef.current
+        const course = matchState.training?.drill === 'dribble' ? matchState.training.course : null
+
+        if (!group) return
+
+        group.visible = Boolean(course)
+        if (!course) return
+
+        for (let index = 0; index < CONE_COUNT; index += 1) {
+            const mesh = coneRefs.current[index]
+            const gate = course.gates[Math.floor(index / 2)]
+
+            if (!mesh) continue
+
+            mesh.visible = Boolean(gate)
+            if (!gate) continue
+
+            const edge = index % 2 ? 1 : -1
+            const hit = gate.hit[index % 2]
+
+            mesh.position.set(gate.x + edge * 1.3, 0.36, gate.z)
+            mesh.rotation.z = hit ? edge * 0.5 : 0
+            mesh.material.color.set(gate.status === 'missed' || hit ? CONE_COLORS.missed : gate.status === 'ok' ? CONE_COLORS.ok : CONE_COLORS.idle)
+
+            // Vạch mờ nối hai cọc = cửa phải đi qua (cửa kế tiếp sáng hơn).
+            const strip = index % 2 ? null : stripRefs.current[index / 2]
+
+            if (strip) {
+                strip.position.set(gate.x, 0.03, gate.z)
+                strip.material.color.set(gate.status === 'missed' ? CONE_COLORS.missed : gate.status === 'ok' ? CONE_COLORS.ok : '#ffffff')
+                strip.material.opacity = gate.status ? 0.45 : Math.floor(index / 2) === course.next ? 0.85 : 0.3
+            }
+        }
+
+        if (finishRef.current) finishRef.current.position.set(0, 0, course.finishZ)
+    })
+
+    return (
+        <group ref={groupRef} visible={false}>
+            {Array.from({ length: CONE_COUNT }, (_, index) => (
+                <mesh key={index} ref={(mesh) => { coneRefs.current[index] = mesh }} castShadow>
+                    <coneGeometry args={[0.32, 0.72, 16]} />
+                    <meshStandardMaterial color={CONE_COLORS.idle} roughness={0.6} />
+                </mesh>
+            ))}
+            {Array.from({ length: CONE_COUNT / 2 }, (_, index) => (
+                <mesh key={`strip-${index}`} ref={(mesh) => { stripRefs.current[index] = mesh }} rotation={[-Math.PI / 2, 0, 0]}>
+                    <planeGeometry args={[2.6, 0.22]} />
+                    <meshBasicMaterial color="#ffffff" transparent opacity={0.3} depthWrite={false} />
+                </mesh>
+            ))}
+            <group ref={finishRef}>
+                <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <planeGeometry args={[9, 0.35]} />
+                    <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
+                </mesh>
+                {[-4.6, 4.6].map((x) => (
+                    <group key={x} position={[x, 0, 0]}>
+                        <mesh position={[0, 0.9, 0]}>
+                            <cylinderGeometry args={[0.05, 0.05, 1.8, 8]} />
+                            <meshStandardMaterial color="#dddddd" />
+                        </mesh>
+                        <mesh position={[0, 1.55, 0.3]}>
+                            <planeGeometry args={[0.02, 0.5]} />
+                            <meshBasicMaterial color="#ffd84f" side={THREE.DoubleSide} />
+                        </mesh>
+                        <mesh position={[0, 1.55, 0.3]} rotation={[0, Math.PI / 2, 0]}>
+                            <planeGeometry args={[0.6, 0.45]} />
+                            <meshBasicMaterial color="#ffd84f" side={THREE.DoubleSide} />
+                        </mesh>
+                    </group>
+                ))}
+            </group>
+        </group>
+    )
+}
+
 const CHARGE_COLORS = {
     pass: '#39ff88',
     through: '#4fd1ff',
@@ -353,7 +587,30 @@ function useChargeHud(chargeHudRef, matchState) {
 
         if (fill) fill.style.width = `${percent}%`
         if (value) value.textContent = `${percent}%`
-        if (label) label.textContent = CHARGE_LABELS[shown.action] || 'POWER'
+
+        // Phase 45: đá phạt trong TẬP LUYỆN — dải lực vượt hàng rào, vào khung.
+        const zone = element.querySelector('[data-role="zone"]')
+        const kickZone = charge ? matchState.kickZone : lastRef.current.zone
+
+        if (charge) lastRef.current.zone = matchState.kickZone || null
+
+        if (zone) {
+            const show = Boolean(kickZone && !kickZone.none && shown.action === 'shoot')
+
+            zone.style.display = show ? 'block' : 'none'
+            if (show) {
+                zone.style.left = `${kickZone.from * 100}%`
+                zone.style.width = `${(kickZone.to - kickZone.from) * 100}%`
+            }
+        }
+
+        if (label) {
+            label.textContent = kickZone && shown.action === 'shoot'
+                ? kickZone.none
+                    ? 'SHOT POWER · NO POWER CLEARS THE WALL ON TARGET'
+                    : `SHOT POWER · CLEARS THE WALL ${Math.round(kickZone.from * 100)}–${Math.round(kickZone.to * 100)}%`
+                : CHARGE_LABELS[shown.action] || 'POWER'
+        }
     })
 }
 
@@ -958,6 +1215,9 @@ export default function MatchWorld({
             <GroundCollider />
             <Ball bodyRef={ballRef} />
             <PassTargetMarker matchState={state} />
+            <PenaltyAimMarker matchState={state} keys={keys} />
+            <KickPreview ctx={ctx} />
+            <TrainingCourse matchState={state} />
             <BallScreenTracker ballRef={ballRef} matchState={state} />
             <SelectedPlayerIndicator
                 matchState={state}

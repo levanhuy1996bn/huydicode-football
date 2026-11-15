@@ -134,6 +134,17 @@ export function penaltyAimInput(ctx) {
     return new THREE.Vector3(side * screenRightX(state, restart.teamId), 0, 0)
 }
 
+// Phase 44: phạt đền bổng / sệt — ↑ (kèm ← / → hoặc không) = bổng góc cao,
+// ↓ = sệt sát đất; không bấm ↑ / ↓ = nửa tầm như trước.
+export function penaltyAimHeight(ctx) {
+    const pressed = ctx.keys?.current || {}
+
+    if (pressed.ArrowUp && !pressed.ArrowDown) return 'high'
+    if (pressed.ArrowDown && !pressed.ArrowUp) return 'low'
+
+    return null
+}
+
 // Đối thủ đá phạt đền: ← / → chọn hướng bay người cho thủ môn đội mình
 // (↓ đứng giữa), lựa chọn được giữ tới lúc bóng rời chân. Trả về true khi
 // đang chờ quả phạt đền của đối thủ (cầu thủ đang chọn đứng yên).
@@ -149,6 +160,11 @@ export function updatePenaltyDive(ctx) {
     if (pressed.ArrowRight) state.userDive = right
     else if (pressed.ArrowLeft) state.userDive = -right
     else if (pressed.ArrowDown || pressed.ArrowUp) state.userDive = 0
+
+    // Phase 44: ↑ = bay người cao, ↓ kèm ← / → = bay thấp (↓ một mình = đứng giữa).
+    if (pressed.ArrowUp) state.userDiveHeight = 'high'
+    else if (pressed.ArrowDown && (pressed.ArrowLeft || pressed.ArrowRight)) state.userDiveHeight = 'low'
+    else if (pressed.ArrowLeft || pressed.ArrowRight || pressed.ArrowDown) state.userDiveHeight = null
 
     return true
 }
@@ -871,16 +887,29 @@ export function releaseCharge(ctx, action) {
 
     if (!canKick(ctx, charge.playerId)) return
 
+    kickFromPlayer(ctx, charge.playerId, action, false, chargeKickOptions(ctx, charge))
+}
+
+// Thông số cú đá khi nhả phím (dùng chung cho đường ngắm dự đoán, Phase 45).
+// power: ghi đè lực (0..1) — để tính thử nhiều mức lực.
+export function chargeKickOptions(ctx, charge, power = charge.power) {
+    const { state } = ctx
+    const action = charge.action
     // Chạm nhanh để sút vẫn ra lực vừa phải (tối thiểu 35%); chuyền tối thiểu 12%.
     // Tình huống cố định (đá phạt / phạt đền / phạt góc...) không dùng tổ hợp phím.
-    const modifier = state.restart ? null : charge.modifier || heldModifier(ctx, action)
+    // Phase 44: phạt đền cho phép Q + D = Panenka (các tổ hợp khác thì không).
+    const isPenalty = state.restart?.type === 'penalty'
+    const held = charge.modifier || heldModifier(ctx, action)
+    const modifier = isPenalty ? (held === 'KeyQ' ? 'KeyQ' : null) : state.restart ? null : held
 
-    kickFromPlayer(ctx, charge.playerId, action, false, {
-        power: Math.max(action === 'shoot' ? 0.35 : 0.12, charge.power),
-        // Phase 29D: phạt đền ngắm bằng ← / → (camera sau lưng người sút).
-        aimInput: state.restart?.type === 'penalty' ? penaltyAimInput(ctx) : inputDirection(ctx.keys),
+    return {
+        power: Math.max(action === 'shoot' ? 0.35 : 0.12, power),
+        // Phase 29D: phạt đền ngắm bằng ← / → (camera sau lưng người sút);
+        // Phase 44: ↑ / ↓ chọn bổng / sệt.
+        aimInput: isPenalty ? penaltyAimInput(ctx) : inputDirection(ctx.keys),
+        aimHeight: isPenalty ? penaltyAimHeight(ctx) : null,
         variant: kickVariant(action, modifier),
-    })
+    }
 }
 
 // ---- Đổi cầu thủ (S khi không có bóng, Q) ----

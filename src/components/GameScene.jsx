@@ -11,7 +11,7 @@ import { fullscreenSupported, isFullscreen, isTouchDevice, setInMatch, toggleFul
 import ShootoutPanel from './ShootoutPanel'
 import { finishShootout, toCupShootout } from '../systems/shootoutRules'
 
-import { SIM_REWARD_FACTOR, simulateQuickMatch, simulationsLeft, spendSimulation, todayKey } from '../services/quickSim'
+import { SIM_REWARD_FACTOR, simsAvailable, simsLabel, simulateQuickMatch, spendSimulation, todayKey } from '../services/quickSim'
 import {
     CUP_MATCH_FACTOR,
     STAGE_LABELS,
@@ -695,8 +695,11 @@ export default function GameScene() {
     useEffect(() => {
         if (matchStatus !== 'playing') return undefined
 
-        const tick = 0.25 * speed
         const interval = setInterval(() => {
+            // Phase 44: ×2 → đồng hồ theo đúng tốc độ thật của engine (engine tự
+            // về 1× khi phạt đền, thổi còi, cảnh thay người).
+            const tick = 0.25 * (speed === 2 ? statsRef.current?.timeScale || 1 : 1)
+
             // Đang bù giờ: đồng hồ chính dừng ở 45:00 / 90:00, đếm giờ bù.
             if (whistlePending || addedPlan) {
                 setAddedTime((current) => current + tick)
@@ -1529,7 +1532,7 @@ export default function GameScene() {
     const simulateNextWorldCup = () => {
         const fixture = activeWorldCup ? nextWorldCupFixture(activeWorldCup) : null
 
-        if (!fixture || simulationsLeft(club) <= 0) return
+        if (!fixture || simsAvailable(club) <= 0) return
 
         const nationId = activeWorldCup.nationId
         const isHome = fixture.homeTeamId === nationId
@@ -1684,6 +1687,7 @@ export default function GameScene() {
             // Phase 29F: kiểm thử tự đá hiệp 2 khi máy đang đá thay.
             halfTime: () => handleWhistleDone('half'),
             stats: () => statsRef.current?.stats || null,
+            matchTime: () => matchTimeRef.current,
         }
     }
 
@@ -2468,7 +2472,8 @@ export default function GameScene() {
     // Đổi bộ áo của một đội (người chơi hoặc máy) cho trận sắp đá.
     // ---- Phase 28: mô phỏng nhanh (5 lượt / ngày, thưởng ×0.7) ----
     const [simulation, setSimulation] = useState(null)
-    const simsLeft = simulationsLeft(club)
+    const simsLeft = simsAvailable(club)
+    const simsText = simsLabel(club)
 
     // Phase 29G: SIMULATE NEXT ở bảng hết trận / tổng kết / màn mô phỏng —
     // không cần quay về HOME. Không áp dụng cho trận World Cup.
@@ -2480,7 +2485,7 @@ export default function GameScene() {
     }
 
     const runQuickSimulation = (fixture) => {
-        if (!fixture || fixture.played || simulationsLeft(club) <= 0) return
+        if (!fixture || fixture.played || simsAvailable(club) <= 0) return
 
         const opponentClubId = isUserClub(fixture.homeTeamId) ? fixture.awayTeamId : fixture.homeTeamId
         const opponent = getTeamById(opponentClubId)
@@ -2836,6 +2841,7 @@ export default function GameScene() {
                     onOpenTraining={openTraining}
                     trainingDone={club.trainingDaily?.date === todayKey() && club.trainingDaily?.done}
                     simsLeft={simsLeft}
+                    simsLabel={simsText}
                     onSimulate={() => runQuickSimulation(nextFixture)}
                 />
             )}
@@ -2860,6 +2866,7 @@ export default function GameScene() {
                     onDifficultyChange={changeDifficulty}
                     onTakersChange={updateSetPieceTakers}
                     simsLeft={simsLeft}
+                    simsLabel={simsText}
                     onSimulate={prematchFixture?.competition === 'wc' ? null : () => runQuickSimulation(prematchFixture)}
                     onKickOff={kickOff}
                     onBack={goHome}
@@ -2879,6 +2886,7 @@ export default function GameScene() {
                     onDone={() => setScreen('postmatch')}
                     onSimulateNext={canSimulateNext ? simulateNext : null}
                     simsLeft={simsLeft}
+                    simsLabel={simsText}
                 />
             )}
 
@@ -2898,7 +2906,8 @@ export default function GameScene() {
                     onPlay={() => openPrematch(wcNextFixture)}
                     onSimulateRest={simulateRestWorldCup}
                     onSimulateNext={simulateNextWorldCup}
-                    simsLeft={simulationsLeft(club)}
+                    simsLeft={simsLeft}
+                    simsLabel={simsText}
                     simResult={wcSimResult}
                     onBack={goHome}
                 />
@@ -2969,6 +2978,7 @@ export default function GameScene() {
                     onOpenCards={openCards}
                     onSimulateNext={canSimulateNext ? simulateNext : null}
                     simsLeft={simsLeft}
+                    simsLabel={simsText}
                 />
             )}
 
@@ -3430,6 +3440,7 @@ export default function GameScene() {
                     onNewSeason={createNewSeason}
                     onSimulateNext={canSimulateNext ? simulateNext : null}
                     simsLeft={simsLeft}
+                    simsLabel={simsText}
                 />
             )}
 

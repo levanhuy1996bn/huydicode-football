@@ -195,6 +195,7 @@ export default function PostMatchScreen({
     // Phase 29G: mô phỏng ngay trận tiếp theo (null = không được).
     onSimulateNext = null,
     simsLeft = 0,
+    simsLabel = null,
 }) {
     // Phase 29A4c: trên điện thoại chia tab STATS / PLAYERS / EVENTS / REWARDS.
     const [phoneTab, setPhoneTab] = useState('stats')
@@ -263,7 +264,7 @@ export default function PostMatchScreen({
                     )}
                     {onSimulateNext && (
                         <button type="button" className="btn btn--large" onClick={onSimulateNext} disabled={simsLeft <= 0}>
-                            SIMULATE NEXT {simsLeft}/5
+                            SIMULATE NEXT {simsLabel || `${simsLeft}/5`}
                         </button>
                     )}
                     {!(worldCup && !nextFixture) && (

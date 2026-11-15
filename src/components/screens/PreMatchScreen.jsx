@@ -339,6 +339,7 @@ export default function PreMatchScreen({
     // Phase 42: người đá phạt (SET PIECES)
     onTakersChange = null,
     simsLeft = 0,
+    simsLabel = null,
     onSimulate,
     onKickOff,
     onBack,
@@ -413,7 +414,7 @@ export default function PreMatchScreen({
                         disabled={!simsLeft || !onSimulate}
                         title="Quick simulation: instant result, rewards ×0.7 · 5 per day"
                     >
-                        SIMULATE <small>{simsLeft}/{SIM_DAILY_LIMIT}</small>
+                        SIMULATE <small>{simsLabel || `${simsLeft}/${SIM_DAILY_LIMIT}`}</small>
                     </button>
                     <button type="button" className="btn btn--primary btn--large" onClick={onKickOff}>
                         ▶ KICK OFF

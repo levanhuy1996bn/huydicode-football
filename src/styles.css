@@ -3830,16 +3830,16 @@ html.is-touch .app-shell.match-compact .radar { opacity: 0.85; }
   /* Thẻ cầu thủ dạng danh sách gọn */
   .market-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
   .market-card {
-    display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; column-gap: 10px;
+    display: grid; grid-template-columns: 1fr auto; align-items: end; column-gap: 10px;
     padding: 9px 10px !important;
   }
   .market-card > :first-child { grid-column: 1 / -1; }
   .market-card > :nth-child(2):not(.market-card__money) { grid-column: 1 / -1; margin-top: 6px !important; }
   .market-card__money { flex-direction: column; justify-content: flex-start !important; gap: 1px; margin-top: 8px !important; }
   .market-card__money span { font-size: 9px; color: #9bb5a4; letter-spacing: .5px; text-transform: uppercase; }
-  .market-card__btn { grid-column: 3; width: auto !important; margin-top: 8px !important; padding: 8px 12px !important; align-self: end; }
+  .market-card__btn { grid-column: 2; width: auto !important; margin-top: 8px !important; padding: 8px 12px !important; align-self: end; }
 
-  .contract-row { grid-template-columns: minmax(0, 1fr) 104px 58px !important; padding: 8px !important; }
+  .contract-row { grid-template-columns: minmax(0, 1fr) 70px !important; padding: 8px !important; }
   .contract-row input, .contract-row select { font-size: 16px !important; padding: 5px 8px !important; }
 
   /* Thông tin cầu thủ ở thị trường: toàn màn hình, nút ký cố định dưới */
@@ -4574,3 +4574,59 @@ button.level-ring:hover { filter: drop-shadow(0 0 calc(var(--size) * 0.16) rgba(
 .finish-early__btn { background: transparent; border-color: transparent; color: #c7fa7c; font-weight: 800; letter-spacing: 1px; padding: 2px 4px; }
 .app-shell.match-compact .finish-early { top: calc(84px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); transform: scale(0.8); transform-origin: top left; }
 @media (max-height: 440px) { .app-shell.match-compact .finish-early { top: calc(70px + env(safe-area-inset-top)); transform: scale(0.72); } }
+
+/* ---- Phase 45: TRAINING 2 ---- */
+/* Dải lực đá phạt vượt hàng rào mà vẫn vào khung (chỉ trong tập luyện). */
+.power-gauge__zone {
+  display: none;
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  border: 3px solid #d6ffe3;
+  border-radius: 3px;
+  background: #39ff8840;
+  box-shadow: 0 0 0 1px #07130f, 0 0 10px #39ff88cc;
+  z-index: 2;
+}
+/* Đồng hồ bài rê bóng qua cọc. */
+.training-clock {
+  position: absolute;
+  top: 58px;
+  right: 14px;
+  padding: 6px 12px;
+  border: 1px solid #48604e;
+  border-radius: 6px;
+  background: #07130fe6;
+  color: #ffd84f;
+  font: 800 20px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 13;
+}
+@media (max-height: 520px) {
+  .training-clock { top: 8px; font-size: 16px; padding: 4px 10px; }
+}
+
+/* ---- Phase 46: bình EXP ---- */
+.bottle-dialog { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; border-color: #3f6a52; }
+.bottle-icon { display: inline-block; filter: grayscale(.85) brightness(1.2); }
+.bottle-icon.is-full { filter: drop-shadow(0 0 6px #7dffb0); }
+.bottle-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; max-height: min(52vh, 420px); overflow-y: auto; }
+.bottle-row {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  width: 100%; padding: 8px 10px; border: 1px solid #355642; border-radius: 8px;
+  background: var(--ovr-bg, #172f24); color: #e6efe9; text-align: left; cursor: pointer;
+}
+.bottle-row:hover:not(:disabled) { border-color: #b9ed70; }
+.bottle-row:disabled { opacity: .45; cursor: not-allowed; }
+.bottle-row__ovr { font: 800 20px 'Barlow Condensed', Inter, sans-serif; text-align: center; }
+.bottle-row__name, .bottle-row__xp { display: grid; min-width: 0; }
+.bottle-row__name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bottle-row small { color: #9fb4a6; font-size: 11px; }
+.bottle-row__xp { text-align: right; }
+.inventory-item--bottle .inventory-item__icon { filter: grayscale(.85) brightness(1.2); }
+.inventory-item--bottle-full .inventory-item__icon { filter: drop-shadow(0 0 6px #7dffb0); }
+@media (max-width: 640px) {
+  .bottle-dialog { width: 100%; max-height: 100%; }
+  .bottle-list { max-height: 58vh; }
+}

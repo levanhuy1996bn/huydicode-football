@@ -25,6 +25,25 @@ import { fatiguePenalty } from './stamina'
 import { topSpeedOf } from './movement'
 import { tryHeader } from './headers'
 import { keeperClaim, keeperMayHandle } from './goalkeeper'
+
+// Phase 44: chấm phạt đền cách vạch vôi 11m (căn độ cao cú sút bổng / sệt).
+const PENALTY_DEPTH = 11
+
+// Phase 44: vận tốc đứng để bóng (thả ở ~0.48m, cách chân ~0.95m) qua vạch
+// vôi ở độ cao `targetY` — tính cả lực cản không khí của bóng (linearDamping
+// 0.25 ở MatchWorld) để độ cao bổng / sệt / Panenka khớp thật.
+const BALL_DAMPING = 0.25
+const BALL_RELEASE_Y = 0.48
+
+function penaltyLift(speed, direction, targetY) {
+    const distance = PENALTY_DEPTH / Math.max(0.8, Math.abs(direction.z)) - 0.95
+    const k = BALL_DAMPING
+    const g = 9.81
+    const t = -Math.log(1 - Math.min(0.95, (distance * k) / speed)) / k
+    const decay = 1 - Math.exp(-k * t)
+
+    return ((targetY - BALL_RELEASE_Y + (g * t) / k) * k) / decay - g / k
+}
 import { checkOffside, isOffsidePosition, offsideLine, snapshotOffside } from './referee'
 
 export const getPlayer = (ctx, playerId) => ctx.byId.get(playerId)
@@ -855,12 +874,41 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
                 direction.set(corner - player.position.x, 0, goalZ - player.position.z).normalize()
                 power = 21 + Math.random() * 5
                 lift = 0.6 + Math.random() * 1.6
+            } else if (variant === 'chip') {
+                // Phase 44: Panenka (Q + D) — lốp nhẹ vào giữa (lệch nhẹ theo mũi
+                // tên): thủ môn đã bay người thì chịu, đứng giữa thì bắt gọn.
+                const aimX = (aimInput ? aimInput.x : 0) * 0.9
+
+                direction.set(aimX - player.position.x, 0, goalZ - player.position.z).normalize()
+                power = 10.4 + charge * 1.5
+
+                lift = penaltyLift(power * KICK_POWER.penalty, direction, 1.25 + Math.random() * 0.35)
             } else {
                 power = Math.min(power, 28)
-                lift = Math.min(lift, 0.4 + charge * 2.6)
+
+                // Phase 44: ↑ = bổng góc cao, ↓ = sệt sát đất (độ cao căn theo
+                // thời gian bóng bay tới vạch); lực quá mạnh khi sút bổng dễ vọt
+                // xà, Dứt điểm / Bình tĩnh tốt thì ít lệch hơn.
+                const height = options.aimHeight || null
+
+                if (height) {
+                    const calm = skill01((finishing + attr(item, 'composure')) / 2)
+                    const wobble = (Math.random() * 2 - 1) * Math.max(0.08, 0.35 - calm * 0.22)
+                    const targetY = height === 'high'
+                        ? 1.85 + Math.max(0, charge - 0.75) * 2.2 + wobble
+                        : 0.2 + Math.abs(wobble) * 0.25
+
+                    lift = penaltyLift(power * KICK_POWER.penalty, direction, targetY)
+                } else {
+                    lift = Math.min(lift, 0.4 + charge * 2.6)
+                }
             }
 
-            message = 'PENALTY KICK!'
+            message = variant === 'chip' && isCharged
+                ? 'PANENKA!'
+                : options.aimHeight === 'high' && isCharged
+                    ? 'PENALTY · TOP CORNER!'
+                    : options.aimHeight === 'low' && isCharged ? 'PENALTY · LOW AND HARD!' : 'PENALTY KICK!'
         }
     }
 
@@ -902,7 +950,10 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         const depth = FIELD.lineZ - spot.z * attackDirection
 
         if (depth < 20 && Math.abs(spot.x) < 22) {
-            const distance = Math.hypot(spot.x - player.position.x, spot.z - player.position.z)
+            // Phase 45: bóng rời chân ở ~0.95m phía trước người tạt (holdSpot) →
+            // trừ đi, nếu không bóng tới người nhận khi còn cao ~2.3m (quá tầm
+            // với của người thấp, hậu vệ đứng sau lưng đánh đầu được).
+            const distance = Math.max(1, Math.hypot(spot.x - player.position.x, spot.z - player.position.z) - holdSpot('cross').releaseOffset)
             // Tạt căng như thật: bay 1.0–1.7s (đỉnh ~3–4m), lực ngang đủ để tới
             // đúng điểm trong thời gian đó (giữ phím lâu thì căng hơn một chút).
             const flight = clamp(0.9 + distance * 0.022 - (isCharged ? charge * 0.15 : 0), 1, 1.7)
@@ -1050,6 +1101,30 @@ function holdSpot(animation) {
     return HOLD_SPOT[animation] || HOLD_SPOT.default
 }
 
+// Phase 45: chạy thử một cú đá (không đổi gì trong trận) để vẽ đường ngắm
+// dự đoán trong TẬP LUYỆN — mọi độ lệch ngẫu nhiên về 0, beginWindup chỉ ghi
+// lại thông số rồi dừng.
+let previewSink = null
+
+export function previewKick(ctx, playerId, action, options = {}) {
+    const random = Math.random
+    const quiet = { ...ctx, onActionMessage() {}, onSound() {}, onSelect() {} }
+
+    previewSink = {}
+    Math.random = () => 0.5
+
+    try {
+        const ok = kickFromPlayer(quiet, playerId, action, false, options)
+
+        return ok ? previewSink.params || null : null
+    } finally {
+        Math.random = random
+        previewSink = null
+    }
+}
+
+export const KICK_RELEASE = (animation) => holdSpot(animation)
+
 function beginWindup(ctx, params) {
     const { state } = ctx
     const {
@@ -1089,6 +1164,23 @@ function beginWindup(ctx, params) {
         if (action === 'pass' || action === 'through') {
             params.power *= 1 + over99(skill + fatiguePenalty(state, playerId)) * OVER_99.passSpeed
         }
+    }
+
+    if (previewSink) {
+        previewSink.params = {
+            playerId,
+            action,
+            animation,
+            isThrowIn,
+            direction: { x: direction.x, z: direction.z },
+            power: params.power,
+            lift,
+            curl,
+            variant,
+            receiverId: passTarget?.item?.id || null,
+            target: passTarget ? { x: passTarget.targetPosition.x, z: passTarget.targetPosition.z } : null,
+        }
+        return true
     }
 
     // Quay người về hướng đá để animation đúng hướng.
@@ -1326,13 +1418,20 @@ function releaseKick(ctx, windup) {
     if (restartType === 'penalty') {
         const roll = Math.random()
         let guess = roll < 0.42 ? -1 : roll < 0.84 ? 1 : 0
+        // Phase 44: thủ môn đoán cả độ cao (cao / thấp / tầm giữa).
+        const heightRoll = Math.random()
+        let guessHeight = heightRoll < 0.3 ? 'high' : heightRoll < 0.6 ? 'low' : null
 
         // Phase 29D: thủ môn đội mình bay theo hướng người chơi chọn (← / →,
         // không bấm = đứng giữa); máy đá thay (auto play) thì vẫn đoán ngẫu nhiên.
-        if (teamId !== 'blue' && !state.autoPilot) guess = state.userDive ?? 0
+        if (teamId !== 'blue' && !state.autoPilot) {
+            guess = state.userDive ?? 0
+            guessHeight = state.userDiveHeight || null
+        }
 
-        state.penaltyKick = { kickId: state.kickId, guess, teamId }
+        state.penaltyKick = { kickId: state.kickId, guess, guessHeight, teamId }
         state.userDive = null
+        state.userDiveHeight = null
         // Camera sau lưng người sút giữ thêm một nhịp để xem kết quả.
         state.penaltyCam = { teamId, until: (state.elapsed || 0) + 2.2 }
     }

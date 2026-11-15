@@ -232,6 +232,7 @@ export function FullTimeOverlay({
     // Phase 29G: mô phỏng ngay trận tiếp theo (null = không được).
     onSimulateNext = null,
     simsLeft = 0,
+    simsLabel = null,
 }) {
     const result =
         blueScore > redScore ? 'WIN' : blueScore < redScore ? 'LOSS' : 'DRAW'
@@ -293,7 +294,7 @@ export function FullTimeOverlay({
                     )}
                     {onSimulateNext && resultSaved && (
                         <button type="button" className="btn" onClick={onSimulateNext} disabled={simsLeft <= 0}>
-                            SIMULATE NEXT {simsLeft}/5
+                            SIMULATE NEXT {simsLabel || `${simsLeft}/5`}
                         </button>
                     )}
                     {!(worldCup && !nextFixture) && (

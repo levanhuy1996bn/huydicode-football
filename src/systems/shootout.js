@@ -110,8 +110,8 @@ function setupKick(ctx) {
 
     ctx.onActionMessage(
         team === 'blue'
-            ? `YOUR KICK · ${shootout.current.takerName.toUpperCase()} · ← / → AIM · HOLD D TO SHOOT`
-            : `${ctx.opponentName} KICK · ${shootout.current.takerName.toUpperCase()} · HOLD ← / → TO DIVE`,
+            ? `YOUR KICK · ${shootout.current.takerName.toUpperCase()} · ← / → AIM · ↑ HIGH / ↓ LOW · HOLD D`
+            : `${ctx.opponentName} KICK · ${shootout.current.takerName.toUpperCase()} · HOLD ← / → TO DIVE (+↑ HIGH / +↓ LOW)`,
     )
     ctx.onShootoutUpdate?.({ ...snapshot(shootout) })
 }

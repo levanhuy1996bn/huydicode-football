@@ -147,7 +147,7 @@ export function inventoryItem(type, fields) {
 
     return {
         id: `item-${Date.now().toString(36)}${itemCounter.toString(36)}`,
-        type, // 'ep' | 'pack' | 'protection' (Phase 29C) | 'fitness' | 'form' | 'boost' (Phase 29I)
+        type, // 'ep' | 'pack' | 'protection' (Phase 29C) | 'fitness' | 'form' | 'boost' (Phase 29I) | 'bottle' | 'bottle-full' (Phase 46)
         createdAt: Date.now(),
         ...fields,
     }
@@ -216,12 +216,14 @@ export function spendItemsById(club, ids = []) {
 // 20M…), Upgrade Boost theo % (+3 / +4 / +5), gói cầu thủ theo loại gói.
 // Thứ tự cố định: gói (Premium trước), EP (lớn trước), Thể lực, Phong độ,
 // Upgrade Boost (lớn trước), Upgrade Protection.
-const GROUP_ORDER = { pack: 0, ep: 1, fitness: 2, form: 3, boost: 4, protection: 5 }
+// Phase 46: bình EXP đầy (theo lượng XP, nhiều trước) rồi bình rỗng, sau EP.
+const GROUP_ORDER = { pack: 0, ep: 1, 'bottle-full': 2, bottle: 3, fitness: 4, form: 5, boost: 6, protection: 7 }
 
 export function inventoryKey(item) {
     if (item.type === 'ep') return `ep-${item.amount || 0}`
     if (item.type === 'boost') return `boost-${item.percent || 3}`
     if (item.type === 'pack') return `pack-${item.pack || 'standard'}`
+    if (item.type === 'bottle-full') return `bottle-full-${item.xp || 0}`
     return item.type
 }
 
@@ -244,6 +246,7 @@ export function groupInventory(inventory = []) {
         group.type === 'ep' ? group.item.amount || 0
             : group.type === 'boost' ? group.item.percent || 0
                 : group.type === 'pack' ? (group.item.pack === 'premium' ? 1 : 0)
+                    : group.type === 'bottle-full' ? group.item.xp || 0
                     : 0
 
     return [...groups.values()]

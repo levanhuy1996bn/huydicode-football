@@ -11,7 +11,7 @@ const HALFTIME_PAUSE = 1200
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
-export default function SimulationScreen({ label, blue, red, result, onDone, onSimulateNext = null, simsLeft = 0 }) {
+export default function SimulationScreen({ label, blue, red, result, onDone, onSimulateNext = null, simsLeft = 0, simsLabel = null }) {
     const [minute, setMinute] = useState(0)
     const [speed, setSpeed] = useState(1)
     const [finished, setFinished] = useState(false)
@@ -206,7 +206,7 @@ export default function SimulationScreen({ label, blue, red, result, onDone, onS
                             {/* Phase 29G: mô phỏng luôn trận tiếp theo. */}
                             {onSimulateNext && (
                                 <button type="button" className="btn btn--large" onClick={onSimulateNext} disabled={simsLeft <= 0}>
-                                    SIMULATE NEXT {simsLeft}/5
+                                    SIMULATE NEXT {simsLabel || `${simsLeft}/5`}
                                 </button>
                             )}
                         </>

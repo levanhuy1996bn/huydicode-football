@@ -82,13 +82,7 @@ export function getPlayerValue(player) {
     )
 }
 
-export function getPlayerWage(player) {
-    if (player.wage) return player.wage
-
-    return Math.round(
-        Math.pow((player.overall || 60) / 50, 3) * 3500,
-    )
-}
+// Phase 46: lương cầu thủ đã bỏ (trước chỉ hiển thị, không trừ EP).
 
 export function getSquadValue(roster) {
     const blueTeam = roster.find((team) => team.id === 'blue')
@@ -109,43 +103,9 @@ export function getSquadValue(roster) {
 
 export function getContract(club, player) {
     const saved = club?.contracts?.[player.id]
+    const years = Number(saved?.years)
 
-    if (saved) {
-        return {
-            wage: Number.isFinite(Number(saved.wage))
-                ? Number(saved.wage)
-                : getPlayerWage(player),
-            years: Number.isFinite(Number(saved.years))
-                ? Number(saved.years)
-                : 3,
-        }
-    }
-
-    return {
-        wage: getPlayerWage(player),
-        years: 3,
-    }
-}
-
-export function getWeeklyWages(roster, club = INITIAL_CLUB) {
-    const blueTeam = roster.find((team) => team.id === 'blue')
-
-    if (!blueTeam) return 0
-
-    const allPlayers = [
-        ...(blueTeam.players || []),
-        ...(blueTeam.substitutes || []),
-        ...(blueTeam.reserves || []),
-    ]
-
-    return allPlayers.reduce(
-        (total, player) => {
-            const contract = getContract(club, player)
-
-            return total + contract.wage
-        },
-        0,
-    )
+    return { years: Number.isFinite(years) ? years : 3 }
 }
 
 // Phase 23: tiền của CLB là EP (trước đây hiển thị EUR).

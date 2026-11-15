@@ -48,6 +48,7 @@ export default function HomeScreen({
     onNewSeason,
     onChangeClub,
     simsLeft = 0,
+    simsLabel = null,
     onSimulate,
     // Phase 29H: dòng World Cup (giải đang đá / số lượt còn hôm nay) → tab WORLD CUP.
     worldCup = null,
@@ -107,7 +108,7 @@ export default function HomeScreen({
                                 disabled={!simsLeft}
                                 title="Quick simulation: instant result, rewards ×0.7 · 5 per day"
                             >
-                                SIMULATE <small>{simsLeft}/{SIM_DAILY_LIMIT}</small>
+                                SIMULATE <small>{simsLabel || `${simsLeft}/${SIM_DAILY_LIMIT}`}</small>
                             </button>
                         </div>
                     </>
@@ -130,7 +131,7 @@ export default function HomeScreen({
             {onOpenTraining && (
                 <button type="button" className="home-wc-strip home-training-strip" onClick={onOpenTraining}>
                     <b>TRAINING</b>
-                    <span>Penalties, free kicks, corners, finishing · daily challenge {trainingDone ? 'done ✓' : '+2M EP'}</span>
+                    <span>Penalties, free kicks, corners, finishing, dribbling · daily challenge {trainingDone ? 'done ✓' : '+2M EP'}</span>
                     <em>OPEN →</em>
                 </button>
             )}
@@ -272,7 +273,7 @@ export default function HomeScreen({
                             TRANSFER MARKET →
                         </button>
                     </div>
-                    <p className="home-card__empty">Sign and sell players, contracts and wages.</p>
+                    <p className="home-card__empty">Sign and sell players, manage contracts.</p>
                 </div>
 
                 {/* Cài đặt (điện thoại: MORE → SETTINGS) */}

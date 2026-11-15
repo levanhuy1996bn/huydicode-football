@@ -274,6 +274,15 @@ function planSave(ctx, teamId, keeper, keeperItem) {
                 0.8,
             )
             : 0
+
+        // Phase 44: đoán cả độ cao — đúng (cao / thấp) thì dễ cứu hơn, sai hẳn
+        // (bay cao mà bóng sệt, bay thấp mà bóng vào góc cao) thì gần như chịu.
+        const guessHeight = state.penaltyKick.guessHeight || null
+        const shotHeight = crossY < 0.75 ? 'low' : crossY > 1.55 ? 'high' : 'mid'
+
+        if (chance > 0 && guessHeight && shotHeight !== 'mid') {
+            chance = guessHeight === shotHeight ? Math.min(0.85, chance + 0.12) : chance * 0.3
+        }
     }
 
     // Bóng xoáy (ZD / CD) khó đọc hơn: đổi hướng sau khi thủ môn đã bật người.
@@ -288,6 +297,11 @@ function planSave(ctx, teamId, keeper, keeperItem) {
         type = height === 'low' ? 'scoop' : height === 'high' ? 'catchHigh' : 'catch'
     } else {
         type = height === 'low' ? 'diveLow' : height === 'high' ? 'diveHigh' : 'diveMid'
+    }
+
+    // Phase 44: phạt đền — thủ môn bay ở độ cao đã đoán (đoán sai thì thấy rõ).
+    if (penalty && penaltyGuess && state.penaltyKick.guessHeight) {
+        type = state.penaltyKick.guessHeight === 'high' ? 'diveHigh' : 'diveLow'
     }
 
     // Điểm hông thủ môn cần tới: thành công → tay chạm bóng,
