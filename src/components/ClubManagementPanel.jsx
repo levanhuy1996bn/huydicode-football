@@ -7,7 +7,6 @@ import {
     saveClub,
     getPlayerValue,
     getSquadValue,
-    getWeeklyWages,
     getContract,
     formatMoney,
 } from '../services/clubService'
@@ -313,7 +312,7 @@ export default function ClubManagementPanel({
             budget: current.budget - total,
             contracts: {
                 ...current.contracts,
-                ...Object.fromEntries(signed.map((card) => [card.id, { wage: player.wage, years: 4 }])),
+                ...Object.fromEntries(signed.map((card) => [card.id, { years: 4 }])),
             },
         }))
 
@@ -431,7 +430,7 @@ export default function ClubManagementPanel({
             }
         })
 
-        showMessage('CONTRACT UPDATED', 'success', `${player.name} · ${field === 'wage' ? 'weekly wage' : 'contract length'} changed`)
+        showMessage('CONTRACT UPDATED', 'success', `${player.name} · contract length changed`)
     }
 
     const toggleTransferWindow = () => {
@@ -441,8 +440,7 @@ export default function ClubManagementPanel({
         }))
     }
 
-    // Weekly wages now use each player's saved contract wage.
-    const weeklyWages = getWeeklyWages(roster, club)
+    // Phase 46: bỏ lương cầu thủ (trước chỉ để hiển thị, không trừ EP).
     const squadValue = getSquadValue(roster)
 
     // [key, nhãn máy tính, nhãn điện thoại]
@@ -623,11 +621,6 @@ export default function ClubManagementPanel({
                                         <Stat
                                             label="TRANSFER BUDGET"
                                             value={formatMoney(club.budget)}
-                                        />
-
-                                        <Stat
-                                            label="WEEKLY WAGES"
-                                            value={formatMoney(weeklyWages)}
                                         />
 
                                         <Stat
@@ -928,21 +921,6 @@ export default function ClubManagementPanel({
                                                     </strong>
                                                 </div>
 
-                                                <div
-                                                    className="market-card__money"
-                                                    style={{
-                                                        display: 'flex',
-                                                        justifyContent: 'space-between',
-                                                        marginTop: 5,
-                                                        fontSize: 11,
-                                                    }}
-                                                >
-                                                    <span>Weekly wage</span>
-                                                    <strong>
-                                                        {formatMoney(player.wage)}
-                                                    </strong>
-                                                </div>
-
                                                 <button
                                                     className="market-card__btn"
                                                     onClick={() => setSelectedPlayer(player)}
@@ -1162,7 +1140,7 @@ export default function ClubManagementPanel({
                                                 style={{
                                                     display: 'grid',
                                                     gridTemplateColumns:
-                                                        'minmax(100px, 1fr) minmax(100px, 130px) 75px',
+                                                        'minmax(100px, 1fr) 75px',
                                                     alignItems: 'center',
                                                     gap: 8,
                                                     padding: 10,
@@ -1189,35 +1167,6 @@ export default function ClubManagementPanel({
                                                     >
                                                         {player.position} · OVR {player.overall}
                                                     </div>
-                                                </div>
-
-                                                <div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: 9,
-                                                            color: '#9bb5a4',
-                                                            marginBottom: 4,
-                                                        }}
-                                                    >
-                                                        WEEKLY WAGE
-                                                    </div>
-
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={contract.wage}
-                                                        onChange={(event) =>
-                                                            updateContract(
-                                                                player,
-                                                                'wage',
-                                                                Math.max(
-                                                                    0,
-                                                                    Number(event.target.value),
-                                                                ),
-                                                            )
-                                                        }
-                                                        style={inputStyle}
-                                                    />
                                                 </div>
 
                                                 <div>
@@ -1336,7 +1285,6 @@ export default function ClubManagementPanel({
 
                                 <dl className="market-detail__money">
                                     <div><dt>Transfer fee</dt><dd>{formatMoney(selectedPlayer.value)}{buyQty > 1 && <small> × {buyQty} = {formatMoney(selectedPlayer.value * buyQty)}</small>}</dd></div>
-                                    <div><dt>Weekly wage</dt><dd>{formatMoney(selectedPlayer.wage)}</dd></div>
                                     <div>
                                         <dt>Budget after</dt>
                                         <dd className={(club.budget || 0) < selectedPlayer.value * buyQty ? 'is-down' : ''}>

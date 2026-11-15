@@ -21,6 +21,8 @@ import AchievementsPanel from '../AchievementsPanel'
 import { pendingAchievementCount } from '../../services/upgradeAchievements'
 import { maxSquadForm, restoreSquadFitness } from '../../systems/form'
 import { userClubId } from '../../services/career'
+import BottleDialog from '../BottleDialog'
+import { EXP_BOTTLE_PRICE, EXP_BOTTLE_SHARE, drainPlayer, emptyBottle, filledBottle, givePlayerXp } from '../../services/xpBottle'
 import { SIM_DAILY_LIMIT, SIM_TICKET_PACK, SIM_TICKET_PRICE, SIM_TICKET_SLOT, buySimTickets, simTicketsOf, simulationsLeft } from '../../services/quickSim'
 
 // Phase 23: tab CARDS — kho phần thưởng (gói cầu thủ, thẻ EP), mở lúc nào
@@ -35,17 +37,21 @@ function itemTitle(item) {
     if (item.type === 'fitness') return 'Fitness card'
     if (item.type === 'form') return 'Form card'
     if (item.type === 'boost') return `Upgrade Boost +${item.percent || 3}%`
+    if (item.type === 'bottle') return 'Empty EXP bottle'
+    if (item.type === 'bottle-full') return `EXP bottle · ${(item.xp || 0).toLocaleString('en-US')} XP`
     return PACK_TYPES[item.pack]?.label || 'Player Pack'
 }
 
 // Phase 29I: biểu tượng + mô tả vật phẩm.
-const ITEM_ICON = { ep: 'EP', protection: '⛨', fitness: '♥', form: '⬆', boost: '▲' }
+const ITEM_ICON = { ep: 'EP', protection: '⛨', fitness: '♥', form: '⬆', boost: '▲', bottle: '🧪', 'bottle-full': '🧪' }
 const ITEM_TEXT = {
     protection: 'A failed upgrade from +5 keeps its level · used in UPGRADE CARDS',
     fitness: 'Whole squad (starters, bench, reserves) back to fitness 100',
     form: 'Whole squad to the best form ⬆ (+3 on all main stats)',
     boost: 'Raises the upgrade success rate · up to 5 per try · used in UPGRADE CARDS',
     ep: 'Adds EP to the transfer budget',
+    bottle: `Drain a bench / reserve player: he goes back to level 1 (card +N kept) and the bottle keeps ${Math.round(EXP_BOTTLE_SHARE * 100)}% of his XP`,
+    'bottle-full': 'Give this XP to any player in your squad',
 }
 
 export default function CardsScreen({ club, onClubChange, team, onRosterChange, onOpenTransfers, focus = null }) {
@@ -54,6 +60,8 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
     const [tab, setTab] = useState(focus === 'shop' ? 'shop' : 'rewards')
     const [reveal, setReveal] = useState(null)
     const [notice, setNotice] = useState(null)
+    // Phase 46: hộp thoại bình EXP { mode: 'drain' | 'give', item }.
+    const [bottle, setBottle] = useState(null)
 
     // Phase 29K: mở từ nút BUY (thẻ Thể lực / Phong độ) → cuộn tới SHOP.
     useEffect(() => {
@@ -106,7 +114,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         )
         onClubChange((current) => ({
             ...removeItem(current, item.id),
-            contracts: { ...(current.contracts || {}), [card.id]: { wage: card.wage, years: 3 } },
+            contracts: { ...(current.contracts || {}), [card.id]: { years: 3 } },
         }))
         setReveal({ type: 'pack', card, pack: item.pack, duplicateOf, squadSize: squad.length + 1 })
         setNotice(null)
@@ -137,6 +145,53 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         setNotice({ tone: 'ok', text: `${type === 'fitness' ? 'Fitness' : 'Form'} card bought for ${formatMoney(price)} — it is in REWARDS (UNOPENED).` })
     }
 
+    // Phase 46: bình EXP.
+    const buyBottle = () => {
+        if ((club.budget || 0) < EXP_BOTTLE_PRICE) return
+
+        onClubChange((current) => ({
+            ...current,
+            budget: (current.budget || 0) - EXP_BOTTLE_PRICE,
+            inventory: [...(current.inventory || []), emptyBottle('Bought with EP')],
+        }))
+        setNotice({ tone: 'ok', text: `Empty EXP bottle bought for ${formatMoney(EXP_BOTTLE_PRICE)} — it is in REWARDS (UNOPENED). Tap USE to drain a bench / reserve player.` })
+    }
+
+    const confirmBottle = (playerId) => {
+        const { mode, item } = bottle
+
+        if (mode === 'drain') {
+            const result = drainPlayer(team, playerId)
+
+            if (!result) return
+
+            const full = filledBottle(result.xp, result.player.name, `Drained from ${result.player.name}`)
+
+            onRosterChange((current) => current.map((entry) => (entry.id === 'blue' ? drainPlayer(entry, playerId)?.team || entry : entry)))
+            onClubChange((current) => ({
+                ...current,
+                inventory: [...(current.inventory || []).filter((entry) => entry.id !== item.id), full],
+            }))
+            setNotice({
+                tone: 'ok',
+                text: `${result.player.name} was drained: back to level 1 (card +${result.player.upgrade || 1} kept). The bottle now holds ${result.xp.toLocaleString('en-US')} XP — tap GIVE to pass it on.`,
+            })
+        } else {
+            const result = givePlayerXp(team, playerId, item.xp || 0)
+
+            if (!result) return
+
+            onRosterChange((current) => current.map((entry) => (entry.id === 'blue' ? givePlayerXp(entry, playerId, item.xp || 0)?.team || entry : entry)))
+            onClubChange((current) => removeItem(current, item.id))
+            setNotice({
+                tone: 'ok',
+                text: `${result.report.name} received ${(item.xp || 0).toLocaleString('en-US')} XP: level ${result.report.levelBefore} → ${result.report.level}${result.report.pointsGained ? ` · +${result.report.pointsGained} points to spend in SQUAD → TRAINING` : ''}.`,
+            })
+        }
+
+        setBottle(null)
+    }
+
     // Phase 44: vé mô phỏng — mua theo bộ ×10.
     const buyTickets = () => {
         if ((club.budget || 0) < SIM_TICKET_PRICE) return
@@ -152,7 +207,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
     )
 
     const openItem = (item) => {
-        if (item.type === 'fitness' || item.type === 'form') applySquadItem(item)
+        if (item.type === 'bottle') setBottle({ mode: 'drain', item })
+        else if (item.type === 'bottle-full') setBottle({ mode: 'give', item })
+        else if (item.type === 'fitness' || item.type === 'form') applySquadItem(item)
         else if (item.type === 'ep') openEp(item)
         else openPack(item)
     }
@@ -329,6 +386,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                                 // Thẻ dùng ở UPGRADE CARDS (bảo vệ, tăng tỉ lệ).
                                 const protection = item.type === 'protection' || item.type === 'boost'
                                 const squadItem = item.type === 'fitness' || item.type === 'form'
+                                const bottleItem = item.type === 'bottle' || item.type === 'bottle-full'
 
                                 return (
                                     <div
@@ -361,9 +419,9 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                                                     type="button"
                                                     className={`btn btn--small${blocked ? '' : ' btn--primary'}`}
                                                     onClick={() => openItem(item)}
-                                                    title={blocked ? 'Squad is full (50/50)' : squadItem ? 'Use one on the whole squad' : 'Open one'}
+                                                    title={blocked ? 'Squad is full (50/50)' : squadItem ? 'Use one on the whole squad' : bottleItem ? (item.type === 'bottle' ? 'Choose a player to drain' : 'Choose who receives the XP') : 'Open one'}
                                                 >
-                                                    {blocked ? 'SQUAD FULL' : squadItem ? 'USE' : 'OPEN'}
+                                                    {blocked ? 'SQUAD FULL' : squadItem ? 'USE' : item.type === 'bottle' ? 'USE' : item.type === 'bottle-full' ? 'GIVE' : 'OPEN'}
                                                 </button>
                                             )}
                                             {item.type === 'ep' && count > 1 && (
@@ -404,6 +462,21 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                     ))}
                     <div className="cards-shop__row">
                         <span>
+                            <b>🧪 Empty EXP bottle</b>
+                            <small>Drain a bench / reserve player (back to level 1, card +N kept) → a bottle with {Math.round(EXP_BOTTLE_SHARE * 100)}% of his XP to give to anyone</small>
+                        </span>
+                        <button
+                            type="button"
+                            className="btn btn--small"
+                            onClick={buyBottle}
+                            disabled={(club.budget || 0) < EXP_BOTTLE_PRICE}
+                            title={(club.budget || 0) < EXP_BOTTLE_PRICE ? 'Not enough EP' : 'Buy one (goes to UNOPENED)'}
+                        >
+                            BUY · {formatMoney(EXP_BOTTLE_PRICE)}
+                        </button>
+                    </div>
+                    <div className="cards-shop__row">
+                        <span>
                             <b>🎟 Simulation tickets ×{SIM_TICKET_PACK}</b>
                             <small>Extra quick simulations after the {SIM_DAILY_LIMIT} free ones of the day (×0.7 rewards) · you have {tickets}</small>
                         </span>
@@ -442,6 +515,10 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                     </ul>
                 </div>
             </div>
+            )}
+
+            {bottle && (
+                <BottleDialog mode={bottle.mode} item={bottle.item} team={team} onCancel={() => setBottle(null)} onConfirm={confirmBottle} />
             )}
 
             {reveal && (

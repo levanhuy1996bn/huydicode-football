@@ -273,7 +273,7 @@ export default function HomeScreen({
                             TRANSFER MARKET →
                         </button>
                     </div>
-                    <p className="home-card__empty">Sign and sell players, contracts and wages.</p>
+                    <p className="home-card__empty">Sign and sell players, manage contracts.</p>
                 </div>
 
                 {/* Cài đặt (điện thoại: MORE → SETTINGS) */}
