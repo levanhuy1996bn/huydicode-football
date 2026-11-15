@@ -4574,3 +4574,35 @@ button.level-ring:hover { filter: drop-shadow(0 0 calc(var(--size) * 0.16) rgba(
 .finish-early__btn { background: transparent; border-color: transparent; color: #c7fa7c; font-weight: 800; letter-spacing: 1px; padding: 2px 4px; }
 .app-shell.match-compact .finish-early { top: calc(84px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); transform: scale(0.8); transform-origin: top left; }
 @media (max-height: 440px) { .app-shell.match-compact .finish-early { top: calc(70px + env(safe-area-inset-top)); transform: scale(0.72); } }
+
+/* ---- Phase 45: TRAINING 2 ---- */
+/* Dải lực đá phạt vượt hàng rào mà vẫn vào khung (chỉ trong tập luyện). */
+.power-gauge__zone {
+  display: none;
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  border: 3px solid #d6ffe3;
+  border-radius: 3px;
+  background: #39ff8840;
+  box-shadow: 0 0 0 1px #07130f, 0 0 10px #39ff88cc;
+  z-index: 2;
+}
+/* Đồng hồ bài rê bóng qua cọc. */
+.training-clock {
+  position: absolute;
+  top: 58px;
+  right: 14px;
+  padding: 6px 12px;
+  border: 1px solid #48604e;
+  border-radius: 6px;
+  background: #07130fe6;
+  color: #ffd84f;
+  font: 800 20px 'Barlow Condensed', Inter, sans-serif;
+  letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 13;
+}
+@media (max-height: 520px) {
+  .training-clock { top: 8px; font-size: 16px; padding: 4px 10px; }
+}

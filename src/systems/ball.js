@@ -950,7 +950,10 @@ export function kickFromPlayer(ctx, playerId, action, isAI = false, options = {}
         const depth = FIELD.lineZ - spot.z * attackDirection
 
         if (depth < 20 && Math.abs(spot.x) < 22) {
-            const distance = Math.hypot(spot.x - player.position.x, spot.z - player.position.z)
+            // Phase 45: bóng rời chân ở ~0.95m phía trước người tạt (holdSpot) →
+            // trừ đi, nếu không bóng tới người nhận khi còn cao ~2.3m (quá tầm
+            // với của người thấp, hậu vệ đứng sau lưng đánh đầu được).
+            const distance = Math.max(1, Math.hypot(spot.x - player.position.x, spot.z - player.position.z) - holdSpot('cross').releaseOffset)
             // Tạt căng như thật: bay 1.0–1.7s (đỉnh ~3–4m), lực ngang đủ để tới
             // đúng điểm trong thời gian đó (giữ phím lâu thì căng hơn một chút).
             const flight = clamp(0.9 + distance * 0.022 - (isCharged ? charge * 0.15 : 0), 1, 1.7)
@@ -1098,6 +1101,30 @@ function holdSpot(animation) {
     return HOLD_SPOT[animation] || HOLD_SPOT.default
 }
 
+// Phase 45: chạy thử một cú đá (không đổi gì trong trận) để vẽ đường ngắm
+// dự đoán trong TẬP LUYỆN — mọi độ lệch ngẫu nhiên về 0, beginWindup chỉ ghi
+// lại thông số rồi dừng.
+let previewSink = null
+
+export function previewKick(ctx, playerId, action, options = {}) {
+    const random = Math.random
+    const quiet = { ...ctx, onActionMessage() {}, onSound() {}, onSelect() {} }
+
+    previewSink = {}
+    Math.random = () => 0.5
+
+    try {
+        const ok = kickFromPlayer(quiet, playerId, action, false, options)
+
+        return ok ? previewSink.params || null : null
+    } finally {
+        Math.random = random
+        previewSink = null
+    }
+}
+
+export const KICK_RELEASE = (animation) => holdSpot(animation)
+
 function beginWindup(ctx, params) {
     const { state } = ctx
     const {
@@ -1137,6 +1164,23 @@ function beginWindup(ctx, params) {
         if (action === 'pass' || action === 'through') {
             params.power *= 1 + over99(skill + fatiguePenalty(state, playerId)) * OVER_99.passSpeed
         }
+    }
+
+    if (previewSink) {
+        previewSink.params = {
+            playerId,
+            action,
+            animation,
+            isThrowIn,
+            direction: { x: direction.x, z: direction.z },
+            power: params.power,
+            lift,
+            curl,
+            variant,
+            receiverId: passTarget?.item?.id || null,
+            target: passTarget ? { x: passTarget.targetPosition.x, z: passTarget.targetPosition.z } : null,
+        }
+        return true
     }
 
     // Quay người về hướng đá để animation đúng hướng.

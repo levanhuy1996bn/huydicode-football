@@ -22,6 +22,7 @@ import { isPlayerLocked, setPlayerAction } from './playerState'
 import { openPass, recordPlayer, recordShot, recordTeam, shotXg } from './matchStats'
 import { getPlayer, listPassCandidates, teamPlayers } from './ball'
 import { checkOffside } from './referee'
+import { inputDirection } from './control'
 
 const HEAD_MIN = 1.45        // dưới mức này: đỡ bằng ngực / chân như cũ
 const HEAD_REACH = 0.95      // khoảng cách ngang tối đa từ người tới bóng
@@ -55,6 +56,28 @@ function userIntent(ctx, item) {
     return null
 }
 
+// Phase 45: góc đánh đầu (-1 / +1 theo trục x).
+function headerSide(ctx, item, object, goalZ) {
+    if (item.teamId === 'blue' && item.id === ctx.selectedId && !ctx.state.autoPilot) {
+        const direction = inputDirection(ctx.keys)
+
+        if (direction && Math.abs(direction.x) > 0.3) return Math.sign(direction.x)
+    }
+
+    const keeper = ctx.players.find((entry) => entry.teamId !== item.teamId && entry.role === 'GK')
+    const keeperObject = keeper ? ctx.objects[keeper.id] : null
+
+    if (keeperObject && Math.abs(keeperObject.position.z - goalZ) < 6 && Math.random() < 0.75) {
+        // Góc nào xa thủ môn hơn (tính cả vị trí người đánh đầu so với khung).
+        const left = Math.abs(-2.6 - keeperObject.position.x)
+        const right = Math.abs(2.6 - keeperObject.position.x)
+
+        if (Math.abs(left - right) > 0.3) return left > right ? -1 : 1
+    }
+
+    return Math.random() < 0.5 ? -1 : 1
+}
+
 // Tự chọn kiểu đánh đầu theo vị trí.
 function autoIntent(state, item, object) {
     const attack = attackDir(state, item.teamId)
@@ -85,7 +108,8 @@ function pickHeader(ctx, ballPosition) {
 
         // Người được tạt tới vươn / lao người đánh đầu xa hơn một chút.
         if (distance > HEAD_REACH + aerialEdge(item) + (state.pendingPass?.receiverId === item.id ? 0.35 : 0)) return
-        if (ballPosition.y > jumpReach(item)) return
+        // Phase 45: người được tạt tới bật nhảy có đà → với cao hơn ~0.2m.
+        if (ballPosition.y > jumpReach(item) + (state.pendingPass?.receiverId === item.id ? 0.2 : 0)) return
 
         // Người được tạt tới đã canh đúng điểm rơi và chạy đà → lợi thế.
         const intended = state.pendingPass?.receiverId === item.id ? 0.3 : 0
@@ -175,7 +199,10 @@ function performHeader(ctx, header, ballPosition, velocity) {
         // Finishing (người dứt điểm tốt nhắm sát cột hơn và ít lệch).
         const skill = skill01((attr(item, 'finishing') * 0.6 + attr(item, 'strength') * 0.4))
         const goalZ = attack * FIELD.lineZ
-        const aim = (Math.random() < 0.5 ? -1 : 1) * (1.2 + skill * 1.9)
+        // Phase 45: chọn góc — người chơi giữ ← / → thì đánh về phía đó; không
+        // thì (cả máy) thường đánh về góc xa thủ môn đang đứng.
+        const side = headerSide(ctx, item, object, goalZ)
+        const aim = side * (1.2 + skill * 1.9)
         const spread = (1 - skill) * 3.2
         const targetX = aim + (Math.random() * 2 - 1) * spread
         const length = Math.hypot(targetX - object.position.x, goalZ - object.position.z) || 1

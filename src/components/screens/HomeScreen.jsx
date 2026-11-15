@@ -131,7 +131,7 @@ export default function HomeScreen({
             {onOpenTraining && (
                 <button type="button" className="home-wc-strip home-training-strip" onClick={onOpenTraining}>
                     <b>TRAINING</b>
-                    <span>Penalties, free kicks, corners, finishing · daily challenge {trainingDone ? 'done ✓' : '+2M EP'}</span>
+                    <span>Penalties, free kicks, corners, finishing, dribbling · daily challenge {trainingDone ? 'done ✓' : '+2M EP'}</span>
                     <em>OPEN →</em>
                 </button>
             )}

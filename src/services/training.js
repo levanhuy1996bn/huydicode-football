@@ -28,10 +28,17 @@ export const TRAINING_DRILL_INFO = {
         successLabel: 'GOALS',
         keys: 'FINISHING · ARROWS MOVE · E SPRINT · D SHOOT · D,D LOW · Z+D CURL · Q+D CHIP',
     },
+    // Phase 45: rê bóng qua cửa cọc tính giờ.
+    dribble: {
+        label: 'DRIBBLING',
+        successLabel: 'RUNS',
+        keys: 'CONES · ARROWS DRIBBLE THROUGH EACH GATE · E SPRINT · CONE HIT +1s · MISSED GATE +2s · CROSS THE FINISH LINE',
+    },
 }
 
 // Thành công của mỗi bài: bàn thắng (bắt phạt đền: cản được).
-export const isSuccess = (drill, result) => (drill === 'penalty-save' ? result === 'saved' : result === 'goal')
+export const isSuccess = (drill, result) =>
+    drill === 'penalty-save' ? result === 'saved' : drill === 'dribble' ? result === 'done' : result === 'goal'
 
 // Đội tập theo độ khó: CLB yếu / trung bình / mạnh nhất thế giới (+ cấp thẻ AI).
 export const TRAINING_LEVELS = [
@@ -55,7 +62,8 @@ export const TRAINING_CHALLENGE_REWARD = 2000000
 const CHALLENGES = [
     { drill: 'penalty-take', target: 8, total: 10, text: 'Score 8 of 10 penalties', options: {} },
     { drill: 'freekick', target: 3, total: 10, text: 'Score 3 of 10 free kicks (random spots)', options: { spot: 'random' } },
-    { drill: 'corner', target: 1, total: 10, text: 'Score from 1 of 10 corners', options: { side: 'left' } },
+    // Phase 45: quả tạt tới đúng tầm đánh đầu → 2 / 10 (trước 1 / 10).
+    { drill: 'corner', target: 2, total: 10, text: 'Score from 2 of 10 corners', options: { side: 'left' } },
     { drill: 'finishing', target: 6, total: 10, text: 'Score 6 of 10 chances with a defender', options: { defender: true } },
     { drill: 'penalty-save', target: 3, total: 10, text: 'Save 3 of 10 penalties', options: {} },
 ]

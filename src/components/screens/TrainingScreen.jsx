@@ -34,7 +34,7 @@ function writeBest(best) {
     }
 }
 
-const EMPTY_STATS = { attempts: 0, success: 0, streak: 0, headers: 0, last: null }
+const EMPTY_STATS = { attempts: 0, success: 0, streak: 0, headers: 0, last: null, lastTime: null }
 
 const RESULT_TEXT = {
     goal: 'GOAL',
@@ -46,6 +46,32 @@ const RESULT_TEXT = {
     lost: 'LOST',
     foul: 'FOUL',
     over: 'TIME UP',
+    done: 'FINISHED',
+}
+
+const formatTime = (seconds) => (typeof seconds === 'number' ? `${seconds.toFixed(2)}s` : '–')
+
+// Phase 45: đồng hồ bài rê bóng (đọc thẳng từ engine, không qua React state).
+function DribbleClock({ statsRef }) {
+    const ref = useRef(null)
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            const course = statsRef.current?.training?.course
+            const element = ref.current
+
+            if (!element) return
+
+            const time = course ? course.done ?? course.runTime + course.penalty : 0
+            const gates = course ? `${Math.min(course.next, course.gates.length)}/${course.gates.length}` : '–'
+
+            element.textContent = `${time.toFixed(1)}s · GATES ${gates}${course?.penalty ? ` · +${course.penalty}s` : ''}`
+        }, 100)
+
+        return () => clearInterval(id)
+    }, [statsRef])
+
+    return <div ref={ref} className="training-clock">0.0s</div>
 }
 
 export default function TrainingScreen({
@@ -124,8 +150,24 @@ export default function TrainingScreen({
         setPanelOpen(true)
     }
 
-    const handleResult = useCallback(({ result, header }) => {
+    const handleResult = useCallback(({ result, header, time, penalty }) => {
         const ok = isSuccess(drill, result)
+        let newBest = false
+
+        // Phase 45: rê bóng — lưu thời gian tốt nhất (thấp hơn là tốt hơn).
+        if (drill === 'dribble' && ok && typeof time === 'number') {
+            setBest((previous) => {
+                const key = 'dribbleTime'
+
+                if (previous[key] && previous[key] <= time) return previous
+
+                const updated = { ...previous, [key]: time }
+
+                writeBest(updated)
+                return updated
+            })
+            newBest = !(best.dribbleTime && best.dribbleTime <= time)
+        }
 
         setStats((current) => {
             const entry = current[drill] || EMPTY_STATS
@@ -136,6 +178,7 @@ export default function TrainingScreen({
                 streak,
                 headers: entry.headers + (header && ok ? 1 : 0),
                 last: result,
+                lastTime: typeof time === 'number' && ok ? time : entry.lastTime,
             }
 
             setBest((previous) => {
@@ -161,8 +204,13 @@ export default function TrainingScreen({
             return { ...current, attempts, success, won, done }
         })
 
+        if (drill === 'dribble' && ok) {
+            setMessage(`FINISHED · ${formatTime(time)}${penalty ? ` (incl. +${penalty}s)` : ''}${newBest ? ' · NEW BEST!' : ''}`)
+            return
+        }
+
         setMessage(`${RESULT_TEXT[result] || result.toUpperCase()}${header && ok ? ' · HEADER!' : ''}`)
-    }, [drill])
+    }, [drill, best])
 
     // Thử thách xong và thắng → thưởng (một lần mỗi ngày).
     const rewarded = useRef(null)
@@ -282,8 +330,17 @@ export default function TrainingScreen({
                                 <div className="training-hud__stats">
                                     <div><span>{info.successLabel}</span><b>{current.success}/{current.attempts}</b></div>
                                     <div><span>RATE</span><b>{current.attempts ? Math.round((current.success / current.attempts) * 100) : 0}%</b></div>
-                                    <div><span>STREAK</span><b>{current.streak}</b></div>
-                                    <div><span>BEST</span><b>{best[drill] || 0}</b></div>
+                                    {drill === 'dribble' ? (
+                                        <>
+                                            <div><span>LAST TIME</span><b>{formatTime(current.lastTime)}</b></div>
+                                            <div><span>BEST TIME</span><b>{formatTime(best.dribbleTime)}</b></div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div><span>STREAK</span><b>{current.streak}</b></div>
+                                            <div><span>BEST</span><b>{best[drill] || 0}</b></div>
+                                        </>
+                                    )}
                                     {drill === 'corner' && <div><span>HEADER GOALS</span><b>{current.headers}</b></div>}
                                 </div>
 
@@ -329,6 +386,7 @@ export default function TrainingScreen({
                     </div>
 
                     <div className="training-keys">{info.keys}</div>
+                    {drill === 'dribble' && <DribbleClock statsRef={statsRef} />}
 
                     {touchUI && isPlaying && (
                         <TouchControls
@@ -350,6 +408,7 @@ export default function TrainingScreen({
                         </div>
                         <div className="power-gauge__track">
                             <i data-role="fill" />
+                            <span data-role="zone" className="power-gauge__zone" />
                             <span className="power-gauge__mark" style={{ left: '80%' }} />
                             <span className="power-gauge__mark power-gauge__mark--danger" style={{ left: '90%' }} />
                         </div>
