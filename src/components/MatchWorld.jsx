@@ -17,11 +17,12 @@ import Stadium from './Stadium'
 import { crowdIntensity, matchSoundEvent } from '../utils/matchSound'
 import Player from './Player'
 
-import { FIXED_STEP, TACTICS, clamp } from '../systems/constants'
+import { FIELD, FIXED_STEP, TACTICS, clamp } from '../systems/constants'
 import { getRole } from '../systems/roster'
 import { halftimeRecovery, resetStamina } from '../systems/stamina'
 import { stepWhistle } from '../systems/whistle'
 import {
+    attackDir,
     createMatchState,
     facingFor,
     homePosition,
@@ -223,6 +224,39 @@ function PassTargetMarker({ matchState }) {
                 opacity={0.85}
                 depthWrite={false}
             />
+        </mesh>
+    )
+}
+
+// Phase 44: dấu ngắm phạt đền trong khung thành — theo ← / → (góc) và ↑ / ↓
+// (bổng / sệt) đang giữ, chỉ khi người chơi (BLUE) sút và không AUTO PLAY.
+function PenaltyAimMarker({ matchState, keys }) {
+    const markerRef = useRef(null)
+
+    useFrame(() => {
+        const marker = markerRef.current
+
+        if (!marker) return
+
+        const restart = matchState.restart
+        const show = Boolean(restart && restart.type === 'penalty' && restart.teamId === 'blue' && !matchState.autoPilot)
+
+        marker.visible = show
+        if (!show) return
+
+        const pressed = keys?.current || {}
+        const dir = attackDir(matchState, 'blue')
+        const side = (pressed.ArrowRight ? 1 : 0) - (pressed.ArrowLeft ? 1 : 0)
+        const up = pressed.ArrowUp && !pressed.ArrowDown
+        const down = pressed.ArrowDown && !pressed.ArrowUp
+
+        marker.position.set(side * -dir * 2.85, up ? 2.0 : down ? 0.42 : 1.15, dir * (FIELD.lineZ - 0.5))
+    })
+
+    return (
+        <mesh ref={markerRef} visible={false} renderOrder={10}>
+            <ringGeometry args={[0.3, 0.44, 32]} />
+            <meshBasicMaterial color="#ffd84f" transparent opacity={0.95} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
     )
 }
@@ -958,6 +992,7 @@ export default function MatchWorld({
             <GroundCollider />
             <Ball bodyRef={ballRef} />
             <PassTargetMarker matchState={state} />
+            <PenaltyAimMarker matchState={state} keys={keys} />
             <BallScreenTracker ballRef={ballRef} matchState={state} />
             <SelectedPlayerIndicator
                 matchState={state}

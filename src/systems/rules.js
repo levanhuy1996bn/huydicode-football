@@ -309,8 +309,8 @@ export function restartAtSpot(ctx, teamId, restartType, x, z, extra = {}) {
         if (!extra.silent) {
             ctx.onActionMessage(
                 teamId === 'blue'
-                    ? `PENALTY · ${kicker.name.toUpperCase()} · ← / → AIM, HOLD D TO SHOOT`
-                    : `${teamName} PENALTY · ${kicker.name.toUpperCase()} · HOLD ← / → TO DIVE`,
+                    ? `PENALTY · ${kicker.name.toUpperCase()} · ← / → AIM · ↑ HIGH / ↓ LOW · HOLD D`
+                    : `${teamName} PENALTY · ${kicker.name.toUpperCase()} · HOLD ← / → TO DIVE (+↑ HIGH / +↓ LOW)`,
             )
         }
     } else {

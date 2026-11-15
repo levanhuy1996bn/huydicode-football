@@ -48,6 +48,7 @@ export default function HomeScreen({
     onNewSeason,
     onChangeClub,
     simsLeft = 0,
+    simsLabel = null,
     onSimulate,
     // Phase 29H: dòng World Cup (giải đang đá / số lượt còn hôm nay) → tab WORLD CUP.
     worldCup = null,
@@ -107,7 +108,7 @@ export default function HomeScreen({
                                 disabled={!simsLeft}
                                 title="Quick simulation: instant result, rewards ×0.7 · 5 per day"
                             >
-                                SIMULATE <small>{simsLeft}/{SIM_DAILY_LIMIT}</small>
+                                SIMULATE <small>{simsLabel || `${simsLeft}/${SIM_DAILY_LIMIT}`}</small>
                             </button>
                         </div>
                     </>

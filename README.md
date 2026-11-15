@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31–43 — all done ✅ (2026-11-14).** Latest: 43 (AUTO PLAY at 2× speed, FINISH MATCH when 3+ goals ahead with the rest simulated and full rewards, World Cup level-up animation), 42 (TRAINING mode: penalties, penalty saves, free kicks, corners and finishing on the 3D pitch, set-piece takers, daily challenge +2M EP), 38 (goalkeepers predict shots with air drag and always dive in time, slow balls in the box taken in the hands and thrown short, far fewer floaty chip shots), 41 (phone SWAP bar, +N on lineups, AUTO points in PLAYERS, buy several cards, DEV daily reset, World Cup SIMULATE NEXT), 40 (club level ring, level-up animation, upgrade screen fixes, +10 cards always fit and in top form), 39 (SMART name tags with positions, yellow card on the tag, announced added time with a +10 cap, substitutions only at a dead ball with the fourth official's board), 37 (headers: jump and head at goal, clear or pass with the head, aerial duels by height / strength, real crosses from corners and wide lobs, jump animation, a header back to the keeper may be handled), 36 (pass power assist, open-lane choice, throw-in options, thrower steps back in), 35 (AI closes down at 2–3 m, PRESS / E + arrows to charge and shoulder) and 34 (DEV code, World Cup button / player XP / consolation, back-pass rule, shots never backwards). **Next:** all planned phases are done — the backlog has individual player skills / traits, card seasons / real data, player wages and two training extras (aim preview line, dribbling cones). Before that 33 (CARDS rewards grouped) and 32 (OVR colour tiers: rows tinted and cards ringed white / green / gold / pink-red / purple / prism by card OVR) and 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). The backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13). Card seasons and real data are in the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31–44 — all done ✅ (2026-11-15).** Latest: 44 (high / low penalties with ↑ / ↓, Panenka Q+D, aim marker in the goal, keeper dives high or low; simulation tickets ×10 for 5,000,000 EP stacked ×99 per slot; the 2× clock follows the engine), 43 (AUTO PLAY at 2× speed, FINISH MATCH when 3+ goals ahead with the rest simulated and full rewards, World Cup level-up animation), 42 (TRAINING mode: penalties, penalty saves, free kicks, corners and finishing on the 3D pitch, set-piece takers, daily challenge +2M EP), 38 (goalkeepers predict shots with air drag and always dive in time, slow balls in the box taken in the hands and thrown short, far fewer floaty chip shots), 41 (phone SWAP bar, +N on lineups, AUTO points in PLAYERS, buy several cards, DEV daily reset, World Cup SIMULATE NEXT), 40 (club level ring, level-up animation, upgrade screen fixes, +10 cards always fit and in top form), 39 (SMART name tags with positions, yellow card on the tag, announced added time with a +10 cap, substitutions only at a dead ball with the fourth official's board), 37 (headers: jump and head at goal, clear or pass with the head, aerial duels by height / strength, real crosses from corners and wide lobs, jump animation, a header back to the keeper may be handled), 36 (pass power assist, open-lane choice, throw-in options, thrower steps back in), 35 (AI closes down at 2–3 m, PRESS / E + arrows to charge and shoulder) and 34 (DEV code, World Cup button / player XP / consolation, back-pass rule, shots never backwards). **Next:** all planned phases are done — the backlog is grouped into Phase 45 (training 2), 46 (economy & items: wages, XP potions), 47 (player traits), 48 (card seasons). Before that 33 (CARDS rewards grouped) and 32 (OVR colour tiers: rows tinted and cards ringed white / green / gold / pink-red / purple / prism by card OVR) and 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). The backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13). Card seasons and real data are in the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -176,7 +176,8 @@ Details and test results for each phase are in the Development roadmap below.
 | Z + A / A then A again | Whipped cross / low cross |
 | S / W / A at a kick-off | The taker must pass (no dribbling or shooting); with no arrow the pass goes to the player next to him |
 | D at a free kick | Shoot over the wall (about 40–80% power clears it; arrows aim). S / W / A pass or cross |
-| Arrows + D at a penalty | Aim and shoot (penalties allow shots only) |
+| Arrows + D at a penalty | Aim and shoot (penalties allow shots only): ← / → corner, **↑ high / ↓ low** (Phase 44), Q + D Panenka; a yellow ring in the goal shows the aim |
+| Arrows when the opponent takes a penalty | Hold ← / → to dive that way, add ↑ for a high dive or ↓ for a low one; ↓ alone stays in the middle |
 | Arrows (keeper holding the ball) | Walk with the ball inside your penalty area (after 6 s the keeper distributes automatically) |
 | S / W (keeper holding the ball) | Goalkeeper throw (hold to charge, arrows aim) |
 | A / D (keeper holding the ball) | Goalkeeper punt / long kick (hold to charge, arrows aim) |
@@ -267,7 +268,7 @@ ultimate-football-manager-3d/
     │   ├── difficulty.js     # season difficulty: opponent card level, reward factor, AI speed (Phase 26C)
     │   ├── teamColor.js      # team color: card level color + club color of the XI (Phase 26D)
     │   ├── cupService.js     # C1 / C2: qualification, draw, groups, knockouts, shoot-outs, calendar (Phase 27)
-    │   ├── quickSim.js       # quick simulation: team ratings, instant result, 5 per day (Phase 28)
+    │   ├── quickSim.js       # quick simulation: team ratings, instant result, 5 per day (Phase 28), simulation tickets (Phase 44)
     │   ├── training.js       # TRAINING: drill info, training opponent by level, daily challenge (Phase 42)
     │   ├── trophyService.js  # trophies + career: catalog of 39 trophies, awarding, backfill from history (Phase 28B)
     │   ├── nationalTeams.js  # national squads: nationality pools, call-ups, strength (Phase 29E)
@@ -439,6 +440,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 38 | Shooting and goalkeepers: keeper predicts with air drag and dives in time, near misses dived at, slow balls in the box caught in the hands, short distribution first, fewer floaty chips (AI and phone swipe) | ✅ Done (2026-11-14) |
 | 39 | On the pitch: SMART name tags (position instead of shirt number), yellow card on the tag, announced added time (+5 / +10 cap, ends when the attack ends), substitutions only at a dead ball with board / walk-off / high five | ✅ Done (2026-11-14) |
 | 40 | Levels: club level ring in the top bar, club level-up animation, player level-up shine, upgrade result hidden until revealed, one CONTINUE button, +10 cards always 100% fit and top form | ✅ Done (2026-11-14) |
+| 44 | Penalties & quick wins: 2× clock follows the engine, simulation tickets (×10 for 5,000,000 EP, one slot up to ×99), high / low penalties, keeper dive height, Panenka, aim marker | ✅ Done (2026-11-15) |
 | 43 | Faster matches: 2× speed while AUTO PLAY is on (auto back to 1× on slow devices), FINISH MATCH when leading by 3+ (rest simulated, full rewards), World Cup level-up animation | ✅ Done (2026-11-14) |
 | 42 | TRAINING mode: five drills (penalties, penalty saves, free kicks, corners, finishing) with scores and best streaks, choose set-piece takers, daily challenge (+2M EP once a day) | ✅ Done (2026-11-14) |
 | 41 | Phone & management: SWAP bar at the bottom of the lineup board, +N on lineups, AUTO points in PLAYERS, buy several copies, DEV reset of daily limits, World Cup SIMULATE NEXT (×0.7) | ✅ Done (2026-11-14) |
@@ -447,10 +449,11 @@ The project currently uses browser LocalStorage for local game progress.
 | 29D | Play penalty shoot-outs yourself (take the kicks, dive with your keeper), camera behind the taker | ✅ Done (2026-11-12) |
 | 29E | World Cup: 32 national teams, squads called up from all clubs, nationality team color | ✅ Done (2026-11-12) |
 | 29F | AI and ball feel: long shots / long passes by stats, Composure attribute, receivers meet the ball, passes +12 % / shots +10 % faster, new crowd sound + crowd volume, reliable auto play (delay setting, AUTO PLAY button, second half starts by itself) | ✅ Done (2026-11-12) |
-| Backlog | Individual player skills / traits | 💤 Later |
-| Backlog | Card seasons and real player data (was Phase 30, moved to the backlog on 2026-11-12) | 💤 Later |
-| Backlog | Player wages (pay per match, or remove) | 💤 Later |
-| Backlog | Training extras: aim preview line while charging, dribbling cones / skill-move drills | 💤 Later |
+| 45 | Training 2: easier-to-read corners (cross target) and free kicks (power to clear the wall), aim preview line (training only), dribbling-cones drill | 💤 Backlog |
+| 46 | Economy & items: player wages, EP balance review, XP potions (draw XP from one player, give it to another) | 💤 Backlog |
+| 47 | Individual player skills / traits (FO4 style; maybe 47A / 47B) | 💤 Backlog |
+| 48 | Card seasons (several seasons per player) | 💤 Backlog |
+| Backlog | Real player / club data (licensing) | 💤 Later |
 
 ### Status check (2026-11-09)
 
@@ -1790,6 +1793,20 @@ Twelve playtest requests on 2026-11-14, grouped into four phases (no tiny phases
 
 Answers given with the plan: top speed is capped (6.4 + Sprint/80 × 2.2 m/s: Sprint 80 ≈ 31 km/h, 99 ≈ 33 km/h, hard cap 10.5 m/s ≈ 38 km/h; keepers 8 m/s; tired players slower); second-division clubs do not play C1 / C2 (entries come from last season's top-division table — promote, finish high, play the cups the season after); phones keep tap-tap swapping instead of drag and drop.
 
+### Phase 44 — Penalties & quick wins ✅ (2026-11-15)
+
+Agreed on 2026-11-15 (regrouped backlog). Code: `systems/control.js` (`penaltyAimHeight`, dive height), `systems/ball.js` (high / low / Panenka with air drag, keeper height guess), `systems/goalkeeper.js`, `components/MatchWorld.jsx` (aim marker), `services/quickSim.js` (tickets), `components/screens/CardsScreen.jsx`, `components/GameScene.jsx` (clock) and the SIMULATE labels on HOME / PLAY / World Cup / match / summary screens; key hints in `services/training.js`, `systems/rules.js`, `systems/shootout.js`.
+
+- **High / low penalties** (match penalties, shoot-outs and TRAINING):
+  - **↑ + ← / →** = high into the top corner (crosses the line at ~1.8–1.9 m), **↓ + ← / →** = low and hard (~0.3 m), side only = as before, ↑ / ↓ alone = high / low down the middle. Power still from holding D. Over-hitting a high one (above ~75% power) lifts it towards the bar or over; Finishing + Composure reduce the height wobble.
+  - The height is aimed with the ball's air drag included, so what you choose is what crosses the line.
+  - **Q + D = Panenka:** a soft chip down the middle at ~1.1–1.6 m — goes in when the keeper dives, caught when he stands still.
+  - **Aim marker:** a yellow ring in the goal follows the arrows you hold (corner and height) while you take a penalty (not shown in AUTO PLAY).
+- **Keeper dive height:** as the keeper (PENALTY SAVES, shoot-outs, opponent penalties) hold ← / → to dive and add ↑ (high) or ↓ (low). The AI keeper also guesses a height (30% high, 30% low, otherwise just a side). Right height on a high or low shot = better save chance (+12%, max 85%); wrong height = chance ×0.3. The keeper visibly dives high or low as guessed.
+- **Simulation tickets (FIFA Online 2 style):** CARDS → SHOP → **🎟 Simulation tickets ×10 · BUY ×10 · 5,000,000 EP**. A ticket is one extra quick simulation once the 5 free ones of the day are used (league / cup SIMULATE and World Cup SIMULATE NEXT, same ×0.7 rewards). Tickets sit in UNOPENED as one slot up to ×99 (a 100th starts a new slot) and never expire. Buttons show both, e.g. `SIMULATE 0/5 · 🎟105`.
+- **2× clock fix:** at 2× the clock now ticks with the engine's real speed, so it no longer runs at double speed during penalties, the whistle and the substitution scene (which the engine plays at 1×).
+- **Tested:** 10 penalties per run in TRAINING with the height at the goal line logged (high 1.76–1.99 m, low 0.28 m, Panenka 1.0–1.1 m), "TOP CORNER!" / "LOW AND HARD!" / "PANENKA!", aim marker screenshots; PENALTY SAVES with ↑ / ↓ + ← / → stored as the dive side and height; 2×: clock 1.79 / s vs engine 1.91 / s (1×: 0.99 vs 1.00); 95 tickets + BUY ×10 → slots ×99 + ×6, budget −5M, SIMULATE at 0/5 uses one ticket (105 → 104); production build has no test hooks; desktop regression unchanged.
+
 ### Phase 43 — Faster matches and World Cup level-up animation ✅ (2026-11-14)
 
 Agreed on 2026-11-14: 2× only while AUTO PLAY is on, FINISH MATCH simulates the rest (option A) with full rewards, and the World Cup level gets the same level-up animation as the club level. Code: `components/MatchCanvas.jsx`, `components/MatchWorld.jsx` (time scale stepper), `components/Player.jsx`, `components/GameScene.jsx`, `components/LevelUpOverlay.jsx`, CSS at the end of `styles.css`.
@@ -2107,12 +2124,31 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 
 ### Backlog
 
-- **Individual player skills / traits** (FO4-style traits such as finesse shot, long passer, speed dribbler).
-- **Player wages** (moved here on 2026-11-14): pay per match, or remove wages.
-- **Training extras** (from the Phase 42 ideas): a faint predicted ball path while charging (training only), dribbling cones / skill-move drills with a timer.
-- **Card seasons and real player data** (was Phase 30; moved to the backlog on 2026-11-12 because it is hard — mostly the data side):
-  - **Card seasons:** several card seasons per player (`cardId` per season, same `playerId`), with season-specific stats and pack types.
-  - **Real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
+Regrouped on 2026-11-15 into medium phases (enough work each, none too big); the multi-language idea was dropped. Phase 44 is done (see above).
+
+- **Phase 45 — Training 2** (medium)
+  - **Corners:** still hard to score from (tests: ~3 headers won in 8 corners, all saved; the daily corner challenge was lowered to 1 of 10) → show the cross target, check the cross / header feel.
+  - **Free kicks:** short-held shots usually hit the wall → show the power needed to clear it.
+  - **Aim preview line** while charging (training only): a faint predicted ball path with drag and curl.
+  - **Dribbling cones drill:** slalom / skill moves against the clock, best time saved.
+- **Phase 46 — Economy & items** (medium-small)
+  - **Player wages:** pay per match, or remove wages (decide when built).
+  - **EP balance review:** card / shop prices against match, cup and challenge rewards.
+  - **XP potions** (FO4-style "EXP bottles", requested 2026-11-15; decided so far):
+    - **Two items, two steps** (clarified 2026-11-15):
+      1. **Empty bottle** (bought in the SHOP, sits in CARDS). Tap it → choose the player to drain → confirm → the empty bottle is used up and a **filled bottle** appears in its place (a different item) holding **80%** of that player's XP.
+      2. **Filled bottle** ("EXP 3,456"). Tap it → choose who receives it → confirm → the XP goes to that player and the filled bottle is used up.
+      A filled bottle can wait in CARDS as long as you like before you give it to someone.
+    - **The drained card is kept**, it is not used up: it goes back to **level 1** (XP 0, no unspent points, trained attributes reset to their untrained values), but keeps its **card level +N**, form and fitness. Possible because every trained point is stored as `attributes` − `attributesBase` (Phase 19B) and the card-level bonus is already inside both, so a reset only drops the training.
+    - Only players **outside the starting XI** (bench and reserves) can be drained, with a clear confirmation first, e.g. "Drain D. Navarro? He goes back to level 1 (trained points removed, card +7 kept). The bottle gets 80% of his 4,320 XP = 3,456 XP."
+    - The receiving player levels up as after matches (points to spend in SQUAD → TRAINING); any player can receive, the drained one included.
+    - Bottles stack like other items (filled bottles of the same amount in one slot ×N).
+    - **Empty bottle price: 20,000,000 EP** (decided 2026-11-15).
+    - **No limit** on how many bottles a player can receive (decided 2026-11-15): the cost is the 20% XP lost and the drained players going back to level 1.
+- **Phase 47 — Individual player skills / traits** (large; maybe 47A first 6–8 traits, 47B the rest): FO4-style traits (finesse shot, long passer, speed dribbler, power header…), shown on the card, with a real effect on AI and kicks.
+- **Phase 48 — Card seasons** (large): several card seasons per player (`cardId` per season, same `playerId`), season-specific stats, colours and packs.
+- **Later / hard — real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
+- *Dropped on 2026-11-15:* multi-language (English + Tiếng Việt).
 
 ### Ideas backlog (từ yêu cầu, tham khảo FIFA Online 4)
 
@@ -2184,15 +2220,18 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 | Nút SWAP luôn ở đáy (điện thoại), hiện +N trong đội hình, AUTO cộng điểm ngay tab PLAYERS, mua nhiều thẻ một lần, DEV reset lượt simulate / World Cup, World Cup SIMULATE NEXT | Phase 41 ✅ |
 | Chế độ TẬP LUYỆN: sút phạt đền, bắt phạt đền, đá phạt, phạt góc, dứt điểm; chọn người đá phạt; thử thách hằng ngày +2M EP | Phase 42 ✅ |
 | Tua nhanh ×2 khi AUTO PLAY; dẫn ≥ 3 bàn được FINISH MATCH (mô phỏng nốt, thưởng 100%); hoạt cảnh lên cấp World Cup | Phase 43 ✅ |
-| Lương cầu thủ (trả theo trận hoặc bỏ) | Backlog |
+| Phạt đền bổng / sệt (↑ / ↓ + ← / →), Panenka Q+D, vòng ngắm vàng trong khung thành, thủ môn bay cao / thấp; vé mô phỏng ×10 giá 5.000.000 EP gộp ô ×99; đồng hồ ×2 chạy đúng theo engine | Phase 44 ✅ |
+| Lương cầu thủ (trả theo trận hoặc bỏ), rà lại giá / thưởng EP | Backlog (Phase 46) |
+| Bình kinh nghiệm 2 bước: bình rỗng (20.000.000 EP) → bấm chọn cầu thủ dự bị / đội hình ngoài để hút (thẻ giữ +N, về level 1, có thông báo) → bình rỗng mất, thành bình đầy giữ 80% XP → bấm bình đầy chọn người nhận → truyền XP, bình mất; không giới hạn số bình mỗi cầu thủ | Backlog (Phase 46) |
+| Tập luyện 2: phạt góc dễ đọc hơn (điểm tạt), đá phạt (lực cần vượt hàng rào), đường ngắm dự đoán, bài rê bóng qua cọc | Backlog (Phase 45) |
 | Đồ họa HIGH / LOW, khán đài có khán giả, cúp 3D, âm thanh trận đấu, hiệu năng, chuẩn bị phát hành | Phase 29B ✅ |
 | Bảo hiểm khi đập thẻ thất bại (+5% mỗi lần hỏng, tối đa +30%) + thẻ bảo vệ không tụt cấp; xG tính cả cú sút bồi | Phase 29C ✅ |
 | AI sút xa, chuyền dài theo chỉ số; thêm chỉ số Composure (quyết đoán) để tiền đạo dứt điểm thay vì chuyền vòng vo | Phase 29F ✅ |
 | Người nhận bóng chủ động đón bóng, không né bóng; tăng tốc độ chuyền (+12%) và sút (+10%) | Phase 29F ✅ |
 | Đổi tiếng khán giả (không còn "sôi sùng sục"), thêm âm lượng khán giả | Phase 29F ✅ |
 | Auto Play ổn định hơn (chỉnh 5 / 10 / 20 giây, nút AUTO PLAY), máy đá thay thì tự đá hiệp 2 | Phase 29F ✅ |
-| Nhiều mùa thẻ, crawl dữ liệu cầu thủ/logo thật | Backlog (trước là Phase 30) |
-| Skill riêng cho từng cầu thủ | Backlog |
+| Nhiều mùa thẻ (Phase 48), dữ liệu cầu thủ / logo thật (để xa, vướng bản quyền) | Backlog (trước là Phase 30) |
+| Skill riêng cho từng cầu thủ | Backlog (Phase 47) |
 
 ---
 

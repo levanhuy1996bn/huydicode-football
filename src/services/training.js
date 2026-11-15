@@ -6,12 +6,12 @@ export const TRAINING_DRILL_INFO = {
     'penalty-take': {
         label: 'PENALTIES',
         successLabel: 'GOALS',
-        keys: 'PENALTY · ← / → AIM (↑ HIGHER) · HOLD D FOR POWER, RELEASE TO SHOOT',
+        keys: 'PENALTY · ← / → AIM · ↑ HIGH / ↓ LOW · HOLD D FOR POWER, RELEASE TO SHOOT · Q+D PANENKA',
     },
     'penalty-save': {
         label: 'PENALTY SAVES',
         successLabel: 'SAVES',
-        keys: 'BE THE KEEPER · HOLD ← / → TO DIVE THAT WAY, ↓ TO STAY IN THE MIDDLE',
+        keys: 'BE THE KEEPER · HOLD ← / → TO DIVE THAT WAY · +↑ HIGH / +↓ LOW · ↓ ALONE STAYS IN THE MIDDLE',
     },
     freekick: {
         label: 'FREE KICKS',

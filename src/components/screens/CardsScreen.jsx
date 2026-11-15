@@ -21,6 +21,7 @@ import AchievementsPanel from '../AchievementsPanel'
 import { pendingAchievementCount } from '../../services/upgradeAchievements'
 import { maxSquadForm, restoreSquadFitness } from '../../systems/form'
 import { userClubId } from '../../services/career'
+import { SIM_DAILY_LIMIT, SIM_TICKET_PACK, SIM_TICKET_PRICE, SIM_TICKET_SLOT, buySimTickets, simTicketsOf, simulationsLeft } from '../../services/quickSim'
 
 // Phase 23: tab CARDS — kho phần thưởng (gói cầu thủ, thẻ EP), mở lúc nào
 // cũng được. Cầu thủ mở ra là thẻ +1 và vào đội hình ngoài. Đội đủ 50 người
@@ -135,6 +136,20 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         }))
         setNotice({ tone: 'ok', text: `${type === 'fitness' ? 'Fitness' : 'Form'} card bought for ${formatMoney(price)} — it is in REWARDS (UNOPENED).` })
     }
+
+    // Phase 44: vé mô phỏng — mua theo bộ ×10.
+    const buyTickets = () => {
+        if ((club.budget || 0) < SIM_TICKET_PRICE) return
+
+        onClubChange((current) => buySimTickets(current) || current)
+        setNotice({ tone: 'ok', text: `${SIM_TICKET_PACK} simulation tickets bought for ${formatMoney(SIM_TICKET_PRICE)} — used after your ${SIM_DAILY_LIMIT} free simulations of the day.` })
+    }
+
+    const tickets = simTicketsOf(club)
+    // Một ô tối đa ×99: 230 vé → ×99, ×99, ×32.
+    const ticketSlots = Array.from({ length: Math.ceil(tickets / SIM_TICKET_SLOT) }, (_, index) =>
+        Math.min(SIM_TICKET_SLOT, tickets - index * SIM_TICKET_SLOT),
+    )
 
     const openItem = (item) => {
         if (item.type === 'fitness' || item.type === 'form') applySquadItem(item)
@@ -271,7 +286,7 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
             <div className="cards-layout" data-phone-tab={tab}>
                 <div className="home-card phone-tab--rewards">
                     <div className="home-card__head">
-                        <span>UNOPENED · {inventory.length}</span>
+                        <span>UNOPENED · {inventory.length + ticketSlots.length}</span>
                         {epTotal > 0 && (
                             <button type="button" className="link-btn" onClick={openAllEp}>
                                 OPEN ALL EP CARDS ({formatMoney(epTotal)}) →
@@ -279,7 +294,27 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                         )}
                     </div>
 
-                    {inventory.length === 0 ? (
+                    {/* Phase 44: vé mô phỏng — một ô ×99 (dùng tự động khi bấm SIMULATE) */}
+                    {ticketSlots.length > 0 && (
+                        <div className="cards-inventory cards-inventory--tickets">
+                            {ticketSlots.map((count, index) => (
+                                <div key={`ticket-${index}`} className="inventory-item inventory-item--ticket">
+                                    <div className="inventory-item__icon" aria-hidden="true">🎟</div>
+                                    <div className="inventory-item__body">
+                                        <strong>
+                                            Simulation ticket <em className="inventory-item__count">×{count}</em>
+                                        </strong>
+                                        <small>
+                                            One extra quick simulation each, used automatically after the {SIM_DAILY_LIMIT} free ones
+                                            ({simulationsLeft(club)}/{SIM_DAILY_LIMIT} free left today) · never expires
+                                        </small>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {inventory.length === 0 && ticketSlots.length === 0 ? (
                         <p className="home-card__empty">
                             Nothing to open yet. Your club earns XP after every league match; each new club level
                             gives an EP card and a player pack.
@@ -367,6 +402,21 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
                             </button>
                         </div>
                     ))}
+                    <div className="cards-shop__row">
+                        <span>
+                            <b>🎟 Simulation tickets ×{SIM_TICKET_PACK}</b>
+                            <small>Extra quick simulations after the {SIM_DAILY_LIMIT} free ones of the day (×0.7 rewards) · you have {tickets}</small>
+                        </span>
+                        <button
+                            type="button"
+                            className="btn btn--small"
+                            onClick={buyTickets}
+                            disabled={(club.budget || 0) < SIM_TICKET_PRICE}
+                            title={(club.budget || 0) < SIM_TICKET_PRICE ? 'Not enough EP' : `Buy ${SIM_TICKET_PACK} tickets`}
+                        >
+                            BUY ×{SIM_TICKET_PACK} · {formatMoney(SIM_TICKET_PRICE)}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="home-card phone-tab--info">

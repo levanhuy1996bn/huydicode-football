@@ -33,9 +33,38 @@ export function simulationsLeft(club, now = new Date()) {
     return Math.max(0, SIM_DAILY_LIMIT - used)
 }
 
+// Phase 44: vé mô phỏng (kiểu FIFA Online 2) — mua theo bộ ×10 trong
+// CARDS → SHOP, dùng sau khi hết 5 lượt miễn phí trong ngày; lưu trong
+// club.simTickets (một ô trong kho tối đa ×99, nhiều hơn thì thêm ô).
+export const SIM_TICKET_PACK = 10
+export const SIM_TICKET_PRICE = 5000000
+export const SIM_TICKET_SLOT = 99
+
+export const simTicketsOf = (club) => Math.max(0, Math.floor(club?.simTickets || 0))
+
+// Tổng số lần còn mô phỏng được (miễn phí + vé).
+export const simsAvailable = (club, now = new Date()) => simulationsLeft(club, now) + simTicketsOf(club)
+
+// Nhãn cho các nút SIMULATE: "3/5" hoặc "0/5 · 🎟23".
+export function simsLabel(club, now = new Date()) {
+    const tickets = simTicketsOf(club)
+    const free = `${simulationsLeft(club, now)}/${SIM_DAILY_LIMIT}`
+
+    return tickets ? `${free} · 🎟${tickets}` : free
+}
+
+export function buySimTickets(club) {
+    if ((club?.budget || 0) < SIM_TICKET_PRICE) return null
+
+    return { ...club, budget: club.budget - SIM_TICKET_PRICE, simTickets: simTicketsOf(club) + SIM_TICKET_PACK }
+}
+
 export function spendSimulation(club, now = new Date()) {
     const key = todayKey(now)
     const used = club?.simulations?.date === key ? club.simulations.used || 0 : 0
+
+    // Hết lượt miễn phí → dùng một vé.
+    if (used >= SIM_DAILY_LIMIT && simTicketsOf(club) > 0) return { ...club, simTickets: simTicketsOf(club) - 1 }
 
     return { ...club, simulations: { date: key, used: used + 1 } }
 }

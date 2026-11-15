@@ -71,6 +71,7 @@ export default function WorldCupScreen({
     // Phase 41: mô phỏng trận kế tiếp (×0.7), dùng lượt SIMULATE trong ngày.
     onSimulateNext = null,
     simsLeft = 0,
+    simsLabel = null,
     simResult = null,
     onBack,
     // Phase 30C: cấp World Cup + độ khó của giải
@@ -182,7 +183,7 @@ export default function WorldCupScreen({
                                         disabled={simsLeft <= 0}
                                         title="Simulate only your next match: World Cup XP, club XP and prize money ×0.7 (uses one of today's simulations)"
                                     >
-                                        SIMULATE NEXT {simsLeft}/{SIM_DAILY_LIMIT}
+                                        SIMULATE NEXT {simsLabel || `${simsLeft}/${SIM_DAILY_LIMIT}`}
                                     </button>
                                 )}
                             </div>
