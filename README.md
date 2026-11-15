@@ -457,6 +457,7 @@ The project currently uses browser LocalStorage for local game progress.
 | 47A | Player traits, part 1: about 8 FO4-style traits with a real effect in the 3D match (design to agree first) | 💤 Backlog |
 | 47B | Player traits, part 2: defending / skill / keeper distribution traits, AI tactics | 💤 Backlog |
 | 48 | Card seasons (several seasons per player) | 💤 Backlog |
+| 49 | Shop 2: more things to buy in CARDS → SHOP (ideas listed in the backlog, to choose) | 💤 Backlog |
 | Backlog | Real player / club data (licensing) | 💤 Later |
 
 ### Status check (2026-11-09)
@@ -2160,6 +2161,15 @@ Regrouped on 2026-11-15 into medium phases (enough work each, none too big); the
   - **47A** (~8 traits with a real effect in the 3D match): finesse shot, long shots, long passer, speed dribbler, aerial threat, penalty specialist, free-kick specialist, reflex keeper; small effect in quick simulation too; shown as chips on the card, market, lineups and match info; a message when a trait fires.
   - **47B**: defending traits (tackler, reads the game), flair / skill dribbling, keeper long distribution, effect on AI tactics.
 - **Phase 48 — Card seasons** (large): several card seasons per player (`cardId` per season, same `playerId`), season-specific stats, colours and packs.
+- **Phase 49 — Shop 2** (medium; ideas added 2026-11-15, choose before building — prices to set then). Today the SHOP sells Fitness card, Form card, empty EXP bottle, simulation tickets ×10 (Upgrade Protection is bought in UPGRADE CARDS). Ideas:
+  - **Player packs:** Standard / Premium packs for EP (today only from club levels), maybe a **Gold pack** (guaranteed gold card).
+  - **Position packs:** choose GK / DEF / MID / ATT, one card of that position.
+  - **Upgrade Boost +3 / +4 / +5%** for EP (today only from levels 5, 10, 15…), still max 5 per upgrade.
+  - **World Cup entry ticket:** one more World Cup per day after the 2 free ones (like simulation tickets, stacks ×99).
+  - **Squad slots:** +5 places above 50 (one-off purchases, e.g. up to 70).
+  - **Upgrade ticket:** a guaranteed +1 for cards +1 … +4 (expensive; higher levels stay a gamble).
+  - **Daily deal:** one rotating offer per day at a discount (e.g. −30% on a pack or bottle).
+  - **Cosmetics:** extra kit colours, ball skins, stadium / crowd themes, goal celebrations (no effect on play).
 - **Later / hard — real player and club data:** research sources such as Transfermarkt, EA Sports FC, SoFIFA and PES Master. Their terms of use forbid scraping, and crests, player photos and EA ratings are protected, so prefer a licensed API (e.g. football-data.org, API-Football) or an open dataset, or keep the fictional catalog. The data must fit the Phase 23 player catalog structure.
 - *Dropped on 2026-11-15:* multi-language (English + Tiếng Việt).
 
@@ -2243,6 +2253,7 @@ Regrouped on 2026-11-15 into medium phases (enough work each, none too big); the
 | Đổi tiếng khán giả (không còn "sôi sùng sục"), thêm âm lượng khán giả | Phase 29F ✅ |
 | Auto Play ổn định hơn (chỉnh 5 / 10 / 20 giây, nút AUTO PLAY), máy đá thay thì tự đá hiệp 2 | Phase 29F ✅ |
 | Nhiều mùa thẻ (Phase 48), dữ liệu cầu thủ / logo thật (để xa, vướng bản quyền) | Backlog (trước là Phase 30) |
+| Shop 2 — bán thêm: gói cầu thủ (Thường / Cao cấp / Vàng), gói theo vị trí, Upgrade Boost, vé World Cup thêm lượt, mở rộng ô đội hình, vé đập chắc +1 (tới +5), ưu đãi mỗi ngày, đồ trang trí (áo, bóng, sân, ăn mừng) — chọn sau | Backlog (Phase 49) |
 | Skill riêng cho từng cầu thủ (chia 47A / 47B, chưa làm vội) | Backlog (Phase 47) |
 
 ---
