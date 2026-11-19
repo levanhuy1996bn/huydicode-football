@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PlayerCardView, StatNum, UpgradeBadge } from './CardBits'
 import UpgradeAnimation from './UpgradeAnimation'
-import { BOOST_LIMIT, PROTECTION_PRICE, boostCards, playerIdOf, protectionCard, protectionCount, spendItemsById, spendProtection } from '../services/cards'
+import { BOOST_LIMIT, PROTECTION_PRICE, boostCards, playerIdOf, protectionCount, spendItemsById, spendProtection } from '../services/cards'
 import { formatMoney } from '../services/clubService'
 import {
     EXTRA_LIMIT,
@@ -18,6 +18,7 @@ import { shortPlayerName } from '../utils/names'
 import { userClubId } from '../services/career'
 import { milestoneLabel, recordUpgradeSuccess, rewardFor, rewardLabel } from '../services/upgradeAchievements'
 import { ovrTierClass } from '../utils/ovrTier'
+import { economy } from '../services/economy'
 
 // Phase 25: màn đập thẻ (tab UPGRADE trong CARDS).
 //  - Thẻ chính: bất kỳ thẻ nào (đá chính / dự bị / đội hình ngoài).
@@ -119,14 +120,17 @@ export default function UpgradePanel({ club, team, onRosterChange, onClubChange,
     const pct = (value) => `${(value * 100).toFixed(value > 0 && value < 0.1 ? 1 : 0)}%`
 
     // Phase 29C: mua thẻ bảo vệ bằng EP (vào kho, dùng ngay được).
-    const buyProtection = () => {
+    // Phase 53A: qua economy (reducer dùng chung với server).
+    const buyProtection = async () => {
         if (budget < PROTECTION_PRICE) return
 
-        onClubChange((current) => ({
-            ...current,
-            budget: (current.budget || 0) - PROTECTION_PRICE,
-            inventory: [...(current.inventory || []), protectionCard('Bought with EP')],
-        }))
+        const res = await economy('buy_item', { item: 'protection' })
+
+        if (!res.ok) {
+            setMessage(res.message)
+            return
+        }
+
         setProtect(true)
         setMessage(`Upgrade Protection bought for ${formatMoney(PROTECTION_PRICE)}.`)
     }

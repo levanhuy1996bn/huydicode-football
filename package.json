@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:economy": "node scripts/build-economy.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

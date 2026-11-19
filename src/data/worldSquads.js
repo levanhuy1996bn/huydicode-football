@@ -191,6 +191,12 @@ export function allWorldPlayers() {
     return allPlayers
 }
 
+// Phase 53A: xoá bộ nhớ đệm sau khi đổi bản sửa (server economy).
+export function resetWorldSquads() {
+    cache.clear()
+    allPlayers = null
+}
+
 // Phase 29E: cầu thủ tự sinh cho đội tuyển các nước không có giải trong game
 // (22 người, tên theo kho tên của nước đó, không thuộc CLB nào).
 const nationCache = new Map()

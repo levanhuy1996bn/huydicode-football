@@ -27,6 +27,9 @@ import {
 import { getCloudState } from '../services/cloudSave'
 import { giftRewardLabel } from '../services/giftCodes'
 import { withPhysique } from '../systems/physique'
+import { callEconomyServer, currentEconomyState } from '../services/economy'
+import { formatMoney } from '../services/clubService'
+import { squadOf } from '../systems/roster'
 
 // Phase 52: trang ADMIN (chỉ tài khoản developer) — sửa / thêm cầu thủ, gift
 // code, danh sách developer. Mọi lệnh ghi đều được server kiểm tra lại.
@@ -597,11 +600,154 @@ function DevelopersTab() {
     )
 }
 
+// ------------------------------------------------------------------ SERVER (Phase 53A)
+const summaryOf = (state) => {
+    if (!state?.club) return null
+
+    const team = (state.roster || []).find((entry) => entry.id === 'blue')
+
+    return {
+        budget: Math.round(Number(state.club.budget) || 0),
+        items: (state.club.inventory || []).length,
+        cards: squadOf(team).length,
+    }
+}
+
+function ServerTab() {
+    const [info, setInfo] = useState(null)
+    const [server, setServer] = useState(null)
+    const [busy, setBusy] = useState(false)
+    const [notice, setNotice] = useState(null)
+    const [confirm, setConfirm] = useState(false)
+    const local = summaryOf(currentEconomyState())
+
+    const run = async (action, params, after) => {
+        setBusy(true)
+        setNotice(null)
+        const res = await callEconomyServer(action, params)
+        setBusy(false)
+
+        if (!res.ok) {
+            setNotice({ ok: false, text: res.message || res.code })
+            return null
+        }
+
+        after?.(res)
+        return res
+    }
+
+    const ping = () => run('ping', {}, (res) => setInfo(res.result))
+    const load = () => run('state', {}, (res) => setServer({ ...summaryOf(res.state), revision: res.revision }))
+
+    useEffect(() => {
+        ping()
+    }, [])
+
+    return (
+        <div className="admin-server">
+            <p className="account-panel__note">
+                Phase 53A: the server economy (Edge Function <b>economy</b>) runs the same EP / item / card rules as the game.
+                Until Phase 53D the game still runs every action on this device (<b>economy mode: off</b>); here you can check the
+                deployment and try actions on a <b>server copy</b> of your own account (your game is not changed).
+            </p>
+
+            <div className="admin-form__actions">
+                <button type="button" className="btn btn--small" disabled={busy} onClick={ping}>CHECK SERVER</button>
+                {info?.hasState && <button type="button" className="btn btn--small" disabled={busy} onClick={load}>SHOW SERVER COPY</button>}
+            </div>
+
+            {info && (
+                <div className="admin-table">
+                    <div className="admin-table__row">
+                        <b>SERVER</b>
+                        <span>Reachable ✓ · economy v{info.economyVersion} · player data v{info.catalogVersion ?? '–'} · mode {String(info.mode).replace(/"/g, '')}</span>
+                        <small>{info.isDeveloper ? 'developer account' : 'player account'} · actions: {(info.actions || []).join(', ')}</small>
+                    </div>
+                    <div className="admin-table__row">
+                        <b>THIS DEVICE</b>
+                        <span>{local ? `${formatMoney(local.budget)} · ${local.items} items · ${local.cards} cards` : '—'}</span>
+                        <small>the save the game uses now</small>
+                    </div>
+                    <div className="admin-table__row">
+                        <b>SERVER COPY</b>
+                        <span>
+                            {!info.hasState
+                                ? 'none yet'
+                                : server
+                                    ? `${formatMoney(server.budget)} · ${server.items} items · ${server.cards} cards`
+                                    : `revision ${info.revision} · tap SHOW SERVER COPY`}
+                        </span>
+                        <small>{info.hasState ? `revision ${server?.revision ?? info.revision}` : 'copy your save to try server actions'}</small>
+                    </div>
+                </div>
+            )}
+
+            {info && !info.hasState && (
+                <div className="admin-form__actions">
+                    <button
+                        type="button"
+                        className="btn btn--small btn--primary"
+                        disabled={busy || !local}
+                        onClick={() => run('import', { state: currentEconomyState() }, (res) => {
+                            setNotice({ ok: true, text: `Copied to the server (${Math.round(res.result.size / 1024)} KB).` })
+                            setInfo({ ...info, hasState: true, revision: res.revision })
+                            setServer({ ...summaryOf(res.state), revision: res.revision })
+                        })}
+                    >
+                        COPY MY SAVE TO THE SERVER
+                    </button>
+                </div>
+            )}
+
+            {info?.hasState && (
+                <div className="admin-form__actions">
+                    <button
+                        type="button"
+                        className="btn btn--small"
+                        disabled={busy}
+                        onClick={() => run('buy_item', { item: 'fitness' }, (res) => {
+                            setServer({ ...summaryOf(res.state), revision: res.revision })
+                            setNotice({ ok: true, text: `Server bought a Fitness card: server budget ${formatMoney(res.result.budget)} (this device unchanged).` })
+                        })}
+                    >
+                        TEST: BUY A FITNESS CARD ON THE SERVER
+                    </button>
+                    {!confirm ? (
+                        <button type="button" className="btn btn--small" disabled={busy} onClick={() => setConfirm(true)}>DELETE SERVER COPY…</button>
+                    ) : (
+                        <span className="account-panel__confirm">
+                            Delete the server copy of this account?
+                            <button
+                                type="button"
+                                className="btn btn--small btn--danger"
+                                onClick={() => {
+                                    setConfirm(false)
+                                    run('reset', {}, () => {
+                                        setServer(null)
+                                        setInfo({ ...info, hasState: false, revision: null })
+                                        setNotice({ ok: true, text: 'Server copy deleted.' })
+                                    })
+                                }}
+                            >
+                                DELETE
+                            </button>
+                            <button type="button" className="link-btn" onClick={() => setConfirm(false)}>CANCEL</button>
+                        </span>
+                    )}
+                </div>
+            )}
+
+            <Notice notice={notice} />
+        </div>
+    )
+}
+
 // ------------------------------------------------------------------ SHELL
 const TABS = [
     ['players', 'PLAYERS'],
     ['gifts', 'GIFT CODES'],
     ['devs', 'DEVELOPERS'],
+    ['server', 'SERVER'],
 ]
 
 export default function AdminPanel({ onClose }) {
@@ -633,6 +779,7 @@ export default function AdminPanel({ onClose }) {
                 {tab === 'players' && <PlayersTab />}
                 {tab === 'gifts' && <GiftTab />}
                 {tab === 'devs' && <DevelopersTab />}
+                {tab === 'server' && <ServerTab />}
             </div>
         </div>
     )

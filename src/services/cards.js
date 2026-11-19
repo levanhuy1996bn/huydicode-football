@@ -106,6 +106,11 @@ export const PACK_TYPES = {
 // Phase 26A: gói rút từ mọi cầu thủ thế giới + cầu thủ tự do (tạo lần đầu dùng).
 let byRarity = null
 
+// Phase 53A: dựng lại kho rút gói sau khi danh mục đổi (server economy).
+export function resetPackPools() {
+    byRarity = null
+}
+
 function poolsByRarity() {
     if (byRarity) return byRarity
 

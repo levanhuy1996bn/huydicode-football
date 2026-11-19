@@ -154,6 +154,7 @@ import { registerDevBudget, registerDevDailyReset } from '../utils/devTools'
 import { registerGiftApplier } from '../services/cloudExtras'
 import AdminHost from './AdminHost'
 import { refreshOwnedRoster } from '../services/cardRefresh'
+import { economy, registerEconomyHost, syncEconomyState } from '../services/economy'
 import { applyPreset } from '../services/lineupHelper'
 import MobileTabBar from './MobileTabBar'
 
@@ -271,6 +272,10 @@ export default function GameScene() {
     // giữ để thưởng sau trận, tab CARDS và màn TRANSFERS dùng chung một bản.
     const [club, setClub] = useState(loadClub)
     const clubReportRef = useRef(null)
+    const clubStateRef = useRef(club)
+    clubStateRef.current = club
+    const rosterStateRef = useRef(roster)
+    rosterStateRef.current = roster
     // Phase 25: mở TRANSFERS với ô tìm kiếm điền sẵn (nút mua bản sao ở màn đập thẻ).
     const [clubSearch, setClubSearch] = useState('')
 
@@ -278,8 +283,10 @@ export default function GameScene() {
         saveClub(club)
     }, [club])
 
-    // Phase 34: bảng DEV (⚙ Settings → mã) ghi ngân sách EP.
-    useEffect(() => registerDevBudget((value) => setClub((current) => ({ ...current, budget: value }))), [])
+    // Phase 34: bảng DEV ghi ngân sách EP. Phase 53A: qua economy (server kiểm tra quyền developer).
+    useEffect(() => registerDevBudget((value) => {
+        economy('dev_set_budget', { amount: value })
+    }), [])
     // Phase 51: gift code → thêm phần thưởng vào kho REWARDS.
     useEffect(() => registerGiftApplier((update) => setClub(update)), [])
     // Phase 41: DEV → reset lượt SIMULATE / World Cup trong ngày.
@@ -462,6 +469,18 @@ export default function GameScene() {
     const [nationPicker, setNationPicker] = useState(false)
 
     setMatchSide(wcSession?.nationId || null)
+
+    // Phase 53A: các thao tác EP / kho đồ / thẻ đi qua services/economy.js (reducer
+    // dùng chung với server). Không chạy trong lúc đang dùng đội tuyển World Cup.
+    syncEconomyState(club, roster)
+    useEffect(() => registerEconomyHost({
+        getState: () => ({ club: clubStateRef.current, roster: rosterStateRef.current }),
+        apply: (next, previous) => {
+            if (next.club !== previous.club) setClub(next.club)
+            if (next.roster !== previous.roster) setRoster(next.roster)
+        },
+        busy: () => Boolean(wcSessionRef.current),
+    }), [])
 
     const worldCup = world.worldCup || null
     // Phase 29H: giải đang đá (lưu lại, đá tiếp lúc nào cũng được).

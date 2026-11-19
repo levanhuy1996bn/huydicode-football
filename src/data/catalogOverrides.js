@@ -68,29 +68,44 @@ function readCache() {
 const cache = readCache()
 
 // Phiên bản đang áp dụng trong lần chạy này (null = chưa từng tải).
-export const appliedCatalogVersion = cache ? cache.version ?? null : null
+export let appliedCatalogVersion = cache ? cache.version ?? null : null
 
 const overrides = new Map()
 const customs = []
 // Phase 52b: bản sửa có "cập nhật cả thẻ đang sở hữu" → id cầu thủ → dấu thời gian lần lưu.
 const ownedSync = new Map()
-
-;(cache?.rows || []).forEach((row) => {
-    if (!row || typeof row.id !== 'string') return
-
-    if (row.data?.syncOwned === true) ownedSync.set(row.id, String(row.updated_at || row.id))
-
-    if (row.kind === 'override') {
-        overrides.set(row.id, sanitizeEdit(row.data))
-    } else if (row.kind === 'custom' && row.id.startsWith('cx-')) {
-        const data = sanitizeEdit(row.data, { custom: true })
-
-        if (data.name && data.position) customs.push({ id: row.id, ...data })
-    }
-})
-
 // Bản gốc của cầu thủ đã bị sửa (cho trang ADMIN: so sánh / đặt lại).
 const originals = new Map()
+
+function loadRows(rows) {
+    overrides.clear()
+    customs.length = 0
+    ownedSync.clear()
+    originals.clear()
+
+    ;(rows || []).forEach((row) => {
+        if (!row || typeof row.id !== 'string') return
+
+        if (row.data?.syncOwned === true) ownedSync.set(row.id, String(row.updated_at || row.id))
+
+        if (row.kind === 'override') {
+            overrides.set(row.id, sanitizeEdit(row.data))
+        } else if (row.kind === 'custom' && row.id.startsWith('cx-')) {
+            const data = sanitizeEdit(row.data, { custom: true })
+
+            if (data.name && data.position) customs.push({ id: row.id, ...data })
+        }
+    })
+}
+
+loadRows(cache?.rows)
+
+// Phase 53A: server economy nạp bản sửa lúc chạy (không có localStorage).
+// Gọi xong phải dựng lại danh mục / thị trường (data/catalogRuntime.js).
+export function setCatalogEditRows(rows, version = null) {
+    loadRows(rows)
+    appliedCatalogVersion = version
+}
 
 export const originalOf = (id) => originals.get(id) || null
 export const hasOverride = (id) => overrides.has(id)

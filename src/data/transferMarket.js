@@ -62,3 +62,10 @@ const freeAgents = () =>
 
 export const TRANSFER_MARKET = [...clubPlayers(), ...allWorldPlayers(), ...freeAgents()]
 export const MARKET_BY_PLAYER_ID = new Map(TRANSFER_MARKET.map((player) => [player.playerId, player]))
+
+// Phase 53A: dựng lại tại chỗ sau khi đổi bản sửa (server economy).
+export function rebuildTransferMarket() {
+    TRANSFER_MARKET.splice(0, TRANSFER_MARKET.length, ...clubPlayers(), ...allWorldPlayers(), ...freeAgents())
+    MARKET_BY_PLAYER_ID.clear()
+    TRANSFER_MARKET.forEach((player) => MARKET_BY_PLAYER_ID.set(player.playerId, player))
+}

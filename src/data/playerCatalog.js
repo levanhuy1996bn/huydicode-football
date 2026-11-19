@@ -512,3 +512,10 @@ const BASE_CATALOG = [
 export const PLAYER_CATALOG = [...BASE_CATALOG.map(applyOverride), ...customFreeAgents()]
 
 export const CATALOG_BY_ID = new Map(PLAYER_CATALOG.map((player) => [player.playerId, player]))
+
+// Phase 53A: dựng lại tại chỗ (giữ nguyên tham chiếu mảng) sau khi đổi bản sửa.
+export function rebuildPlayerCatalog() {
+    PLAYER_CATALOG.splice(0, PLAYER_CATALOG.length, ...BASE_CATALOG.map(applyOverride), ...customFreeAgents())
+    CATALOG_BY_ID.clear()
+    PLAYER_CATALOG.forEach((player) => CATALOG_BY_ID.set(player.playerId, player))
+}
