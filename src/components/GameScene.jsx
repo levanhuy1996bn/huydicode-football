@@ -32,6 +32,8 @@ import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
 import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
 import NationPicker from './NationPicker'
+import { CloudConflictDialog } from './CloudAccount'
+import { setCloudPaused } from '../services/cloudSave'
 import { pendingAchievementCount } from '../services/upgradeAchievements'
 import { WC_LEVEL_XP, WC_MAX_LEVEL, applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, wcLevelOf, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
 import { nationStrength, nationalTeamForMatch, suggestedNation } from '../services/nationalTeams'
@@ -149,6 +151,7 @@ import {
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
 import { registerDevBudget, registerDevDailyReset } from '../utils/devTools'
+import { registerGiftApplier } from '../services/cloudExtras'
 import { applyPreset } from '../services/lineupHelper'
 import MobileTabBar from './MobileTabBar'
 
@@ -274,6 +277,8 @@ export default function GameScene() {
 
     // Phase 34: bảng DEV (⚙ Settings → mã) ghi ngân sách EP.
     useEffect(() => registerDevBudget((value) => setClub((current) => ({ ...current, budget: value }))), [])
+    // Phase 51: gift code → thêm phần thưởng vào kho REWARDS.
+    useEffect(() => registerGiftApplier((update) => setClub(update)), [])
     // Phase 41: DEV → reset lượt SIMULATE / World Cup trong ngày.
     useEffect(() => registerDevDailyReset(() => {
         setClub((current) => ({ ...current, simulations: null }))
@@ -1324,6 +1329,8 @@ export default function GameScene() {
     // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
     useEffect(() => {
         setInMatch(screen === 'match' || screen === 'training')
+        // Phase 50: trong trận / tập luyện 3D không đẩy bản lưu lên mây (đẩy khi xong).
+        setCloudPaused(screen === 'match' || screen === 'training')
         return () => setInMatch(false)
     }, [screen])
 
@@ -2801,6 +2808,9 @@ export default function GameScene() {
                 onOpenSettings={openSettings}
                 hidden={screen === 'match' || screen === 'training'}
             />
+
+            {/* Phase 50: chọn bản lưu khi bản trong máy và trên mây khác nhau (không hiện giữa trận). */}
+            {screen !== 'match' && <CloudConflictDialog />}
 
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
             {isSettingsOpen && (

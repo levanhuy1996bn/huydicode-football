@@ -5,7 +5,7 @@ import { userClubId, userTeam } from '../services/career'
 import { isTouchDevice } from '../utils/device'
 import { autoGraphics, clearSlowDevice } from '../utils/performance'
 import { installState, onInstallChange, promptInstall } from '../utils/install'
-import { devState, onDevChange, resetDevDaily, setDevBudget, setDevUpgradeBonus, unlockDev } from '../utils/devTools'
+import { devState, onDevChange, resetDevDaily, setDevBudget, setDevUpgradeBonus } from '../utils/devTools'
 
 // Phase 29G: các dòng cài đặt dùng chung cho khung SETTINGS ở HOME và bảng
 // ⚙ SETTINGS mở từ header (mọi màn hình). Trận 3 / 6 / 9 phút (10 → 9).
@@ -57,51 +57,21 @@ function InstallRow() {
     )
 }
 
-// Phase 34: dòng nhập mã (mọi máy) → nút DEV → bảng đặt ngân sách / +% đập thẻ.
-// Mở khoá chỉ trong phiên (tải lại trang là mất).
+// Phase 34: nút DEV → bảng đặt ngân sách / +% đập thẻ / reset lượt trong ngày.
+// Phase 51: chỉ hiện khi đăng nhập bằng tài khoản developer (không còn ô nhập mã).
 function DevRows() {
     const [, refresh] = useState(0)
-    const [code, setCode] = useState('')
-    const [codeError, setCodeError] = useState(false)
     const [open, setOpen] = useState(false)
     const [budget, setBudget] = useState('')
     const [bonus, setBonus] = useState(() => String(Math.round(devState.upgradeBonus * 100)))
     const [message, setMessage] = useState('')
 
-    useEffect(() => onDevChange(() => refresh((value) => value + 1)), [])
+    useEffect(() => onDevChange(() => {
+        refresh((value) => value + 1)
+        setBonus(String(Math.round(devState.upgradeBonus * 100)))
+    }), [])
 
-    if (!devState.unlocked) {
-        return (
-            <div className="setting-row setting-row--code">
-                <span>Code</span>
-                <form
-                    className="dev-form"
-                    onSubmit={(event) => {
-                        event.preventDefault()
-                        const ok = unlockDev(code)
-
-                        setCodeError(!ok)
-                        if (ok) setCode('')
-                    }}
-                >
-                    <input
-                        type="password"
-                        value={code}
-                        autoComplete="off"
-                        autoCapitalize="characters"
-                        spellCheck={false}
-                        aria-label="Code"
-                        onChange={(event) => {
-                            setCode(event.target.value)
-                            setCodeError(false)
-                        }}
-                    />
-                    <button type="submit" className="btn btn--small">OK</button>
-                </form>
-                {codeError && <small className="setting-note setting-note--error">Wrong code</small>}
-            </div>
-        )
-    }
+    if (!devState.unlocked) return null
 
     return (
         <div className="setting-row setting-row--dev">

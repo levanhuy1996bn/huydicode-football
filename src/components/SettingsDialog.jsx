@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import SettingsRows from './SettingsRows'
+import { AccountPanel } from './CloudAccount'
 
 // Phase 29G: bảng ⚙ SETTINGS mở từ header (mọi màn hình). Trong trận không
 // đổi được độ dài trận và CLB.
@@ -21,6 +22,10 @@ export default function SettingsDialog({ settings, onSettingsChange, onChangeClu
                     <button type="button" className="btn btn--small" onClick={onClose}>CLOSE</button>
                 </div>
                 {inMatch && <p className="settings-dialog__note">Match paused · match length can be changed between matches.</p>}
+                {/* Phase 50: tài khoản + lưu lên mây (không đổi tài khoản giữa trận) */}
+                {inMatch
+                    ? <p className="settings-dialog__note">Account and cloud save: available between matches.</p>
+                    : <AccountPanel />}
                 <SettingsRows
                     settings={settings}
                     onSettingsChange={onSettingsChange}

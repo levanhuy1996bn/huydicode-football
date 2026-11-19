@@ -2,7 +2,7 @@
 
 A browser-based 3D football game and club-management prototype built with React, Vite, Three.js, React Three Fiber, Drei and Rapier.
 
-> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31–46 — all done ✅ (2026-11-15).** Latest: 46 (player wages removed; EXP bottles: an empty bottle for 20,000,000 EP drains a bench / reserve player back to level 1 — card +N kept — into a filled bottle with 80% of his XP, which you give to any player), 45 (TRAINING 2: aim preview line while charging, cross target and receiver rings, free-kick power band that clears the wall, crosses now reach the receiver at heading height, DRIBBLING cones drill against the clock with best time), 44 (high / low penalties with ↑ / ↓, Panenka Q+D, aim marker in the goal, keeper dives high or low; simulation tickets ×10 for 5,000,000 EP stacked ×99 per slot; the 2× clock follows the engine), 43 (AUTO PLAY at 2× speed, FINISH MATCH when 3+ goals ahead with the rest simulated and full rewards, World Cup level-up animation), 42 (TRAINING mode: penalties, penalty saves, free kicks, corners and finishing on the 3D pitch, set-piece takers, daily challenge +2M EP), 38 (goalkeepers predict shots with air drag and always dive in time, slow balls in the box taken in the hands and thrown short, far fewer floaty chip shots), 41 (phone SWAP bar, +N on lineups, AUTO points in PLAYERS, buy several cards, DEV daily reset, World Cup SIMULATE NEXT), 40 (club level ring, level-up animation, upgrade screen fixes, +10 cards always fit and in top form), 39 (SMART name tags with positions, yellow card on the tag, announced added time with a +10 cap, substitutions only at a dead ball with the fourth official's board), 37 (headers: jump and head at goal, clear or pass with the head, aerial duels by height / strength, real crosses from corners and wide lobs, jump animation, a header back to the keeper may be handled), 36 (pass power assist, open-lane choice, throw-in options, thrower steps back in), 35 (AI closes down at 2–3 m, PRESS / E + arrows to charge and shoulder) and 34 (DEV code, World Cup button / player XP / consolation, back-pass rule, shots never backwards). **Next:** all planned phases are done — the backlog is grouped into Phase 47 (player traits, split into 47A / 47B), 48 (card seasons). Before that 33 (CARDS rewards grouped) and 32 (OVR colour tiers: rows tinted and cards ringed white / green / gold / pink-red / purple / prism by card OVR) and 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). The backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13). Card seasons and real data are in the backlog. See the status table under Development roadmap.
+> **Current delivery: Steps 1–6, Phases 15–25, 26A–26D, 27, 28, 28B, 29A1–29A3, 29A5, 29A4, 29B–29K, 30A–30C, 31–46 — all done ✅ (2026-11-15).** **Phases 50–51 built 2026-11-19** — accounts and cloud save with Supabase, developer accounts instead of the DEV code, gift codes (see "Phase 50", "Phase 51"). Latest: 46 (player wages removed; EXP bottles: an empty bottle for 20,000,000 EP drains a bench / reserve player back to level 1 — card +N kept — into a filled bottle with 80% of his XP, which you give to any player), 45 (TRAINING 2: aim preview line while charging, cross target and receiver rings, free-kick power band that clears the wall, crosses now reach the receiver at heading height, DRIBBLING cones drill against the clock with best time), 44 (high / low penalties with ↑ / ↓, Panenka Q+D, aim marker in the goal, keeper dives high or low; simulation tickets ×10 for 5,000,000 EP stacked ×99 per slot; the 2× clock follows the engine), 43 (AUTO PLAY at 2× speed, FINISH MATCH when 3+ goals ahead with the rest simulated and full rewards, World Cup level-up animation), 42 (TRAINING mode: penalties, penalty saves, free kicks, corners and finishing on the 3D pitch, set-piece takers, daily challenge +2M EP), 38 (goalkeepers predict shots with air drag and always dive in time, slow balls in the box taken in the hands and thrown short, far fewer floaty chip shots), 41 (phone SWAP bar, +N on lineups, AUTO points in PLAYERS, buy several cards, DEV daily reset, World Cup SIMULATE NEXT), 40 (club level ring, level-up animation, upgrade screen fixes, +10 cards always fit and in top form), 39 (SMART name tags with positions, yellow card on the tag, announced added time with a +10 cap, substitutions only at a dead ball with the fourth official's board), 37 (headers: jump and head at goal, clear or pass with the head, aerial duels by height / strength, real crosses from corners and wide lobs, jump animation, a header back to the keeper may be handled), 36 (pass power assist, open-lane choice, throw-in options, thrower steps back in), 35 (AI closes down at 2–3 m, PRESS / E + arrows to charge and shoulder) and 34 (DEV code, World Cup button / player XP / consolation, back-pass rule, shots never backwards). **Next:** all planned phases are done — the backlog is grouped into Phase 47 (player traits, split into 47A / 47B), 48 (card seasons). Before that 33 (CARDS rewards grouped) and 32 (OVR colour tiers: rows tinted and cards ringed white / green / gold / pink-red / purple / prism by card OVR) and 31 (card-upgrade achievements: first time and every 10 successful upgrades to each level +2 … +10, CLAIM for EP and items). The backlog has individual player skills and card seasons / real data. Specialised animations, goalkeeper saves and distribution, duels and shielding, team tactics and ball-carrier AI, stamina and detailed attributes, player progression, fouls, cards, offside and set pieces, FIFA Online-style skill shots and passes, match statistics (live stats, xG, shot map, timeline), and Phase 22 (two-player kick-off, stronger passes and shots, CONTROLS panel, TRANSFERS screen with signing toasts, squad rules 11 / 9 / reserves / 50, League screen with season player stats for all 20 clubs), and Phase 23 (club level and XP, prize money in EP, 500-player catalog, CARDS tab with player packs and EP cards, shots now rebound off defenders), and Phase 24 (three fixed kits per club, chosen before each match without clashes; shooting and passing accuracy clearly depend on stats), and Phase 25 (card upgrades +1 → +10 with an FC Online-style animation, player level 100, stats above 99), and Phase 26A (world of football: 18 countries, 36 leagues, 720 real clubs, promotion / relegation, every player in the transfer market), and Phase 26B (choose / change the club you manage, crests on every screen), and Phase 26C (player height and weight that change the 3D body and a few attributes, season difficulty that raises opponent card levels and rewards), and Phase 26D (FC Online-style team color: card level color and club color for the starting XI, AI included), and Phase 27 (two world club cups, C1 Champions Cup and C2 Challenge Cup: 32 clubs each from all 18 countries, 8 groups of 4, two-legged knockouts, one-match final, simulated penalty shoot-outs; away goals rule added afterwards), and Phase 28 (quick simulation: 5 instant matches per day with a 2D replay, rewards ×0.7), and Phase 28B (TROPHIES room: every title you win as a manager, a different trophy for each competition, career table), and Phase 29C (upgrade insurance +5% per failure, Upgrade Protection cards, xG for rebounds and deflections), and Phase 29B (graphics HIGH / LOW, stadium with crowd, 3D turning trophies, match sounds, FPS counter, faster first load, ready to publish as a static site / installable app), and Phase 29D (penalty shoot-outs you take yourself: kick with ← / → + D, dive with your keeper, camera behind the taker), and Phase 29E (World Cup every 4 years with 32 national teams called up from all clubs, nationality team color), and Phase 29F (AI long shots and long passes, new Composure attribute, receivers meet the ball, faster passes and shots, new crowd sound, reliable auto play with an AUTO PLAY button and automatic second half). Phases 11–14 were folded into Steps 1–6. Phases 29G, 29H, 29I and 29J done 2026-11-13. 29A1, 29A2, 29A3 and 29A5 done 2026-11-13 — matches can be played on a phone with swipe skills, AUTO graphics, and the game installs as an offline app. **Mobile phase 29A4 finished** (split into 29A4a / 29A4b / 29A4c on 2026-11-13). Card seasons and real data are in the backlog. See the status table under Development roadmap.
 
 ## Install and run
 
@@ -27,9 +27,14 @@ npm run preview
 `npm run build` creates a static site in `dist/`. The build uses relative paths (`base: './'` in `vite.config.js`), so the `dist/` folder works from any domain or sub-folder; no server code is needed and saves stay in each player's browser (LocalStorage).
 
 - **Netlify:** drag the `dist/` folder onto app.netlify.com/drop, or connect the repo with build command `npm run build` and publish directory `dist`.
-- **Vercel:** import the repo; framework preset *Vite* (build `npm run build`, output `dist`).
+- **Vercel:** import the repo; framework preset *Vite* (build `npm run build`, output `dist`). With accounts (Phase 50+) also see "Deploy with Supabase" below.
 - **GitHub Pages:** build, then publish the contents of `dist/` to the `gh-pages` branch (e.g. `npx gh-pages -d dist`); the game then runs at `https://<user>.github.io/<repo>/`.
 - **Install as an app:** the site has a web app manifest and icons (`public/manifest.webmanifest`, `public/icon*.png`), so Chrome / Edge offer *Install* and phones offer *Add to Home Screen* (⚙ Settings → *Install app* shows a button or the steps). Since Phase 29A5 a service worker (`public/sw.js`, production build only) caches the game: it opens faster and works **offline** after the first visit. The site must be served over HTTPS (all hosts above do) — on `http://` with a LAN IP the service worker and *Install* are not available.
+- **Deploy with Supabase (Phase 51 notes, e.g. `https://huydicode-football.vercel.app`):**
+  1. Vercel → project → *Settings → Environment Variables*: add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (same values as `.env.local`) for *Production* (and *Preview* if wanted), then **Redeploy** — Vite writes them into the build, so a build made before adding them has no accounts.
+  2. Supabase → *Authentication → URL Configuration*: **Site URL** = `https://huydicode-football.vercel.app`; **Redirect URLs** keep `http://localhost:5173/**` and add `https://huydicode-football.vercel.app/**` (preview deployments: `https://huydicode-football-*.vercel.app/**`). Email links (confirm, reset password) go back to the address the player used, which must be in this list.
+  3. Never put the secret / service_role key in Vercel variables starting with `VITE_` (they end up in the public JavaScript).
+  4. Real players: the built-in Supabase email sender only allows a few emails per hour — set up custom SMTP (*Authentication → Emails → SMTP*, e.g. Resend / Brevo) before inviting people, or keep *Confirm email* off.
 - **Loading:** the first screen loads ~1.3 MB of JavaScript (~380 KB gzipped); the 3D match engine with Rapier physics (~2.4 MB) is a separate file fetched in the background 1.5 s after start, and the 3D trophy viewer is loaded only when needed.
 
 ## Current features
@@ -262,6 +267,9 @@ ultimate-football-manager-3d/
     │   └── useKeyboard.js
     ├── services/
     │   ├── clubService.js
+    │   ├── cloudSave.js      # Supabase account + cloud save sync, conflict check (Phase 50)
+    │   ├── cloudExtras.js    # developer check, gift code redeem / restore (Phase 51)
+    │   ├── giftCodes.js      # gift code rewards → REWARDS items, club.giftCodes (Phase 51)
     │   ├── leagueService.js  # your league: fixtures, results, standings, simulation
     │   ├── worldService.js   # world save, virtual leagues, promotion / relegation, history (Phase 26A)
     │   ├── career.js         # the club you manage: userClubId(), userTeam(), isUserClub() (Phase 26B)
@@ -318,7 +326,7 @@ ultimate-football-manager-3d/
     │   ├── device.js         # touch / iOS detection, full screen, zoom blocking in a match (Phase 29A1)
     │   ├── performance.js    # AUTO graphics, resolution levels, slow-device memory (Phase 29A5)
     │   ├── ovrTier.js        # OVR colour tiers + card OVR without temporary bonuses (Phase 32)
-    │   ├── devTools.js       # DEV code: set budget, +% upgrade (session only) (Phase 34)
+    │   ├── devTools.js       # DEV panel: set budget, +% upgrade (session only) (Phase 34); developer accounts only (Phase 51)
     │   └── install.js        # install as an app (button / iPhone steps), service worker registration (Phase 29A5)
     └── components/
         ├── screens/          # TopBar, HomeScreen, PreMatchScreen, PostMatchScreen, DevelopmentScreen, WorldCupScreen (29H)
@@ -387,7 +395,7 @@ The project currently uses browser LocalStorage for local game progress.
 - Data belongs to the current browser profile.
 - Clearing browser website data may remove saved progress.
 - Different browsers or devices do not automatically share saves.
-- Cloud saves, user accounts and multiplayer are outside the current project scope.
+- Phase 50: signed-in players also have the save in Supabase (table `saves`, synced automatically; see "Phase 50"). LocalStorage stays the working copy so the game still runs offline. Phase 51: gift codes received are marked in the club save (`giftCodes`). Multiplayer is outside the current project scope.
 
 ## Development roadmap
 
@@ -458,6 +466,8 @@ The project currently uses browser LocalStorage for local game progress.
 | 47B | Player traits, part 2: defending / skill / keeper distribution traits, AI tactics | 💤 Backlog |
 | 48 | Card seasons (several seasons per player) | 💤 Backlog |
 | 49 | Shop 2: more things to buy in CARDS → SHOP (ideas listed in the backlog, to choose) | 💤 Backlog |
+| 50 | Accounts and cloud save (Supabase): sign in with email / password (Google later), whole save synced to the cloud, play on several devices, still works offline | ✅ Done (2026-11-19) — to verify with the real project |
+| 51 | Developer accounts (DEV panel only for accounts in `developers`, the typed DEV code removed from the code) + gift codes (one code for everyone, each account once, rewards to REWARDS) | ✅ Done (2026-11-19) — run `supabase/51_dev_and_gift_codes.sql` |
 | Backlog | Real player / club data (licensing) | 💤 Later |
 
 ### Status check (2026-11-09)
@@ -1978,7 +1988,7 @@ Code: `systems/teamAI.js` (closing down), `systems/control.js` (`updatePress`), 
 
 Code: `src/utils/devTools.js` (new), `SettingsRows.jsx`, `services/upgrade.js`, `UpgradePanel.jsx`, `GameScene.jsx`, `MatchOverlays.jsx`, `PostMatchScreen.jsx`, `services/worldCupService.js`, `services/worldCupLevel.js`, `systems/goalkeeper.js`, `systems/ball.js`, CSS at the end of `styles.css`.
 
-- **DEV code (phone and desktop):** ⚙ Settings has a **Code** row (password field + OK). The right code shows a **DEV** button; a wrong one only says "Wrong code". The unlock lives only in this page session — reloading the page hides DEV again (nothing in localStorage).
+- **DEV code (phone and desktop)** — *replaced in Phase 51 by developer accounts*: ⚙ Settings has a **Code** row (password field + OK). The right code shows a **DEV** button; a wrong one only says "Wrong code". The unlock lives only in this page session — reloading the page hides DEV again (nothing in localStorage).
   - **Set budget (EP):** writes the number straight into the club save (the EP chip shows the change).
   - **Upgrade bonus (+%):** 0–100, added to every upgrade's success rate (capped at 100%), shown as `+ dev N%` next to the rate; resets on reload.
   - The code is in the page's JavaScript, so it is a convenience lock, not real security.
@@ -2152,6 +2162,94 @@ Problem: an AI player (opponent, or a teammate with AUTO PLAY) sometimes passes 
 5. **By attributes:** high Dribbling / Composure dare to carry, high Vision picks the right moment to pass; wingers can cut inside to shoot.
 6. Same logic for AI opponents and for AUTO PLAY teammates.
 
+### Phase 50 — Accounts and cloud save (Supabase) ✅ (built 2026-11-19)
+
+Requested 2026-11-19. Goal: sign in, keep the save in the cloud and continue on another computer / phone. No own server: the game talks directly to **Supabase** (hosted PostgreSQL database + Auth; free plan: 500 MB database, 50,000 monthly active users, paused after 1 week without activity — resume in the dashboard, data kept).
+
+**What gets synced** — the whole save, as one JSON per player (≈ 100–300 KB):
+
+| localStorage key | Content | Cloud |
+| --- | --- | --- |
+| `ultimate-football-league-save` | league, fixtures, cups | ✅ |
+| `ultimate-football-world-save` | world, World Cup, trophies, career | ✅ |
+| `ultimate-football-roster-save-v2` | squads / lineups | ✅ |
+| `ultimate-football-club-save` | club (EP, inventory, achievements…) | ✅ |
+| `ufm-lineup-presets-v1` | saved lineups | ✅ |
+| `ultimate-football-training-best-v1` | training records | ✅ |
+| `ultimate-football-settings-v1`, `ultimate-football-perf-v1`, `ufm-sound-muted` | graphics, sound, controls | ❌ stays per device |
+
+**Database** — one table `public.saves` (file `supabase/schema.sql`, run once in the Supabase SQL Editor): `user_id` (= the account), `data` (jsonb), `format_version`, `revision` (+1 on every save), `summary` (club, season, round, EP — shown when choosing between two saves), `device`, `updated_at`. **Row Level Security**: every player can only read / write / delete their own row; the table is granted to signed-in users only (`authenticated`), so the project can keep "Grant API access to new tables automatically" off. Max ~3 MB per save.
+
+**Client** (`@supabase/supabase-js`; keys in `.env.local`, already git-ignored, and in the hosting settings later):
+
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (the public key; the secret / service_role key and the database password are never put in the game). Without them the game works exactly as today (local only).
+- New `src/services/cloudSave.js`: collect / apply the synced keys, upload, download, conflict check.
+
+**Behaviour**
+
+1. **Playing without an account stays possible** (local save, as today). Settings → **ACCOUNT**: SIGN IN / CREATE ACCOUNT (email + password), FORGOT PASSWORD (email link), later **Sign in with Google** (needs a Google Cloud OAuth client — optional step).
+2. **First sign-in on a device:**
+   - no cloud save → the local save is uploaded;
+   - cloud save, empty local → the cloud save is loaded;
+   - both exist → dialog **"Which save do you want to keep?"** with the two summaries (club, season / round, EP, last played, device) → KEEP CLOUD or KEEP THIS DEVICE (the other one is kept as a backup copy in this browser).
+3. **Auto-save to the cloud** a few seconds after changes, right after every match / simulation / upgrade, and when the page is hidden or closed. Status in ACCOUNT and a small cloud icon in the top bar: **Synced · 2 min ago / Saving… / Offline — will sync**.
+4. **Offline:** play goes on with the local save; changes are marked and uploaded when the connection is back.
+5. **Two devices:** every upload says which `revision` it started from; if the cloud already has a newer one (played elsewhere in between) → the same "which save" dialog instead of overwriting.
+6. **SIGN OUT** (local save stays on the device; option to clear it on a shared computer) and **DELETE CLOUD SAVE** (confirm).
+7. Matches in progress are never interrupted: sync happens outside the 3D match.
+
+**Not in this phase:** anti-cheat (the game logic still runs in the browser, so a player could edit their own save — fine for single player; leaderboards / trading would need server-side checks with Edge Functions), leaderboards, friends.
+
+**Manual setup in Supabase (by the user):** create the project (region Singapore), copy the Project URL + publishable key into `.env.local`, run `supabase/schema.sql`, set Site URL / Redirect URLs (local dev `http://localhost:5173`, later the hosting URL), decide on email confirmation (the built-in email sender is limited — fine for testing; custom SMTP later). Google sign-in optional.
+
+**Built** (new files `src/services/cloudSave.js`, `src/components/CloudAccount.jsx`; dependency `@supabase/supabase-js` 2.x, loaded only when needed as a separate chunk):
+
+- `startCloudSync()` in `main.jsx`; without the two `VITE_SUPABASE_*` variables nothing changes (ACCOUNT says cloud save is not set up).
+- Change tracking: `localStorage.setItem` is wrapped once — writing one of the synced keys with **different** content marks the save "not synced" (the game rewriting the same data at start-up does not); upload ~6 s later, paused during 3D matches and training (`setCloudPaused`), also when the tab is hidden and when the connection comes back.
+- Upload = `update … where user_id = me and revision = known` → revision + 1; no row updated → the cloud has a newer save → **WHICH SAVE DO YOU WANT TO KEEP?** dialog (cloud vs this device: club with crest, season, matches played, budget, club level, trophies, last saved, device). KEEP CLOUD SAVE downloads it and reloads (a copy of this device's save stays in the browser, key `ufm-cloud-backup-v1`); KEEP THIS DEVICE overwrites the cloud.
+- On sign-in / start: no cloud save → upload; empty device → download; same account, nothing new here and a newer cloud save → download without asking; otherwise the dialog.
+- Settings → **ACCOUNT**: SIGN IN / CREATE ACCOUNT (email + password, ≥ 6 characters), FORGOT PASSWORD (email link → "New password" form), signed in: status (Synced · 2 min ago / Saving… / Offline…), SYNC NOW, SIGN OUT (keep save here / remove from this device), DELETE CLOUD SAVE…; not available during a match. Cloud icon in the top bar (green = synced, amber = saving / offline, red = problem, crossed = signed out) opens Settings.
+- Sign-out keeps the link between this device's save and the account, so signing in again with the same account does not ask; another account asks.
+- Sync metadata per device in `ufm-cloud-meta-v1` (account, revision, dirty, last sync).
+
+**Tests:** two / three simulated devices against a fake Supabase (upload on first sign-in, no upload for identical rewrites, download on an empty device, automatic download of a newer save, real conflict while both are open → keep this device / keep cloud with backup, different career on a third device → dialog); browser with mocked Supabase responses (wrong password message, sign-in, conflict dialog, KEEP THIS DEVICE → conditional PATCH, badge green) on desktop and phone. The real project still has to be tried on the user's computer (the sandbox network cannot reach supabase.co).
+
+### Phase 51 — Developer accounts and gift codes ✅ (2026-11-19)
+
+**Why:** the DEV code was written in the JavaScript, so anyone opening the page source could read it. Gift codes let the owner hand out rewards to every player from time to time.
+
+**Database** — new file `supabase/51_dev_and_gift_codes.sql` (run once in the SQL Editor after `schema.sql`; safe to run again), admin snippets in `supabase/admin.sql`:
+
+- `developers (user_id, note)` — accounts that see the DEV panel. Function `is_developer()` (signed-in users only) answers true / false; nobody can read the table itself.
+- `gift_codes (code, rewards jsonb, note, starts_at, expires_at, max_uses, active)` — codes are CAPITAL letters / digits / `-` / `_`, 4–32 characters; players cannot list them. `rewards` keys: `ep` (EP card amount), `standard` / `premium` (player packs), `boost`, `protection`, `fitness`, `form`, `bottle` (counts; unknown keys ignored, counts ≤ 50). `max_uses` empty = every account; turn a code off with `active = false`.
+- `gift_redemptions (code, user_id, rewards, redeemed_at)` — primary key (code, account), so **each account can use a code once** as a database rule; each player can read only their own rows.
+- Function `redeem_gift_code(code)` checks signed-in / exists and active / started / not expired / not used by this account / limit (row lock, so the limit holds when many redeem together), records the redemption and returns the rewards — or an error: invalid, not_started, expired, already_used, used_up.
+
+**Game:**
+
+- `src/utils/devTools.js`: the code constant and the **Code** row in Settings are gone; `setDevAccess()` opens the DEV panel. New `src/services/cloudExtras.js` asks `is_developer()` after signing in; signing out closes DEV (and resets the session +% upgrade bonus).
+- Settings → ACCOUNT (signed in): **Gift code** box + REDEEM → "Welcome gift: 5,000,000 EP card + 1 Premium pack + 2 Upgrade Boosts — added to REWARDS." or the reason it failed. Needs a connection.
+- New `src/services/giftCodes.js`: rewards → REWARDS items (source "Gift code · CODE"), the club save remembers received codes in `giftCodes`. After each start / sign-in sync the game reads this account's redemptions and adds back any reward missing from the current save (e.g. after KEEP CLOUD SAVE or a new career) — never twice.
+
+**Make your account a developer** (create the account in the game first):
+
+```sql
+insert into public.developers (user_id, note)
+select id, 'owner' from auth.users where email = 'YOUR_EMAIL_HERE'
+on conflict (user_id) do nothing;
+```
+
+**New gift code** — Table Editor → `gift_codes` → Insert row, or:
+
+```sql
+insert into public.gift_codes (code, rewards, note, expires_at)
+values ('WELCOME2026', '{"ep": 5000000, "premium": 1, "boost": 2}', 'Welcome gift', '2026-12-31 23:59:59+07');
+```
+
+**Tests:** the SQL on a local PostgreSQL 16 with Supabase-like roles (run twice; developer true / false; redeem lower-case code; second use → already_used; invalid / not started / expired / inactive; `max_uses` 2 → third account used_up; signed-in players cannot read `gift_codes` / `developers` or insert redemptions; anonymous visitors cannot call the functions); unit test of the reward items (all types, clamping, applying twice = once); browser with mocked Supabase on desktop and phone (DEV row only for a developer account and gone after sign-out, old redemption restored on sign-in, bad code message, redeem → 4 items in REWARDS, second redeem refused, reload → no duplicates, lost rewards re-added after reload).
+
+**Note:** the DEV panel itself still runs in the browser; the protection is that the code is no longer public and only accounts you choose see it. The old code is still in the git history — it no longer unlocks anything.
+
 ### Backlog
 
 Regrouped on 2026-11-15 into medium phases (enough work each, none too big); the multi-language idea was dropped. Phases 44, 45 and 46 are done (see above).
@@ -2254,6 +2352,8 @@ Regrouped on 2026-11-15 into medium phases (enough work each, none too big); the
 | Auto Play ổn định hơn (chỉnh 5 / 10 / 20 giây, nút AUTO PLAY), máy đá thay thì tự đá hiệp 2 | Phase 29F ✅ |
 | Nhiều mùa thẻ (Phase 48), dữ liệu cầu thủ / logo thật (để xa, vướng bản quyền) | Backlog (trước là Phase 30) |
 | Shop 2 — bán thêm: gói cầu thủ (Thường / Cao cấp / Vàng), gói theo vị trí, Upgrade Boost, vé World Cup thêm lượt, mở rộng ô đội hình, vé đập chắc +1 (tới +5), ưu đãi mỗi ngày, đồ trang trí (áo, bóng, sân, ăn mừng) — chọn sau | Backlog (Phase 49) |
+| Tài khoản + lưu lên mây (Supabase): đăng nhập email / mật khẩu (Google sau), đồng bộ bản lưu giữa các máy, vẫn chơi offline được | Phase 50 ✅ (2026-11-19, chờ thử với project thật) |
+| Bỏ mã DEV gõ tay (lộ trong mã nguồn) → bảng DEV chỉ hiện với tài khoản developer trên Supabase; gift code phát cho mọi người, mỗi tài khoản dùng 1 lần | Phase 51 ✅ (2026-11-19) |
 | Skill riêng cho từng cầu thủ (chia 47A / 47B, chưa làm vội) | Backlog (Phase 47) |
 
 ---
