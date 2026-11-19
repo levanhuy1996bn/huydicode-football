@@ -32,7 +32,7 @@ import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
 import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
 import NationPicker from './NationPicker'
-import { CloudConflictDialog } from './CloudAccount'
+import { CatalogUpdateBanner, CloudConflictDialog, CloudNudge } from './CloudAccount'
 import { setCloudPaused } from '../services/cloudSave'
 import { pendingAchievementCount } from '../services/upgradeAchievements'
 import { WC_LEVEL_XP, WC_MAX_LEVEL, applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, wcLevelOf, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
@@ -152,6 +152,8 @@ import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
 import { registerDevBudget, registerDevDailyReset } from '../utils/devTools'
 import { registerGiftApplier } from '../services/cloudExtras'
+import AdminHost from './AdminHost'
+import { refreshOwnedRoster } from '../services/cardRefresh'
 import { applyPreset } from '../services/lineupHelper'
 import MobileTabBar from './MobileTabBar'
 
@@ -263,7 +265,8 @@ function usePortraitTouch() {
 }
 
 export default function GameScene() {
-    const [roster, setRoster] = useState(loadSavedRoster)
+    // Phase 52b: thẻ đang sở hữu được làm mới nếu developer sửa cầu thủ đó kèm "cập nhật thẻ đang sở hữu".
+    const [roster, setRoster] = useState(() => refreshOwnedRoster(loadSavedRoster()))
     // Phase 23: CLB (ngân sách EP, hợp đồng, cấp độ, XP, kho thẻ) do GameScene
     // giữ để thưởng sau trận, tab CARDS và màn TRANSFERS dùng chung một bản.
     const [club, setClub] = useState(loadClub)
@@ -2811,6 +2814,9 @@ export default function GameScene() {
 
             {/* Phase 50: chọn bản lưu khi bản trong máy và trên mây khác nhau (không hiện giữa trận). */}
             {screen !== 'match' && <CloudConflictDialog />}
+            {/* Phase 52: trang ADMIN (developer) + thông báo dữ liệu cầu thủ mới. */}
+            {screen !== 'match' && screen !== 'training' && <AdminHost />}
+            {screen !== 'match' && screen !== 'training' && <CatalogUpdateBanner />}
 
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
             {isSettingsOpen && (
@@ -2826,6 +2832,7 @@ export default function GameScene() {
                 />
             )}
 
+            {screen === 'home' && <CloudNudge onOpen={openSettings} />}
             {screen === 'home' && (
                 <HomeScreen
                     nextMatch={homeNextMatch}

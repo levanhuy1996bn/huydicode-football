@@ -7,6 +7,7 @@ import { installAudioUnlock } from './utils/sound'
 import { setupInstall } from './utils/install'
 import { startCloudSync } from './services/cloudSave'
 import { startCloudExtras } from './services/cloudExtras'
+import { startCatalogSync } from './services/catalogSync'
 
 // Phase 29A1: lớp is-touch / is-ios, chiều cao màn hình thật, chặn phóng to
 // trong trận, mở khoá âm thanh ở lần chạm đầu.
@@ -17,6 +18,7 @@ setupInstall()
 // Phase 50: tài khoản + lưu lên mây (chỉ khi có cấu hình Supabase).
 startCloudSync()
 startCloudExtras()
+startCatalogSync()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

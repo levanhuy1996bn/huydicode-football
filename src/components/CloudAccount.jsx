@@ -16,6 +16,7 @@ import {
     uploadNow,
 } from '../services/cloudSave'
 import { redeemGiftCode } from '../services/cloudExtras'
+import { dismissCatalogUpdate, getCatalogState, subscribeCatalog } from '../services/catalogSync'
 import { giftRewardLabel } from '../services/giftCodes'
 
 // Phase 50: tài khoản + lưu lên mây — các phần giao diện.
@@ -51,11 +52,26 @@ const STATUS_TEXT = {
     conflict: 'Choose which save to keep',
 }
 
-// Biểu tượng mây trên thanh trên cùng.
+// Phase 52: chữ ngắn cạnh biểu tượng (ẩn trên điện thoại).
+const BADGE_LABEL = {
+    'signed-out': 'Sign in',
+    syncing: 'Saving…',
+    pending: 'Save now',
+    synced: 'Saved',
+    offline: 'Offline',
+    error: 'Sync error',
+    conflict: 'Choose save',
+}
+
+// Biểu tượng mây trên thanh trên cùng. Phase 52: có chữ trạng thái; đang có
+// thay đổi chưa gửi (hoặc mất mạng) → bấm là gửi ngay, còn lại mở Settings.
 export function CloudBadge({ onClick }) {
     const state = useCloudState()
 
     if (!cloudConfigured) return null
+
+    const label = BADGE_LABEL[state.status] || ''
+    const syncOnClick = Boolean(state.user) && (state.status === 'pending' || state.status === 'offline')
 
     const tone = state.status === 'synced'
         ? 'ok'
@@ -64,17 +80,85 @@ export function CloudBadge({ onClick }) {
             : state.status === 'signed-out'
                 ? 'off'
                 : 'busy'
-    const title = `${STATUS_TEXT[state.status] || ''}${state.status === 'synced' && state.lastSyncedAt ? ` · ${timeAgo(state.lastSyncedAt)}` : ''}`
+    const title = `${STATUS_TEXT[state.status] || ''}${state.status === 'synced' && state.lastSyncedAt ? ` · ${timeAgo(state.lastSyncedAt)}` : ''}${syncOnClick ? ' — click to save now' : ''}`
 
     return (
-        <button type="button" className={`cloud-badge cloud-badge--${tone}`} onClick={onClick} title={title} aria-label={`Cloud save: ${title}`}>
+        <button
+            type="button"
+            className={`cloud-badge cloud-badge--${tone}${label ? ' has-label' : ''}`}
+            onClick={() => (syncOnClick ? uploadNow() : onClick?.())}
+            title={title}
+            aria-label={`Cloud save: ${title}`}
+        >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z" />
                 {tone === 'ok' && <path d="m9.5 13.5 2 2 3.5-3.5" />}
                 {tone === 'off' && <path d="M5 5l14 14" />}
                 {tone === 'bad' && <path d="M12 10.5v3M12 16h.01" />}
             </svg>
+            {label && <span className="cloud-badge__label">{label}</span>}
         </button>
+    )
+}
+
+// Phase 52: nhắc đăng nhập ở HOME (chưa đăng nhập; NOT NOW → ẩn 7 ngày).
+const NUDGE_KEY = 'ufm-cloud-nudge-hidden-until'
+const NUDGE_DAYS = 7
+
+export function CloudNudge({ onOpen }) {
+    const state = useCloudState()
+    const [hidden, setHidden] = useState(() => {
+        try {
+            return Number(localStorage.getItem(NUDGE_KEY) || 0) > Date.now()
+        } catch {
+            return false
+        }
+    })
+
+    if (!cloudConfigured || hidden || state.status !== 'signed-out') return null
+
+    return (
+        <div className="cloud-nudge" role="note">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z" />
+                <path d="M12 15.5v-5M9.8 12.5 12 10.3l2.2 2.2" />
+            </svg>
+            <span>
+                <b>Your save is only on this device.</b> Sign in to back it up in the cloud and continue on another computer or phone.
+            </span>
+            <button type="button" className="btn btn--small btn--primary" onClick={onOpen}>SIGN IN</button>
+            <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                    try {
+                        localStorage.setItem(NUDGE_KEY, String(Date.now() + NUDGE_DAYS * 86400000))
+                    } catch {
+                        // vẫn ẩn trong phiên này
+                    }
+                    setHidden(true)
+                }}
+            >
+                NOT NOW
+            </button>
+        </div>
+    )
+}
+
+// Phase 52: dữ liệu cầu thủ trên Supabase vừa đổi → tải lại để áp dụng.
+export function CatalogUpdateBanner() {
+    const [catalog, setCatalog] = useState(getCatalogState)
+
+    useEffect(() => subscribeCatalog(setCatalog), [])
+
+    if (!catalog.updateReady) return null
+
+    return (
+        <div className="catalog-banner" role="status">
+            <span>Player database updated.</span>
+            <button type="button" className="btn btn--small btn--primary" onClick={() => window.location.reload()}>RELOAD</button>
+            <button type="button" className="link-btn" onClick={dismissCatalogUpdate}>LATER</button>
+        </div>
     )
 }
 

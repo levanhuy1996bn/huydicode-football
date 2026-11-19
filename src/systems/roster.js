@@ -6,6 +6,7 @@ import { applyUpgradeLevel } from '../services/upgrade'
 import { aiUpgradeFor, difficultyOf } from '../services/difficulty'
 import { ensureCardFields, playerIdOf } from '../services/cards'
 import { randomForm, settlePeakCard } from './form'
+import { applyOverride } from '../data/catalogOverrides'
 
 // Tên mặc định cũ ("Blue ST 9", "Red CB 4") trong bản lưu cũ.
 const GENERIC_NAME = /^(Blue|Red) [A-Z]{2,3} \d+$/
@@ -234,10 +235,14 @@ export function buildMatchRoster(roster, opponent, { difficulty = null, season =
 }
 
 export function createInitialRoster() {
+    // Phase 52b: sự nghiệp mới → đội hình gốc mang bản sửa từ Supabase (nếu có).
+    const edit = (team, players) =>
+        team.id === 'blue' ? players.map((player) => applyOverride(player, { record: false })) : [...players]
+
     return TEAMS.map((team) => normalizeSquad({
         ...team,
-        players: [...team.players],
-        substitutes: [...team.substitutes],
+        players: edit(team, team.players),
+        substitutes: edit(team, team.substitutes),
         reserves: [...(team.reserves || [])],
     }))
 }

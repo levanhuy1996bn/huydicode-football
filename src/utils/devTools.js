@@ -10,7 +10,7 @@
 // - +% đập thẻ: cộng thêm vào tỉ lệ mọi lần đập (services/upgrade.js →
 //   rateBreakdown), tối đa 100%. Cũng chỉ trong phiên.
 
-export const devState = { unlocked: false, upgradeBonus: 0 }
+export const devState = { unlocked: false, upgradeBonus: 0, adminOpen: false }
 
 const listeners = new Set()
 let budgetWriter = null
@@ -30,7 +30,25 @@ export function setDevAccess(allowed) {
     if (devState.unlocked === unlocked) return
 
     devState.unlocked = unlocked
-    if (!unlocked) devState.upgradeBonus = 0
+    if (!unlocked) {
+        devState.upgradeBonus = 0
+        devState.adminOpen = false
+    }
+    notify()
+}
+
+// Phase 52: trang ADMIN (components/AdminHost.jsx hiện khi adminOpen).
+export function openAdmin() {
+    if (!devState.unlocked || devState.adminOpen) return
+
+    devState.adminOpen = true
+    notify()
+}
+
+export function closeAdmin() {
+    if (!devState.adminOpen) return
+
+    devState.adminOpen = false
     notify()
 }
 
