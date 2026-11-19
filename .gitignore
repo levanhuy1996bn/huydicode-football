@@ -19,7 +19,6 @@ pnpm-debug.log*
 
 # Environment variables
 .env
-.env.*
 !.env.example
 
 # Local backups (created before refactors)

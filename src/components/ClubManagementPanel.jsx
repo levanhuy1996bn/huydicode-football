@@ -12,11 +12,12 @@ import {
 } from '../services/clubService'
 import { userTeam } from '../services/career'
 import { SQUAD_LIMITS, squadGroupOf, squadOf } from '../systems/roster'
-import { RARITY_LABELS, cardFromCatalog, freeShirtNumber, playerIdOf } from '../services/cards'
+import { RARITY_LABELS, playerIdOf } from '../services/cards'
 import { StatNum, UpgradeBadge } from './CardBits'
 import PlayerInfoPanel from './PlayerInfoPanel'
 import { physiqueOf } from '../systems/physique'
 import { ovrTierClass } from '../utils/ovrTier'
+import { economy } from '../services/economy'
 
 const RARITY_FILTERS = ['ALL', 'gold', 'silver', 'bronze']
 const MARKET_PAGE = 48
@@ -253,7 +254,7 @@ export default function ClubManagementPanel({
             ))
             : 0
 
-    const buyPlayer = (player, wanted = 1) => {
+    const buyPlayer = async (player, wanted = 1) => {
         if (!club.transferWindowOpen) {
             showMessage('TRANSFER WINDOW IS CLOSED', 'error', 'Open the transfer window in the Overview tab to sign players.')
             return
@@ -287,40 +288,19 @@ export default function ClubManagementPanel({
         // Phase 22: cầu thủ mới vào đội hình ngoài (không tự vào băng ghế dự bị).
         // Phase 23: mỗi lần mua tạo một thẻ mới (+1) với cardId riêng.
         // Phase 41: qty thẻ, mỗi thẻ một số áo trống riêng.
-        const signed = []
+        // Phase 53A: qua economy (giá lấy từ thị trường của server, không từ màn hình).
+        const res = await economy('buy_player', { playerId: player.playerId, qty })
 
-        for (let index = 0; index < qty; index += 1) {
-            signed.push(cardFromCatalog(player, { number: freeShirtNumber([...squad, ...signed]) }))
+        if (!res.ok) {
+            showMessage(res.code === 'not_enough_ep' ? 'NOT ENOUGH TRANSFER BUDGET' : 'COULD NOT SIGN', 'error', res.message)
+            return
         }
-
-        onRosterChange((current) =>
-            current.map((team) => {
-                if (team.id !== 'blue') return team
-
-                return {
-                    ...team,
-                    reserves: [
-                        ...(team.reserves || []),
-                        ...signed,
-                    ],
-                }
-            }),
-        )
-
-        setClub((current) => ({
-            ...current,
-            budget: current.budget - total,
-            contracts: {
-                ...current.contracts,
-                ...Object.fromEntries(signed.map((card) => [card.id, { years: 4 }])),
-            },
-        }))
 
         setSelectedPlayer(null)
         showMessage(
             qty > 1 ? `${qty} × ${player.name.toUpperCase()} SIGNED` : `${player.name.toUpperCase()} SIGNED`,
             'success',
-            `Fee ${formatMoney(total)} · budget left ${formatMoney(club.budget - total)} · joined the reserves (${squad.length + qty}/${SQUAD_LIMITS.total})`,
+            `Fee ${formatMoney(res.result.total)} · budget left ${formatMoney(res.result.budget)} · joined the reserves (${res.result.squadSize}/${SQUAD_LIMITS.total})`,
         )
     }
 
@@ -357,7 +337,7 @@ export default function ClubManagementPanel({
         return () => window.removeEventListener('keydown', onKey)
     }, [sellConfirm])
 
-    const sellPlayer = (player) => {
+    const sellPlayer = async (player) => {
         setSellConfirm(null)
 
         if (!club.transferWindowOpen) {
@@ -379,38 +359,20 @@ export default function ClubManagementPanel({
             return
         }
 
-        const saleValue = Math.round(getPlayerValue(player) * 0.85)
+        // Phase 53A: qua economy (giá bán tính từ thẻ trong bản economy).
+        const res = await economy('sell_card', { cardId: player.id })
 
-        onRosterChange((current) =>
-            current.map((team) => {
-                if (team.id !== 'blue') return team
-
-                return {
-                    ...team,
-                    reserves: (team.reserves || []).filter(
-                        (item) => item.id !== player.id,
-                    ),
-                }
-            }),
-        )
-
-        setClub((current) => {
-            const contracts = { ...current.contracts }
-            delete contracts[player.id]
-
-            return {
-                ...current,
-                budget: current.budget + saleValue,
-                contracts,
-            }
-        })
+        if (!res.ok) {
+            showMessage('COULD NOT SELL', 'error', res.message)
+            return
+        }
 
         setSelectedPlayer(null)
 
         showMessage(
             `${player.name.toUpperCase()} SOLD`,
             'success',
-            `Received ${formatMoney(saleValue)} · budget ${formatMoney(club.budget + saleValue)}`,
+            `Received ${formatMoney(res.result.saleValue)} · budget ${formatMoney(res.result.budget)}`,
         )
     }
 

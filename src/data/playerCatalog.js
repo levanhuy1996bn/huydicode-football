@@ -3,7 +3,10 @@
 // Sau này có dữ liệu thật (Phase 30) chỉ cần thay file này, giữ nguyên cấu trúc.
 // rarity: gold (OVR ≥ 75) · silver (65–74) · bronze (≤ 64). value / wage tính bằng EP.
 // File được sinh bằng script (seed cố định); sửa tay cũng được, nhưng playerId phải duy nhất.
-export const PLAYER_CATALOG = [
+import { applyOverride, customFreeAgents } from './catalogOverrides'
+
+// Phase 52: danh mục gốc; PLAYER_CATALOG bên dưới = gốc + bản sửa / cầu thủ mới từ Supabase.
+const BASE_CATALOG = [
     { id: 'market-001', playerId: 'market-001', name: 'Lucas Moretti', age: 22, position: 'ST', overall: 86, pace: 91, shooting: 88, passing: 76, dribbling: 83, defending: 35, physical: 82, value: 42000000, wage: 125000, nationality: 'Brazil', rarity: 'gold' },
     { id: 'market-002', playerId: 'market-002', name: 'Daniel Fischer', age: 25, position: 'CM', overall: 84, pace: 78, shooting: 79, passing: 89, dribbling: 88, defending: 78, physical: 81, value: 35000000, wage: 110000, nationality: 'Germany', rarity: 'gold' },
     { id: 'market-003', playerId: 'market-003', name: 'Marco Silva', age: 24, position: 'LW', overall: 85, pace: 94, shooting: 83, passing: 82, dribbling: 89, defending: 38, physical: 70, value: 39000000, wage: 118000, nationality: 'Portugal', rarity: 'gold' },
@@ -506,4 +509,13 @@ export const PLAYER_CATALOG = [
     { id: 'p0480', playerId: 'p0480', name: 'Mario Ortega', age: 26, position: 'LW', overall: 59, pace: 63, shooting: 54, passing: 54, dribbling: 59, defending: 25, physical: 48, value: 900000, wage: 3000, nationality: 'Spain', rarity: 'bronze' },
 ]
 
+export const PLAYER_CATALOG = [...BASE_CATALOG.map(applyOverride), ...customFreeAgents()]
+
 export const CATALOG_BY_ID = new Map(PLAYER_CATALOG.map((player) => [player.playerId, player]))
+
+// Phase 53A: dựng lại tại chỗ (giữ nguyên tham chiếu mảng) sau khi đổi bản sửa.
+export function rebuildPlayerCatalog() {
+    PLAYER_CATALOG.splice(0, PLAYER_CATALOG.length, ...BASE_CATALOG.map(applyOverride), ...customFreeAgents())
+    CATALOG_BY_ID.clear()
+    PLAYER_CATALOG.forEach((player) => CATALOG_BY_ID.set(player.playerId, player))
+}

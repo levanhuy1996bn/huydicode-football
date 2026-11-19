@@ -4630,3 +4630,159 @@ button.level-ring:hover { filter: drop-shadow(0 0 calc(var(--size) * 0.16) rgba(
   .bottle-dialog { width: 100%; max-height: 100%; }
   .bottle-list { max-height: 58vh; }
 }
+
+/* ---- Phase 50: tài khoản + lưu lên mây ---- */
+.cloud-badge {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid #2f4a3c; background: rgba(10, 22, 16, 0.6); color: #8fa89b; cursor: pointer;
+}
+.cloud-badge--ok { color: #b9ed70; border-color: #456b3a; }
+.cloud-badge--busy { color: #e3bd62; }
+.cloud-badge--busy svg { animation: cloud-pulse 1.2s ease-in-out infinite; }
+.cloud-badge--bad { color: #ff8a7a; border-color: #7a3a32; }
+.cloud-badge--off { color: #6f8579; }
+@keyframes cloud-pulse { 50% { opacity: .45; } }
+.account-panel {
+  display: grid; gap: 8px; margin: 4px 0 16px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid #2b4839; background: rgba(255, 255, 255, 0.025);
+}
+.account-panel__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 10px; }
+.account-panel__head span { font-size: 11px; letter-spacing: 1.6px; font-weight: 800; color: #b9ed70; }
+.account-panel__head small { font-size: 11px; color: #8fa89b; }
+.account-status--synced { color: #b9ed70 !important; }
+.account-status--error, .account-status--conflict { color: #ff8a7a !important; }
+.account-status--offline, .account-status--pending, .account-status--syncing { color: #e3bd62 !important; }
+.account-panel__note { margin: 0; color: #8fa89b; font-size: 12px; line-height: 1.5; }
+.account-panel__user { margin: 0; font-size: 13px; }
+.account-panel__ok { margin: 0; color: #b9ed70; font-size: 12px; }
+.account-panel__error { margin: 0; color: #ff8a7a; font-size: 12px; }
+.account-panel__actions, .account-panel__confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.account-panel__danger { font-size: 12px; color: #c99; }
+.account-panel__tabs { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #0f2219; border: 1px solid #2b4839; width: fit-content; }
+.account-panel__tabs button { padding: 7px 12px; border: 0; border-radius: 6px; background: none; color: #9fb8a9; font: 800 11px Inter, sans-serif; letter-spacing: 1px; cursor: pointer; }
+.account-panel__tabs button.is-active { background: #b9ed70; color: #0b1a12; }
+.account-form { display: grid; gap: 8px; max-width: 420px; }
+.account-form label { display: grid; gap: 3px; }
+.account-form label span { font-size: 11px; color: #8fa89b; }
+.account-form input {
+  padding: 9px 10px; border-radius: 8px; border: 1px solid #36533f; background: #10251d; color: #fff; font: inherit; font-size: 14px;
+}
+.account-form .link-btn { justify-self: start; }
+.account-form--inline { margin: 4px 0; }
+.account-gift { grid-template-columns: minmax(0, 1fr) auto; align-items: end; padding: 10px; border-radius: 10px; border: 1px solid #3a5a3f; background: rgba(185, 237, 112, 0.05); }
+.account-gift label { min-width: 0; }
+.account-gift input { width: 100%; min-width: 0; box-sizing: border-box; text-transform: uppercase; letter-spacing: 1px; }
+.account-gift p { grid-column: 1 / -1; }
+.cloud-choice-overlay { z-index: 300; }
+.cloud-choice { width: min(760px, calc(100vw - 32px)); }
+.cloud-choice__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.cloud-choice__card { display: grid; gap: 8px; align-content: start; padding: 14px; border-radius: 12px; border: 1px solid #2f4a3c; background: rgba(255, 255, 255, 0.03); }
+.cloud-choice__title { font-size: 11px; letter-spacing: 1.6px; font-weight: 800; color: #e3bd62; }
+.cloud-choice__club { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.cloud-choice__card dl { display: grid; gap: 4px; margin: 0; }
+.cloud-choice__card dl div { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.cloud-choice__card dt { color: #8fa89b; }
+.cloud-choice__card dd { margin: 0; font-weight: 700; }
+.cloud-choice__when { color: #8fa89b; font-size: 11px; }
+/* ---- Phase 52: trạng thái lưu rõ hơn, nhắc đăng nhập, ADMIN ---- */
+/* Thanh trên cùng: trước đây tràn ra ngoài ở màn hình máy tính dưới ~1580 px
+   (biểu tượng mây và ⚙ bị đẩy khỏi màn hình) → thu gọn dần theo độ rộng. */
+@media (min-width: 901px) and (max-width: 1640px) {
+  .topbar { gap: 14px; }
+  .brand { min-width: 0; }
+  nav { gap: 2px; }
+  nav button { padding: 12px 10px; }
+}
+@media (min-width: 901px) and (max-width: 1500px) {
+  .topbar .brand > div:not(.brand-mark) { display: none; }
+}
+@media (min-width: 901px) and (max-width: 1320px) {
+  .season-label { display: grid; gap: 2px; line-height: 1.3; }
+  .season-label__record { margin-left: 0; }
+}
+@media (min-width: 901px) and (max-width: 1220px) {
+  .app-shell:not(.is-match-screen) > .topbar { flex-wrap: wrap; height: auto; padding-top: 12px; row-gap: 4px; }
+  .app-shell:not(.is-match-screen) > .topbar nav { order: 3; width: 100%; height: 44px; }
+  .app-shell:not(.is-match-screen) > .topbar .season-label { margin-left: auto; }
+}
+.cloud-badge.has-label { grid-auto-flow: column; gap: 6px; width: auto; padding: 0 11px 0 9px; border-radius: 17px; }
+.cloud-badge__label { font: 800 10px Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.cloud-badge--busy .cloud-badge__label { animation: none; }
+.cloud-nudge {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; padding: 10px 14px;
+  border: 1px solid #5b5a2e; border-radius: 12px; background: rgba(227, 189, 98, 0.08); color: #e3bd62; font-size: 13px;
+}
+.cloud-nudge span { flex: 1 1 320px; color: #e8e2c8; line-height: 1.45; }
+.cloud-nudge b { color: #ffd98a; }
+.catalog-banner {
+  position: fixed; left: 50%; bottom: 22px; z-index: 260; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid #456b3a; background: #10251b; box-shadow: 0 12px 40px rgba(0,0,0,.5); font-size: 13px; white-space: nowrap;
+}
+.admin-overlay { z-index: 400; }
+.admin-panel { width: min(1080px, calc(100vw - 24px)); max-height: calc(100vh - 24px); display: grid; gap: 12px; align-content: start; }
+.admin-tabs { margin-bottom: 2px; }
+.admin-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.admin-search { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #36533f; background: #10251d; color: #fff; font: inherit; font-size: 14px; }
+.admin-list { display: grid; gap: 4px; max-height: 58vh; overflow: auto; }
+.admin-list__row {
+  display: grid; grid-template-columns: 34px 42px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid #22392d; border-radius: 8px; background: rgba(255,255,255,.02); color: #e8f2ec; font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.admin-list__row:hover { border-color: #456b3a; background: rgba(185, 237, 112, .06); }
+.admin-list__ovr { font-size: 15px; color: #b9ed70; }
+.admin-list__pos { font-size: 11px; font-weight: 800; color: #8fa89b; }
+.admin-list__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.admin-list__row small { color: #8fa89b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.admin-tag { font-style: normal; font: 800 9px Inter, sans-serif; letter-spacing: 1px; padding: 3px 6px; border-radius: 5px; }
+.admin-tag--edited { background: #3d3415; color: #ffd166; }
+.admin-tag--new { background: #1d3b22; color: #b9ed70; }
+.admin-editor { display: grid; gap: 12px; }
+.admin-editor__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.admin-editor__head b { font-size: 12px; letter-spacing: 1.4px; color: #b9ed70; }
+.admin-editor__head small { flex: 1; color: #8fa89b; }
+.admin-editor__body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.admin-editor__preview { display: grid; gap: 8px; justify-items: center; }
+.admin-hint { color: #8fa89b; font-size: 11px; line-height: 1.4; }
+.admin-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; align-items: end; }
+.admin-form label { display: grid; gap: 3px; min-width: 0; }
+.admin-form label span { font-size: 11px; color: #8fa89b; }
+.admin-form input, .admin-form select {
+  width: 100%; box-sizing: border-box; padding: 8px 9px; border-radius: 8px; border: 1px solid #36533f; background: #10251d; color: #fff; font: inherit; font-size: 13px;
+}
+.admin-form__wide { grid-column: 1 / -1; }
+.admin-form__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.admin-gift-form { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); padding: 12px; border: 1px solid #2b4839; border-radius: 12px; }
+.admin-dev-form { grid-template-columns: minmax(200px, 2fr) minmax(120px, 1fr) auto; }
+.admin-table { display: grid; gap: 6px; max-height: 46vh; overflow: auto; }
+.admin-table__row {
+  display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto; grid-template-areas: "code reward action" "code meta action";
+  align-items: center; gap: 2px 12px; padding: 9px 12px; border: 1px solid #22392d; border-radius: 9px; background: rgba(255,255,255,.02); font-size: 13px;
+}
+.admin-table__row > b { grid-area: code; letter-spacing: 1px; }
+.admin-table__row > span:not(.account-panel__confirm) { grid-area: reward; }
+.admin-table__row > small { grid-area: meta; color: #8fa89b; }
+.admin-table__row > button, .admin-table__row > .account-panel__confirm { grid-area: action; }
+.admin-table__row.is-off { opacity: .55; }
+.admin-notice { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.admin-form label.admin-check { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #3a5a3f; border-radius: 10px; background: rgba(185, 237, 112, .04); cursor: pointer; }
+.admin-form label.admin-check input { width: 18px; height: 18px; margin-top: 1px; flex: 0 0 auto; accent-color: #b9ed70; }
+.admin-form label.admin-check span { font-size: 12px; color: #c9d8cf; line-height: 1.45; }
+.admin-form label.admin-check b { color: #fff; }
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse) {
+  .cloud-badge { width: 30px; height: 30px; }
+  .cloud-badge.has-label { width: 30px; padding: 0; border-radius: 50%; }
+  /* Phase 52: thanh trên điện thoại tràn ~20 px từ Phase 50 (thêm biểu tượng mây) → mùa giải gọn 2 dòng, bỏ chữ SEASON */
+  .app-shell:not(.is-match-screen) > .topbar .season-label { font-size: 0; min-width: 0; flex: 1 1 auto; overflow: hidden; white-space: nowrap; }
+  .app-shell:not(.is-match-screen) > .topbar .season-label b { display: block; margin-left: 0; font-size: 10px; }
+  .app-shell:not(.is-match-screen) > .topbar .season-label__record { display: block; margin-left: 0; font-size: 9px; }
+  .cloud-badge__label { display: none; }
+  .admin-editor__body { grid-template-columns: 1fr; }
+  .admin-dev-form { grid-template-columns: 1fr; }
+  .admin-list__row { grid-template-columns: 30px 36px minmax(0, 1fr) auto; }
+  .admin-list__row small { display: none; }
+  .admin-form input, .admin-form select, .admin-search { font-size: 16px; }
+  .catalog-banner { bottom: 76px; }
+  .cloud-choice__cards { grid-template-columns: 1fr; }
+  .account-form input { font-size: 16px; }
+}

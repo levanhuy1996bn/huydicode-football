@@ -1,16 +1,16 @@
-// Phase 34: công cụ ẩn (DEV) — mở bằng mã trong ⚙ Settings.
+// Phase 34: công cụ ẩn (DEV) trong ⚙ Settings.
 //
-// Gõ đúng mã → hiện nút DEV (chỉ trong phiên này: tải lại trang là mất, không
-// lưu localStorage). Bảng DEV:
+// Phase 51: không còn mã nhập tay (mã cũ nằm thẳng trong code, ai xem mã nguồn
+// cũng đọc được). DEV chỉ mở khi đăng nhập bằng tài khoản có trong bảng
+// public.developers trên Supabase (services/cloudExtras.js hỏi hàm
+// is_developer() rồi gọi setDevAccess). Đăng xuất → khoá lại. Bảng DEV:
 // - Set budget: ghi thẳng ngân sách EP vào bản lưu CLB (GameScene đăng ký
 //   hàm ghi qua registerDevBudget).
 // - Reset daily limits (Phase 41): lượt SIMULATE và lượt World Cup hôm nay.
 // - +% đập thẻ: cộng thêm vào tỉ lệ mọi lần đập (services/upgrade.js →
 //   rateBreakdown), tối đa 100%. Cũng chỉ trong phiên.
 
-const DEV_CODE = 'AHUYBIHO2810'
-
-export const devState = { unlocked: false, upgradeBonus: 0 }
+export const devState = { unlocked: false, upgradeBonus: 0, adminOpen: false }
 
 const listeners = new Set()
 let budgetWriter = null
@@ -23,16 +23,33 @@ export function onDevChange(listener) {
     return () => listeners.delete(listener)
 }
 
-// Trả về true nếu đúng mã (không phân biệt hoa thường, bỏ khoảng trắng).
-export function unlockDev(code) {
-    const ok = String(code || '').trim().toUpperCase() === DEV_CODE
+// Phase 51: bật / tắt theo tài khoản (khoá lại thì bỏ luôn +% đập thẻ).
+export function setDevAccess(allowed) {
+    const unlocked = Boolean(allowed)
 
-    if (ok && !devState.unlocked) {
-        devState.unlocked = true
-        notify()
+    if (devState.unlocked === unlocked) return
+
+    devState.unlocked = unlocked
+    if (!unlocked) {
+        devState.upgradeBonus = 0
+        devState.adminOpen = false
     }
+    notify()
+}
 
-    return ok
+// Phase 52: trang ADMIN (components/AdminHost.jsx hiện khi adminOpen).
+export function openAdmin() {
+    if (!devState.unlocked || devState.adminOpen) return
+
+    devState.adminOpen = true
+    notify()
+}
+
+export function closeAdmin() {
+    if (!devState.adminOpen) return
+
+    devState.adminOpen = false
+    notify()
 }
 
 // 0…100 (%) → 0…1

@@ -5,13 +5,7 @@ import {
     FORM_PRICE,
     PACK_TYPES,
     PROTECTION_PRICE,
-    cardFromCatalog,
-    fitnessCard,
-    formCard,
-    drawFromPack,
-    freeShirtNumber,
     groupInventory,
-    playerIdOf,
 } from '../../services/cards'
 import { CLUB_XP, clubXpToNext, levelRewards } from '../../services/clubProgress'
 import { SQUAD_LIMITS, squadOf } from '../../systems/roster'
@@ -19,11 +13,11 @@ import { PlayerCardView } from '../CardBits'
 import UpgradePanel from '../UpgradePanel'
 import AchievementsPanel from '../AchievementsPanel'
 import { pendingAchievementCount } from '../../services/upgradeAchievements'
-import { maxSquadForm, restoreSquadFitness } from '../../systems/form'
 import { userClubId } from '../../services/career'
 import BottleDialog from '../BottleDialog'
-import { EXP_BOTTLE_PRICE, EXP_BOTTLE_SHARE, drainPlayer, emptyBottle, filledBottle, givePlayerXp } from '../../services/xpBottle'
-import { SIM_DAILY_LIMIT, SIM_TICKET_PACK, SIM_TICKET_PRICE, SIM_TICKET_SLOT, buySimTickets, simTicketsOf, simulationsLeft } from '../../services/quickSim'
+import { EXP_BOTTLE_PRICE, EXP_BOTTLE_SHARE, drainPlayer, filledBottle, givePlayerXp } from '../../services/xpBottle'
+import { SIM_DAILY_LIMIT, SIM_TICKET_PACK, SIM_TICKET_PRICE, SIM_TICKET_SLOT, simTicketsOf, simulationsLeft } from '../../services/quickSim'
+import { economy } from '../../services/economy'
 
 // Phase 23: tab CARDS — kho phần thưởng (gói cầu thủ, thẻ EP), mở lúc nào
 // cũng được. Cầu thủ mở ra là thẻ +1 và vào đội hình ngoài. Đội đủ 50 người
@@ -88,13 +82,19 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
         inventory: (current.inventory || []).filter((entry) => entry.id !== itemId),
     })
 
-    const openEp = (item) => {
-        onClubChange((current) => ({ ...removeItem(current, item.id), budget: (current.budget || 0) + item.amount }))
-        setReveal({ type: 'ep', amount: item.amount, budget: (club.budget || 0) + item.amount, source: item.source })
+    // Phase 53A: mọi thao tác EP / vật phẩm / gói đi qua economy (reducer dùng chung với server).
+    const failNotice = (res) => setNotice({ tone: 'error', text: res.message })
+
+    const openEp = async (item) => {
+        const res = await economy('open_ep', { ids: [item.id] })
+
+        if (!res.ok) return failNotice(res)
+
+        setReveal({ type: 'ep', amount: res.result.amount, budget: res.result.budget, source: item.source })
         setNotice(null)
     }
 
-    const openPack = (item) => {
+    const openPack = async (item) => {
         if (squadFull) {
             setNotice({
                 tone: 'error',
@@ -103,57 +103,51 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
             return
         }
 
-        const drawn = drawFromPack(item.pack)
-        const card = cardFromCatalog(drawn, { number: freeShirtNumber(squad) })
-        const duplicateOf = squad.find((player) => playerIdOf(player) === card.playerId) || null
+        const res = await economy('open_pack', { id: item.id })
 
-        onRosterChange((current) =>
-            current.map((entry) =>
-                entry.id !== 'blue' ? entry : { ...entry, reserves: [...(entry.reserves || []), card] },
-            ),
-        )
-        onClubChange((current) => ({
-            ...removeItem(current, item.id),
-            contracts: { ...(current.contracts || {}), [card.id]: { years: 3 } },
-        }))
-        setReveal({ type: 'pack', card, pack: item.pack, duplicateOf, squadSize: squad.length + 1 })
+        if (!res.ok) return failNotice(res)
+
+        const { card, pack, duplicateOfId, squadSize } = res.result
+        const duplicateOf = duplicateOfId ? squad.find((player) => player.id === duplicateOfId) || null : null
+
+        setReveal({ type: 'pack', card, pack, duplicateOf, squadSize })
         setNotice(null)
     }
 
     // Phase 29I: dùng thẻ Thể lực / Phong độ cho cả đội.
-    const applySquadItem = (item) => {
-        onRosterChange((current) => (item.type === 'fitness' ? restoreSquadFitness(current) : maxSquadForm(current)))
-        onClubChange((current) => removeItem(current, item.id))
+    const applySquadItem = async (item) => {
+        const res = await economy('use_squad_item', { id: item.id })
+
+        if (!res.ok) return failNotice(res)
+
         setNotice({
             tone: 'ok',
-            text: item.type === 'fitness'
-                ? `Fitness card used: all ${squad.length} players are back to fitness 100.`
-                : `Form card used: all ${squad.length} players are in top form ⬆ (+3).`,
+            text: res.result.type === 'fitness'
+                ? `Fitness card used: all ${res.result.squadSize} players are back to fitness 100.`
+                : `Form card used: all ${res.result.squadSize} players are in top form ⬆ (+3).`,
         })
     }
 
-    const buyItem = (type) => {
+    const buyItem = async (type) => {
         const price = type === 'fitness' ? FITNESS_PRICE : FORM_PRICE
 
         if ((club.budget || 0) < price) return
 
-        onClubChange((current) => ({
-            ...current,
-            budget: (current.budget || 0) - price,
-            inventory: [...(current.inventory || []), type === 'fitness' ? fitnessCard('Bought with EP') : formCard('Bought with EP')],
-        }))
+        const res = await economy('buy_item', { item: type })
+
+        if (!res.ok) return failNotice(res)
+
         setNotice({ tone: 'ok', text: `${type === 'fitness' ? 'Fitness' : 'Form'} card bought for ${formatMoney(price)} — it is in REWARDS (UNOPENED).` })
     }
 
     // Phase 46: bình EXP.
-    const buyBottle = () => {
+    const buyBottle = async () => {
         if ((club.budget || 0) < EXP_BOTTLE_PRICE) return
 
-        onClubChange((current) => ({
-            ...current,
-            budget: (current.budget || 0) - EXP_BOTTLE_PRICE,
-            inventory: [...(current.inventory || []), emptyBottle('Bought with EP')],
-        }))
+        const res = await economy('buy_item', { item: 'bottle' })
+
+        if (!res.ok) return failNotice(res)
+
         setNotice({ tone: 'ok', text: `Empty EXP bottle bought for ${formatMoney(EXP_BOTTLE_PRICE)} — it is in REWARDS (UNOPENED). Tap USE to drain a bench / reserve player.` })
     }
 
@@ -193,10 +187,13 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
     }
 
     // Phase 44: vé mô phỏng — mua theo bộ ×10.
-    const buyTickets = () => {
+    const buyTickets = async () => {
         if ((club.budget || 0) < SIM_TICKET_PRICE) return
 
-        onClubChange((current) => buySimTickets(current) || current)
+        const res = await economy('buy_item', { item: 'tickets' })
+
+        if (!res.ok) return failNotice(res)
+
         setNotice({ tone: 'ok', text: `${SIM_TICKET_PACK} simulation tickets bought for ${formatMoney(SIM_TICKET_PRICE)} — used after your ${SIM_DAILY_LIMIT} free simulations of the day.` })
     }
 
@@ -220,27 +217,23 @@ export default function CardsScreen({ club, onClubChange, team, onRosterChange, 
     const epTotal = inventory.filter((item) => item.type === 'ep').reduce((sum, item) => sum + item.amount, 0)
 
     // Phase 33: mở hết thẻ EP cùng mệnh giá trong một dòng ×N.
-    const openEpGroup = (group) => {
-        const ids = new Set(group.items.map((item) => item.id))
+    const openEpGroup = async (group) => {
+        const res = await economy('open_ep', { ids: group.items.map((item) => item.id) })
 
-        onClubChange((current) => ({
-            ...current,
-            inventory: (current.inventory || []).filter((entry) => !ids.has(entry.id)),
-            budget: (current.budget || 0) + group.total,
-        }))
-        setReveal({ type: 'ep', amount: group.total, budget: (club.budget || 0) + group.total, source: `${group.count} × ${formatMoney(group.item.amount)} cards` })
+        if (!res.ok) return failNotice(res)
+
+        setReveal({ type: 'ep', amount: res.result.amount, budget: res.result.budget, source: `${group.count} × ${formatMoney(group.item.amount)} cards` })
         setNotice(null)
     }
 
-    const openAllEp = () => {
+    const openAllEp = async () => {
         if (!epTotal) return
 
-        onClubChange((current) => ({
-            ...current,
-            inventory: (current.inventory || []).filter((entry) => entry.type !== 'ep'),
-            budget: (current.budget || 0) + epTotal,
-        }))
-        setReveal({ type: 'ep', amount: epTotal, budget: (club.budget || 0) + epTotal, source: 'All EP cards' })
+        const res = await economy('open_ep', { ids: inventory.filter((item) => item.type === 'ep').map((item) => item.id) })
+
+        if (!res.ok) return failNotice(res)
+
+        setReveal({ type: 'ep', amount: res.result.amount, budget: res.result.budget, source: 'All EP cards' })
     }
 
     return (

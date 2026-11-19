@@ -32,6 +32,8 @@ import { LEAGUE_BY_ID } from '../data/world'
 import ClubPicker from './ClubPicker'
 import { isUserClub, setMatchSide, userClubId, userTeam } from '../services/career'
 import NationPicker from './NationPicker'
+import { CatalogUpdateBanner, CloudConflictDialog, CloudNudge } from './CloudAccount'
+import { setCloudPaused } from '../services/cloudSave'
 import { pendingAchievementCount } from '../services/upgradeAchievements'
 import { WC_LEVEL_XP, WC_MAX_LEVEL, applyWorldCupMatch, wcDefaultDifficulty, wcDifficultyOptions, wcLevelOf, worldCupDifficultyId, worldCupProgress } from '../services/worldCupLevel'
 import { nationStrength, nationalTeamForMatch, suggestedNation } from '../services/nationalTeams'
@@ -149,6 +151,10 @@ import {
 import { recordUserMatchStats, userMatchEntries } from '../services/seasonStats'
 import { resolveGraphics } from '../utils/performance'
 import { registerDevBudget, registerDevDailyReset } from '../utils/devTools'
+import { registerGiftApplier } from '../services/cloudExtras'
+import AdminHost from './AdminHost'
+import { refreshOwnedRoster } from '../services/cardRefresh'
+import { economy, registerEconomyHost, syncEconomyState } from '../services/economy'
 import { applyPreset } from '../services/lineupHelper'
 import MobileTabBar from './MobileTabBar'
 
@@ -260,11 +266,16 @@ function usePortraitTouch() {
 }
 
 export default function GameScene() {
-    const [roster, setRoster] = useState(loadSavedRoster)
+    // Phase 52b: thẻ đang sở hữu được làm mới nếu developer sửa cầu thủ đó kèm "cập nhật thẻ đang sở hữu".
+    const [roster, setRoster] = useState(() => refreshOwnedRoster(loadSavedRoster()))
     // Phase 23: CLB (ngân sách EP, hợp đồng, cấp độ, XP, kho thẻ) do GameScene
     // giữ để thưởng sau trận, tab CARDS và màn TRANSFERS dùng chung một bản.
     const [club, setClub] = useState(loadClub)
     const clubReportRef = useRef(null)
+    const clubStateRef = useRef(club)
+    clubStateRef.current = club
+    const rosterStateRef = useRef(roster)
+    rosterStateRef.current = roster
     // Phase 25: mở TRANSFERS với ô tìm kiếm điền sẵn (nút mua bản sao ở màn đập thẻ).
     const [clubSearch, setClubSearch] = useState('')
 
@@ -272,8 +283,12 @@ export default function GameScene() {
         saveClub(club)
     }, [club])
 
-    // Phase 34: bảng DEV (⚙ Settings → mã) ghi ngân sách EP.
-    useEffect(() => registerDevBudget((value) => setClub((current) => ({ ...current, budget: value }))), [])
+    // Phase 34: bảng DEV ghi ngân sách EP. Phase 53A: qua economy (server kiểm tra quyền developer).
+    useEffect(() => registerDevBudget((value) => {
+        economy('dev_set_budget', { amount: value })
+    }), [])
+    // Phase 51: gift code → thêm phần thưởng vào kho REWARDS.
+    useEffect(() => registerGiftApplier((update) => setClub(update)), [])
     // Phase 41: DEV → reset lượt SIMULATE / World Cup trong ngày.
     useEffect(() => registerDevDailyReset(() => {
         setClub((current) => ({ ...current, simulations: null }))
@@ -454,6 +469,18 @@ export default function GameScene() {
     const [nationPicker, setNationPicker] = useState(false)
 
     setMatchSide(wcSession?.nationId || null)
+
+    // Phase 53A: các thao tác EP / kho đồ / thẻ đi qua services/economy.js (reducer
+    // dùng chung với server). Không chạy trong lúc đang dùng đội tuyển World Cup.
+    syncEconomyState(club, roster)
+    useEffect(() => registerEconomyHost({
+        getState: () => ({ club: clubStateRef.current, roster: rosterStateRef.current }),
+        apply: (next, previous) => {
+            if (next.club !== previous.club) setClub(next.club)
+            if (next.roster !== previous.roster) setRoster(next.roster)
+        },
+        busy: () => Boolean(wcSessionRef.current),
+    }), [])
 
     const worldCup = world.worldCup || null
     // Phase 29H: giải đang đá (lưu lại, đá tiếp lúc nào cũng được).
@@ -1324,6 +1351,8 @@ export default function GameScene() {
     // Phase 29A1: html.in-match (chặn phóng to / cuộn khi đang ở màn trận).
     useEffect(() => {
         setInMatch(screen === 'match' || screen === 'training')
+        // Phase 50: trong trận / tập luyện 3D không đẩy bản lưu lên mây (đẩy khi xong).
+        setCloudPaused(screen === 'match' || screen === 'training')
         return () => setInMatch(false)
     }, [screen])
 
@@ -2802,6 +2831,12 @@ export default function GameScene() {
                 hidden={screen === 'match' || screen === 'training'}
             />
 
+            {/* Phase 50: chọn bản lưu khi bản trong máy và trên mây khác nhau (không hiện giữa trận). */}
+            {screen !== 'match' && <CloudConflictDialog />}
+            {/* Phase 52: trang ADMIN (developer) + thông báo dữ liệu cầu thủ mới. */}
+            {screen !== 'match' && screen !== 'training' && <AdminHost />}
+            {screen !== 'match' && screen !== 'training' && <CatalogUpdateBanner />}
+
             {/* Phase 29G: ⚙ SETTINGS mở từ header, ở mọi màn hình (cả trong trận). */}
             {isSettingsOpen && (
                 <SettingsDialog
@@ -2816,6 +2851,7 @@ export default function GameScene() {
                 />
             )}
 
+            {screen === 'home' && <CloudNudge onOpen={openSettings} />}
             {screen === 'home' && (
                 <HomeScreen
                     nextMatch={homeNextMatch}

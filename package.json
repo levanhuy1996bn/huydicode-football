@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:economy": "node scripts/build-economy.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
     "@react-three/rapier": "^2.0.0",
+    "@supabase/supabase-js": "^2.119.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.175.0"

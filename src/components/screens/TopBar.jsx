@@ -1,3 +1,4 @@
+import { CloudBadge } from '../CloudAccount'
 import { useEffect, useRef, useState } from 'react'
 import LevelRing from '../LevelRing'
 import { clubXpToNext } from '../../services/clubProgress'
@@ -121,6 +122,8 @@ export default function TopBar({ screen, inMatch, season, record, onNavigate, ca
                     className="topbar-level"
                 />
                 <BudgetChip budget={budget} disabled={inMatch} onClick={() => onNavigate('club')} />
+                {/* Phase 50: trạng thái lưu lên mây */}
+                {!inMatch && onOpenSettings && <CloudBadge onClick={onOpenSettings} />}
                 {onOpenSettings && (
                     <button
                         type="button"

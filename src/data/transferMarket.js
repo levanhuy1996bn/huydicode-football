@@ -15,6 +15,7 @@ import { TEAMS } from './teams'
 import { MAN_UTD_ID, worldClub } from './world'
 import { allWorldPlayers } from './worldSquads'
 import { withPhysique } from '../systems/physique'
+import { applyOverride } from './catalogOverrides'
 
 export const FREE_AGENT = 'FREE AGENT'
 
@@ -26,14 +27,15 @@ function clubPlayers() {
 
     if (!blue) return []
 
+    // Phase 52b: đội hình gốc (Huy Le…) cũng sửa được từ Supabase (applyOverride).
     return [...blue.players, ...(blue.substitutes || [])].map((player) => {
         const value = valueOf(player.overall)
 
-        return {
+        return applyOverride({
             id: player.id,
             playerId: player.id,
             name: player.name,
-            age: 26,
+            age: player.age ?? 26,
             position: player.position,
             overall: player.overall,
             pace: player.pace,
@@ -44,14 +46,14 @@ function clubPlayers() {
             physical: player.physical,
             value,
             wage: Math.max(2000, Math.round((value * 0.003) / 1000) * 1000),
-            nationality: 'Manchester United',
+            nationality: player.nationality || 'Manchester United',
             rarity: rarityOf(player.overall),
             height: player.height,
             weight: player.weight,
             clubId: MAN_UTD_ID,
             club: worldClub(MAN_UTD_ID)?.name || 'MANCHESTER UNITED',
             countryId: 'eng',
-        }
+        })
     })
 }
 
@@ -60,3 +62,10 @@ const freeAgents = () =>
 
 export const TRANSFER_MARKET = [...clubPlayers(), ...allWorldPlayers(), ...freeAgents()]
 export const MARKET_BY_PLAYER_ID = new Map(TRANSFER_MARKET.map((player) => [player.playerId, player]))
+
+// Phase 53A: dựng lại tại chỗ sau khi đổi bản sửa (server economy).
+export function rebuildTransferMarket() {
+    TRANSFER_MARKET.splice(0, TRANSFER_MARKET.length, ...clubPlayers(), ...allWorldPlayers(), ...freeAgents())
+    MARKET_BY_PLAYER_ID.clear()
+    TRANSFER_MARKET.forEach((player) => MARKET_BY_PLAYER_ID.set(player.playerId, player))
+}

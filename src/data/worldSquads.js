@@ -11,6 +11,7 @@ import { baseStats } from './teams'
 import { STAR_PHYSIQUE } from './starPhysique'
 import { generatePhysique } from '../systems/physique'
 import { STAR_NATIONALITY } from './starNationality'
+import { applyOverride, customSquadPlayers } from './catalogOverrides'
 
 // [vị trí, số áo, nhóm]: 0–10 đá chính, 11–19 dự bị, 20–21 dự bị xa.
 export const SQUAD_TEMPLATE = [
@@ -170,7 +171,9 @@ export function worldSquad(clubId) {
     if (cache.has(clubId)) return cache.get(clubId)
 
     const club = CLUB_BY_ID.get(clubId)
-    const squad = club ? buildSquad(club) : []
+    const base = club ? buildSquad(club) : []
+    // Phase 52: bản sửa từ Supabase + cầu thủ mới của CLB (sau 22 người gốc).
+    const squad = club ? [...base.map(applyOverride), ...customSquadPlayers(club, base)] : []
 
     cache.set(clubId, squad)
     return squad
@@ -186,6 +189,12 @@ export function allWorldPlayers() {
     allPlayers = WORLD_CLUBS.flatMap((club) => worldSquad(club.id))
 
     return allPlayers
+}
+
+// Phase 53A: xoá bộ nhớ đệm sau khi đổi bản sửa (server economy).
+export function resetWorldSquads() {
+    cache.clear()
+    allPlayers = null
 }
 
 // Phase 29E: cầu thủ tự sinh cho đội tuyển các nước không có giải trong game
